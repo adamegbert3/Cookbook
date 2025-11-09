@@ -119,7 +119,7 @@ export const recipes = [
     },
     {
         author: "Adam Egbert (Pat Edwards)",
-        tags: ["Cat"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "1 box kraft mac & cheese",
             "noodles inside",
@@ -137,7 +137,7 @@ export const recipes = [
     },
     {
         author: "Tara Egbert",
-        tags: ["Cat"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "2 (3 ounce) package orange jello",
             "2 cups boiling water",
@@ -156,7 +156,7 @@ export const recipes = [
     },
     {
         author: "Tara Egbert",
-        tags: ["Cat"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "3 medium tomatoes, chopped",
             "½ teaspoon dried basil",
@@ -177,7 +177,7 @@ export const recipes = [
     },
     {
         author: "Stacy Gillette",
-        tags: ["Vegetables & Sides"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "28 (14-oz.) washed potatoes",
             "2 (10-oz.) cans cream of chicken soup",
@@ -207,7 +207,7 @@ export const recipes = [
     },
     {
         author: "???",
-        tags: ["Cat"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "5 medium carrots",
             "1 tablespoon sugar",
@@ -226,7 +226,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "8 ounce cream cheese",
             "1 (13 ounce) jar marshmallow cream",
@@ -240,8 +240,8 @@ export const recipes = [
         ]
     },
     {
-        author: "Grandma Egbert",
-        tags: ["Main Dish"],
+        author: "Sue Egbert",
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "1 cup catsup",
             "½ cup vinegar",
@@ -257,8 +257,8 @@ export const recipes = [
         ]
     },
     {
-        author: "Grandma - Sue Egbert",
-        tags: ["Vegetables and Sides"],
+        author: "Sue Egbert",
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "sliced cucumbers",
             "sliced onions",
@@ -274,7 +274,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Vegetables & Sides"],
+        tags: ["Vegetables & Sides & Dips"],
         recipeIngredient: [
             "First Layer:",
             "1 can spicy refried beans",
@@ -300,7 +300,7 @@ export const recipes = [
     },
     {
         author: "Scott & Susan Anderson",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 cup sugar",
             "2 tablespoons cocoa",
@@ -316,13 +316,13 @@ export const recipes = [
         ]
     },
     {
-        author: "Ellie Virgin",
-        tags: ["Cat"],
+        author: "Ellie Martin",
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 cube butter",
             "¾ cup buttermilk*",
             "1 cup sugar",
-            "½ cup teaspoon baking soda",
+            "½ teaspoon baking soda",
             "1 teaspoon vanilla",
             "* To make ¾ cup buttermilk if you don’t have it, fill almost ¾ with milk and add a tablespoon of lemon juice and stir, then let sit for one minute"
         ],
@@ -337,7 +337,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "4 tablespoons butter",
             "2 tablespoons vegetable oil",
@@ -358,7 +358,7 @@ export const recipes = [
     },
     {
         author: "Janie Arnold",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "4 large potatoes",
             "4 green onions, chopped",
@@ -382,7 +382,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 pt. mayonnaise",
             "1 pt. salad dressing",
@@ -401,7 +401,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Soups & Salads & Sauces"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 onion I use dried equivalent",
             "1 pound hamburger",
@@ -423,7 +423,7 @@ export const recipes = [
     },
     {
         author: "",
-        tags: ["Soups & Salads & Sauces"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 lb. ground beef",
             "1 ½ c. chopped onion",
@@ -452,7 +452,7 @@ export const recipes = [
     },
     {
         author: "Adam Egbert - Ree Drummond",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 Tbsp. vegetable oil",
             "1 lb. ground sirloin beef",
@@ -481,7 +481,7 @@ export const recipes = [
     },
     {
         author: "Cafe Rio",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "2 cups ranch",
             "1 small cilantro",
@@ -497,7 +497,7 @@ export const recipes = [
     },
     {
         author: "Alexa Arnold",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "3 large heads of broccoli",
             "1 pound bacon",
@@ -517,7 +517,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "2 cloves garlic, minced",
             "1 c. onion, chopped",
@@ -537,7 +537,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Vegetables & Sides"],
+        tags: ["Soups & Salads & Sauces & Syrups"],
         recipeIngredient: [
             "1 pint mayonnaise",
             "1 pint salad dressing",
@@ -851,7 +851,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Miscellaneous"],
         recipeIngredient: [
             "1 cup flour",
             "¼ cup salt",
@@ -870,7 +870,7 @@ export const recipes = [
     },
     {
         author: "Janie Arnold (Reba Egbert)",
-        tags: ["Cat"],
+        tags: ["Miscellaneous"],
         recipeIngredient: [
             "1 beef flank steak or round steak well trimmed",
             "garlic salt or onion salt",
@@ -902,7 +902,7 @@ export const recipes = [
     },
     {
         author: "Marilyn Hill",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "6 chicken breasts",
             "3/4 cup sugar",
@@ -953,7 +953,7 @@ export const recipes = [
     },
     {
         author: "Jesse Perkins",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "hamburger meat",
             "tortilla chips",
@@ -974,7 +974,7 @@ export const recipes = [
     },
 {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "1 pound ground beef",
             "2 medium onions, chopped",
@@ -1003,7 +1003,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "2 pounds pork (we use boneless pork rib meat)",
             "3 cans Coke (NOT diet)",
@@ -1027,7 +1027,7 @@ export const recipes = [
     },
     {
         author: "Adam Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "¼ cup flour",
             "⅛ teaspoon baking powder",
@@ -1047,7 +1047,7 @@ export const recipes = [
     },
     {
         author: "Tara Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "4-5 cups dry shell macaroni",
             "1 cup mayonnaise",
@@ -1066,7 +1066,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "1 pound hamburger",
             "2 teaspoon oil",
@@ -1089,7 +1089,7 @@ export const recipes = [
     },
     {
         author: "Misha Jones",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "Flour tortillias",
             "1 lbs hamburger",
@@ -1129,7 +1129,7 @@ export const recipes = [
     },
     {
         author: "Anna Virgin",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "4 tablespoons vegetable oil, divided",
             "1 egg, beaten",
