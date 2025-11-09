@@ -40,11 +40,11 @@ img {
 }
 
 .recipe-card {
-    border: 1px solid black;
+    border: 5px solid black;
     margin-top: 20px;
     margin: 25px auto;
     width: 95%;
-    border-radius: 2%;
+    border-radius: 20px;
 }
 
 #recipes img {
@@ -69,24 +69,6 @@ h2 {
     margin-left: 15px;
     margin-bottom: 0;
     font-family: var(--secondary-font);
-}
-
-#desc {
-    display: grid;
-    grid-template-rows: 1fr 1fr;
-}
-
-#desc p{
-    display: none;
-    width: 80%;
-    margin-left: 15px;
-}
-
-.rating {
-    margin-top: none;
-    margin-left: 15px;
-    font-style: none;
-    margin-bottom: 30px;
 }
 
 body {
@@ -143,6 +125,13 @@ body {
     h2 {
         font-size: large;
     }
+}
+#author {
+    font-style: italic;
+    text-align: right;
+    margin-left: 15px;
+    margin-top: 0;
+    margin-bottom: 10px;
 }
 
 @media screen and (min-width: 960px) {

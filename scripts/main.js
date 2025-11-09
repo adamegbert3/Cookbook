@@ -17,9 +17,11 @@ function RecipeTemplate(recipe) {
             <div id="tags">\
                 ${tagsTemplate(recipe.tags)}\
             </div>\
-            <div id="desc">\
                 <h2>${recipe.name}</h2>\
             </div>\
+        </div>\
+        <div id="author">\
+            <p>By: ${recipe.author}</p>\
         </div>\
     </div>`;
 }
@@ -33,9 +35,9 @@ function tagsTemplate(tags){
     return html;
 }
 
-function renderRecipes(recipeList) {
+function renderRecipes() {
     let html = '';
-    recipeList.forEach(recipe => {
+    recipes.forEach(recipe => {
         html += RecipeTemplate(recipe);
     });
     document.getElementById('recipes').innerHTML = html;
@@ -54,9 +56,9 @@ function renderRecipes(recipeList) {
 
 function init() {
   // get a random recipe
-  const recipe = GetRandomRecipe(recipes)
+//   const recipe = GetRandomRecipe(recipes)
   // render the recipe with renderRecipes.
-  renderRecipes([recipe]);
+  renderRecipes();
 }
 init();
 

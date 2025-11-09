@@ -11,6 +11,7 @@ function loadRecipe() {
 
     const html = `
         <h1>${recipe.name}</h1>
+        <h2>By: ${recipe.author}</h2>
         <h3>Ingredients</h3>
         <ul>
             ${recipe.recipeIngredient.map(i => `<li>${i}</li>`).join("")}

@@ -1153,38 +1153,8 @@ export const recipes = [
         ]
     },
     {
-        author: "Anna Virgin",
-        tags: ["Cat"],
-        recipeIngredient: [
-            "2 pounds chicken breast boneless skinless, chopped to bite-sized pieces",
-            "2 tablespoon vegetable oil",
-            "2 tablespoon garlic minced",
-            "Clarrots",
-            "2 small yellow or white onion chopped",
-            "1 carrot chopped",
-            "3 tablespoons MAE PLOY Yellow Curry Paste",
-            "30 ounces coconut milk canned, full fat",
-            "1 cup potatoes cubed",
-            "2 tablespoon brown sugar",
-            "3 teaspoon fish sauce",
-            "4 Tablespoons lime juice",
-            "salt to taste",
-            "handful fresh cilantro roughly chopped",
-            "8 cups cooked white rice for serving"
-        ],
-        name: "Yellow Chicken Curry",
-        recipeInstructions: [
-            "Heat the oil in a large pot over medium low heat.",
-            "Add the onions , carrots and minced garlic and cook for a few minutes until the onions are fragrant and softened.",
-            "Add the chicken and cook for 2-3 minutes, browning it a little. Add curry paste; cook for 3-5 minutes.",
-            "Add the coconut milk, and potatoes and let simmer for 15-20 minutes or until the chicken and potatoes are fully - cooked.",
-            "Stir in the brown sugar, fish sauce, and lime juice. Taste and salt if needed.",
-            "Top with fresh cilantro, serve over cooked rice."
-        ]
-    },
-    {
         author: "Adam Egbert (Karli Bitner)",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "3 cups chicken broth",
             "3 cups heavy cream",
@@ -1208,7 +1178,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "1 pound ground beef",
             "2 medium onions, chopped",
@@ -1237,7 +1207,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "2 pounds pork (we use boneless pork rib meat)",
             "3 cans Coke (NOT diet)",
@@ -1261,7 +1231,7 @@ export const recipes = [
     },
     {
         author: "Adam Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "¼ cup flour",
             "⅛ teaspoon baking powder",
@@ -1281,7 +1251,7 @@ export const recipes = [
     },
     {
         author: "Tara Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "4-5 cups dry shell macaroni",
             "1 cup mayonnaise",
@@ -1300,7 +1270,7 @@ export const recipes = [
     },
     {
         author: "Sue Egbert",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "1 pound hamburger",
             "2 teaspoon oil",
@@ -1323,7 +1293,7 @@ export const recipes = [
     },
     {
         author: "Misha Jones",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "Flour tortillias",
             "1 lbs hamburger",
@@ -1363,7 +1333,7 @@ export const recipes = [
     },
     {
         author: "Anna Virgin",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "4 tablespoons vegetable oil, divided",
             "1 egg, beaten",
@@ -1388,7 +1358,7 @@ export const recipes = [
     },
     {
         author: "Anna Virgin",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "2 pounds chicken breast boneless skinless, chopped to bite-sized pieces",
             "2 tablespoon vegetable oil",
@@ -1418,7 +1388,7 @@ export const recipes = [
     },
     {
         author: "Adam Egbert (Karli Bitner)",
-        tags: ["Cat"],
+        tags: ["Main Dish"],
         recipeIngredient: [
             "3 cups chicken broth",
             "3 cups heavy cream",
