@@ -45,6 +45,12 @@ img {
     margin: 25px auto;
     width: 95%;
     border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* keeps spacing consistent */
+    height: 100%; /* makes all cards same height if grid allows */
+    box-sizing: border-box;
+    padding-right: 20px;
 }
 
 #recipes img {
