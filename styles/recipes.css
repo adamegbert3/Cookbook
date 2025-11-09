@@ -133,6 +133,38 @@ body {
     margin-top: 0;
     margin-bottom: 10px;
 }
+.recipe {
+  width: 90%;
+  max-width: 400px;
+  margin: auto;
+}
+.recipes-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+}
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+body {
+  overflow-x: hidden; /* prevents sideways scrolling */
+  word-wrap: break-word;
+}
+.recipe:hover {
+  transform: scale(1.03);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: 0.2s ease-in-out;
+}
+body {
+  font-family: 'Poppins', sans-serif;
+  line-height: 1.6;
+  color: #333;
+}
+
 
 @media screen and (min-width: 960px) {
     body {
