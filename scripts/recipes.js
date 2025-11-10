@@ -2527,4 +2527,936 @@ export const recipes = [
       "Cut into squares when cool. (Best if use fresh marshmallows. You can substitute 1 jar 7 oz. jar of marshmallow cream.)"
     ]
   },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "1 18 ¼ oz. white cake mix",
+      "2 eggs",
+      "1/3 cup vegetable oil",
+      "1 can sweetened condensed milk",
+      "1cup (6 ounces) semisweet chocolate chips (milk)",
+      "¼ cup butter or margarine, cubed"
+    ],
+    name: "CAN’T LEAVE ALONE BARS",
+    recipeInstructions: [
+      "In a bowl, combine the dry cake mix, eggs and oil. With floured hands, press 2/3 of the mixture into a greased 13 x 9 pan. Set remaining cake mixture aside.",
+      "In microwave-safe bowl, combine the milk, chocolate chips and butter. Microwave, uncovered, on high for 45 seconds; stir. Microwave 45-60 seconds longer or until chips and butter are melted; stir until smooth. Pour over crust.",
+      "Drop teaspoonfuls of remaining cake mixture over top. Bake at 350 for 20-25 minutes or until lightly browned. Cool before cutting. Yield: 3 dozen."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "¾ cup shortening",
+      "1 cup sugar",
+      "1 egg",
+      "1 tsp. vanilla",
+      "1 ½ cup grated zucchini",
+      "2 tsp. baking powder",
+      "2 ½ cup flour",
+      "½ tsp. salt",
+      "1 tsp. cinnamon",
+      "1 cup chocolate chips"
+    ],
+    name: "ZUCCHINI CHOCOLATE CHIP COOKIES",
+    recipeInstructions: [
+      "Cream: egg, shortening, sugar and vanilla.",
+      "In a separate bowl, combine flour, baking powder, salt and cinnamon.",
+      "Add dry ingredients to creamed mixture. Mix well and add zucchini and chocolate chips.",
+      "Drop by teaspoon on an ungreased cookie sheet. Bake 350 for 15 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "2/3 cup shortening",
+      "1 egg",
+      "½ cup brown sugar",
+      "1 teaspoon vanilla",
+      "½ cup sugar",
+      "1 ½ cups flour",
+      "1 teaspoon soda",
+      "1 teaspoon salt",
+      "1 ¼ cup chocolate chips (I like milk chocolate)"
+    ],
+    name: "CHOCOLATE CHIP COOKIES",
+    recipeInstructions: [
+      "Cream together: shortening, egg, brown sugar, vanilla, and white sugar.",
+      "Mix together and blend in: flour, soda, and salt.",
+      "Add chocolate chips.",
+      "Bake 8-10 minutes at 375."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "PIE CRUST"],
+    recipeIngredient: [
+      "4 cups flour",
+      "1 ¾ cup Crisco",
+      "1 tsp. baking powder",
+      "1 egg",
+      "1 tsp. salt",
+      "1//2 cup cold water",
+      "1 T. sugar",
+      "1 t. vinegar"
+    ],
+    name: "NEVER FAIL PIE CRUST (1)",
+    recipeInstructions: [
+      "Mix flour, baking powder, salt and sugar in bowl; cut in Crisco.",
+      "Beat egg until fluffy. Mix egg, water and vinegar together; add to dry ingredients.",
+      "Gather dough together; press into ball. Divide into 6 portions.",
+      "Dough may be placed in airtight containers and frozen.",
+      "Yield: dough for 6 crusts."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "PIE CRUST"],
+    recipeIngredient: [
+      "1 cup shortening",
+      "1 T. vinegar",
+      "2 cups flour",
+      "1/3 cup milk",
+      "1 tsp. salt"
+    ],
+    name: "NEVER FAIL PIE CRUST (2)",
+    recipeInstructions: [
+      "Cut shortening into flour and salt.",
+      "Add vinegar to milk; combine at once with flour mixture.",
+      "Knead just enough to have nice dough.",
+      "Yield: 2 pie crusts."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "DUTCH OVEN"],
+    recipeIngredient: [
+      "½ lb. bacon",
+      "8 chicken breasts",
+      "flour (for dredging)",
+      "Lawry’s seasoning salt (liberal amount)",
+      "garlic powder (liberal amount)",
+      "8 carrots, quartered",
+      "8 potatoes, quartered",
+      "3 onions, quartered",
+      "½ cup margarine or butter (cut up)",
+      "1 cup water",
+      "½ can (6 oz.) 7-up",
+      "slice of mild cheddar cheese (or Velveeta) per breast"
+    ],
+    name: "DUTCH OVEN CHICKEN",
+    recipeInstructions: [
+      "Fry ½ lb. bacon, remove and dice.",
+      "Dredge 8 chicken breasts in flour and brown them in the bacon grease.",
+      "Place diced bacon on top of the chicken. Season liberally with Lawry’s seasoning salt and garlic powder.",
+      "Quarter carrots, potatoes and onions. Place them atop chicken and season again liberally with garlic powder and seasoning salt.",
+      "On top of everything put: cut-up margarine/butter, water, and 7-up.",
+      "Cover and cook for 45 minutes to one hour. When meat is tender, bring each piece to the top and cover with a slice of mild cheddar cheese. (You can use Velveeta)",
+      "Replace the lid after the coals have been removed from it and leave it till the cheese melts."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "DUTCH OVEN"],
+    recipeIngredient: [
+      "½ lb. bacon",
+      "2 medium onions, thinly sliced and separated into rings",
+      "5 lbs. potatoes, peeled and thinly sliced",
+      "salt and pepper to taste",
+      "1 can cream of chicken soup",
+      "1 pint sour cream",
+      "½ cup milk",
+      "1+ lbs. ham cut up in small pieces",
+      "grated cheese for the top",
+      "a little water (for cooking)"
+    ],
+    name: "DUTCH OVEN POTATOES WITH HAM",
+    recipeInstructions: [
+      "Cut bacon into 1-inch pieces. Place in Dutch oven and cook. Stir the bacon frequently to prevent scorching.",
+      "When browned, use 1/3 of the potatoes to make a layer over the bacon, then use 1/3 of the onions, 1/3 of the ham, salt and pepper to taste and continue layering.",
+      "Before cooking, add a little water to the oven. Do not over fill the oven or the lid will not seat properly and the food will take longer to cook.",
+      "Place the lid on the oven and cook, use 10 briquettes under the oven, and 10-13 coals on the top.",
+      "Check and stir the potatoes every 5-7 minutes. Cook until almost done.",
+      "Mix the remaining ingredients together, except the cheese (soup, sour cream, milk) and mix in with the potatoes.",
+      "Cook until done, add the cheese to the top and heat until melted. Makes 12-15 servings."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "DUTCH OVEN"],
+    recipeIngredient: [
+      "6 boneless chicken breasts",
+      "9 slices Swiss cheese",
+      "2 cups Rice Krispies cereal, crushed",
+      "¼ cup oil",
+      "Lawry’s Seasoned Salt"
+    ],
+    name: "DUTCH OVEN CHICKEN ROLLS",
+    recipeInstructions: [
+      "Flatten each chicken breast with blows from the side of a cleaver. Sprinkle with seasoned salt.",
+      "Top with 1 ½ slices Swiss cheese in the center. Fold edges over cheese and roll tightly and secure with a toothpick.",
+      "Brush oil on each breast and roll in crushed Rice Krispies.",
+      "Arrange in a 12-inch Dutch oven and bake 325 degrees with light heat on bottom and most of the heat on top.",
+      "Bake for about 25 minutes until the breading and outside is golden brown and the chicken is fully cooked and the Swiss cheese is melted inside.",
+      "Serve with rice and sweet and sour vegetables."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES"],
+    recipeIngredient: [
+      "1 whole chicken",
+      "water",
+      "3-4 chicken bullion cubes",
+      "onions (optional)",
+      "carrots (optional)",
+      "celery (optional)",
+      "Noodles: 3 egg yolks, 1 whole egg, 3 tbsp. cold water, 1 tsp. salt, 2 cups flour"
+    ],
+    name: "CHICKEN & HOMEMADE EGG NOODLES",
+    recipeInstructions: [
+      "Cook one whole chicken in water with 3-4 chicken bullion cubes and onions if you want. Cook until done and take off the bones.",
+      "Add noodles (you can also add carrots and celery if you like. Cook until noodles are tender. We like to serve the noodles over mashed potatoes.",
+      "Noodles: Beat yolks and egg well. Beat in water and salt. Stir in flour. Dough will be stiff and the last bit of flour will need to be kneaded in. Divide dough into 3 parts. Roll each piece on a floured board. Roll up as a jelly roll. With a thin sharp knife, cut into strips (1/8” to ½”). Unroll and shake strips. If you have time allow them to dry before using. Cook in a generous amount of water. (I like to add the flour used to roll them out to make the liquid a little thicker.)"
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "CASSEROLE"],
+    recipeIngredient: [
+      "1# sausage",
+      "1 can cr. of mushroom soup",
+      "¾ cup milk",
+      "½ cup chopped onion",
+      "½ tsp. salt",
+      "¼ tsp. pepper",
+      "3 cups raw, sliced potatoes",
+      "½ # grated cheese"
+    ],
+    name: "POTATO SAUSAGE CASSEROLE",
+    recipeInstructions: [
+      "Brown and drain sausage.",
+      "Mix soup, milk, onion, salt and pepper.",
+      "In large casserole, layer potatoes, soup mixture and sausage.",
+      "Bake covered in 350 oven for 1 ¼ to 1 ½ hours.",
+      "Sprinkle with grated cheese."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "PIE"],
+    recipeIngredient: [
+      "Pie Crust: 2 cups flour, 1 tsp. salt, 2/3 cup + 2 T. shortening, 4-5 T. cold water",
+      "Filling: 1/3 cup butter, 1/3 cup onions, 1/3 cup flour, ½ tsp. salt, ¼ tsp. pepper, 1 ½ cup chicken broth, 2/3 cup milk, 2 ½ cups cooked chicken, cubed, 2 cups mixed vegetables (or peas & carrots)"
+    ],
+    name: "CHICKEN POT PIE",
+    recipeInstructions: [
+      "Pie Crust: Measure flour and salt. Cut in shortening(about the size of peas). Sprinkle with water 1 T. at a time, mixing until all flour is moistened and dough almost cleans side of bowl. Gather dough into ball. Shape into flattened round only lightly floured pastry cloth. Roll dough 2 inches larger than inverted pie pan. Ease into pan.",
+      "Filling: Melt butter in sauce pan over low heat. Saute onions until transparent. Blend in flour, salt and pepper. Cook over low heat, stirring until mixture is smooth and bubbly. Remove from heat. Stir in chicken broth and milk. Heat to boiling stirring constantly. Boil and stir for 1 minute. Stir in chicken and mixed vegetables. Pour into prepared pie pan. Cover with top crust. Bake at 425 for 30-40 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES", "STUFFING"],
+    recipeIngredient: [
+      "12# turkey (for stuffing)",
+      "1 cup butter",
+      "1 egg",
+      "¾ c. onion",
+      "¾ cup of milk",
+      "12 cups bread crumbs",
+      "chicken broth",
+      "¾ cup chopped celery",
+      "1 T. salt",
+      "1 tsp. pepper",
+      "1 T. sage",
+      "Poultry seasoning to taste"
+    ],
+    name: "BREAD STUFFING",
+    recipeInstructions: [
+      "Toast bread and break into pieces.",
+      "Melt butter and add celery and onions to it and simmer until vegetables are slightly cooked.",
+      "Sprinkle on salt, sage, pepper and poultry seasoning on bread crumbs. Toss to mix well.",
+      "Whip egg and milk together. Pour butter mixture and egg mixture into bread mixture. Toss.",
+      "If it is not moist enough, add chicken broth to make a moist but not gooey stuffing.",
+      "Stuff into bird just before cooking. If I have more than I need for the bird, I wrap it in foil and cook it the last 30 minutes with the turkey."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES"],
+    recipeIngredient: [
+      "4 skinless, boneless chicken breast halves-pounded to ½ inch thick",
+      "2 tsp. seasoning salt",
+      "6 slices bacon, cut in half",
+      "½ cup prepared yellow mustard",
+      "½ cup honey",
+      "¼ cup light corn syrup",
+      "¼ cup mayo",
+      "1 T. dried onion flakes",
+      "1 T. vegetable oil",
+      "1 cup sliced fresh mushrooms",
+      "2 cups shredded Colby-Monterey Jack cheese",
+      "2 T. chopped fresh parsley"
+    ],
+    name: "AUSSIE CHICKEN",
+    recipeInstructions: [
+      "Rub the chicken breasts with the seasoning salt, cover and refrigerate for 30 minutes.",
+      "Preheat oven to 350. Place bacon in a large, deep skillet. Cook over medium high heat until crisp. Set aside.",
+      "In a medium bowl, combine the mustard, honey, corn syrup, mayo, and onion flakes. Remove half of sauce, cover and refrigerate to serve later.",
+      "Heat oil in large skillet over medium heat. Place the breasts in the skillet and sauté for 3-5 minutes per side, or until browned. Remove from skillet and place the breasts into a 9 x 13 baking dish.",
+      "Apply the honey mustard sauce to each breast, then layer each breast with mushrooms and bacon. Sprinkle top with shredded cheese.",
+      "Bake in preheated oven for 15 minutes or until cheese is melted and chicken juices run clear. Garnish with parsley and serve with the reserved honey mustard sauce."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES"],
+    recipeIngredient: [
+      "1 lb. hamburger",
+      "2 T. shortening (melted)",
+      "1 tsp. salt",
+      "2 cups water",
+      "pepper",
+      "3 beef bullion cubes",
+      "½ cup flour"
+    ],
+    name: "PRETEND SWISS STEAK",
+    recipeInstructions: [
+      "Combine hamburger, salt & pepper. Mix well. Divide into 4 equal parts. Place each part between 2 squares wax paper. Mash to ¼ in. with flat pan. Coat each piece well with flour.",
+      "Quickly brown hamburger on both sides in shortening in heavy pan.",
+      "Bring water to boil and add bullion cubes. Set off heat. Stir until dissolved, then pour over browned meat.",
+      "Simmer on low heat for 30 minutes. You may thicken gravy to desired thickness with a thin past of flour and water."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "SLOW COOKER"],
+    recipeIngredient: [
+      "2 ½ cups chicken broth",
+      "1 cup butter or marg.",
+      "½ cup chopped onion",
+      "½ cup chopped celery",
+      "1 can (4 oz.) mushroom stems and pieces, drained",
+      "¼ cup dried parsley flakes",
+      "1 ½ tsp. sage",
+      "1 tsp. poultry seasoning",
+      "1 tsp. salt",
+      "½ tsp. pepper",
+      "12 cups day-old bread cubes, (1/2 inch pieces)",
+      "2 eggs",
+      "1 can cr. chicken soup, undiluted",
+      "5 to 6 cups cubed cooked chicken"
+    ],
+    name: "SLOW COOKED CHICKEN & STUFFING",
+    recipeInstructions: [
+      "In a saucepan, combine the first 10 ingredients (chicken broth, butter, onion, celery, mushrooms, parsley, sage, poultry seasoning, salt, pepper). Simmer for 10 minutes; remove from heat.",
+      "Place bread cubes in a large bowl. Combine eggs and soup; stir into broth mixture until smooth. Pour over bread and toss well.",
+      "In a 5 qt. slow cooker, layer half of the stuffing and chicken; repeat layers.",
+      "Cover and cook on low for 4 ½ to 5 hours or until a meat thermometer inserted into the stuffing reads 160 degrees. Yields—14-16 servings"
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES"],
+    recipeIngredient: [
+      "1 can chili",
+      "1 can cream style corn",
+      "8 oz. tomato sauce",
+      "½ head lettuce (shredded)",
+      "Sliced olives",
+      "Tomatoes—chopped",
+      "Grated cheese",
+      "Dollop of sour cream",
+      "corn chips"
+    ],
+    name: "MEXICAN HAYSTACKS",
+    recipeInstructions: [
+      "Mix together chili, cream style corn, and tomato sauce and heat.",
+      "To serve: crunch corn chips and place on plate cover with chili mixture.",
+      "Top with: shredded lettuce, sliced olives, chopped tomatoes, grated cheese, and a dollop of sour cream.",
+      "Serves 7 people.",
+      "Add 1 can whole kernel corn if you make 4x the recipe. Use 2 heads of lettuce."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["MAIN DISHES", "SLOW COOKER"],
+    recipeIngredient: [
+      "4-5 lbs. pork loin roast",
+      "1 T. cumin",
+      "1 15 oz. bottle La Victoria Taco Sauce (red)",
+      "1 can Coke (not diet)",
+      "1 cup brown sugar",
+      "water (to fill halfway up the roast)"
+    ],
+    name: "PORK (CAFÉ RIO)",
+    recipeInstructions: [
+      "Place pork in crockpot and fill halfway up the roast with water. Cook on high for 5 hours or low for 10 hours.",
+      "Draw off water. Shred pork.",
+      "Mix sauce ingredients (cumin, taco sauce, Coke, brown sugar) together and pour over roast.",
+      "Cook 3 more hours."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["MAIN DISHES", "SLOW COOKER"],
+    recipeIngredient: [
+      "7 or more boneless, skinless chicken breasts",
+      "2 cans Rotel brand diced tomatoes and green chilies",
+      "1 tsp. pepper",
+      "1 tsp. salt",
+      "1 tsp. chili powder",
+      "1 tsp. garlic salt",
+      "1 tsp. cayenne pepper",
+      "1 dash Tabasco sauce",
+      "lime juice (to taste)"
+    ],
+    name: "CHICKEN (CAFÉ RIO)",
+    recipeInstructions: [
+      "Cook chicken breasts, Rotel, and seasonings (pepper, salt, chili powder, garlic salt, cayenne pepper, Tabasco sauce) in crockpot 5-6 hours on low (3 hours on high).",
+      "Shred chicken.",
+      "Squeeze lime juice on to taste."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["SIDE DISHES / VEGETABLES"],
+    recipeIngredient: [
+      "6 cups water",
+      "5 bullion cubes (chicken)",
+      "4 tsp. garlic, minced",
+      "½ bunch fresh cilantro",
+      "1 – 3 oz. can green chilies",
+      "1 tsp. salt",
+      "1 T. Butter",
+      "½ onion",
+      "3 cups rice",
+      "fresh lime juice (for serving)"
+    ],
+    name: "RICE (CAFÉ RIO)",
+    recipeInstructions: [
+      "Blend cilantro, green chilies and onion together in food processor.",
+      "Bring water to a boil.",
+      "Add all ingredients (bullion, garlic, cilantro mixture, salt, butter, rice).",
+      "Simmer covered for 30 minutes. (Stir once in a while, while it is cooking)",
+      "Squeeze on fresh lime juice when finished."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "DRESSING"],
+    recipeIngredient: [
+      "2 cups prepared Hidden Valley Buttermilk Ranch Dressing",
+      "1 small bunch cilantro, large stems removed (about ½ cup chopped cilantro)",
+      "2 large or 4 small tomatillos",
+      "½ tsp. minced garlic",
+      "2 T. fresh lime juice",
+      "1 tsp. green Tabasco sauce or 1 diced jalapeno pepper"
+    ],
+    name: "CREAMY TOMATILLO SALAD DRESSING (CAFÉ RIO)",
+    recipeInstructions: [
+      "Prepare ranch dressing according to directions on package and set aside.",
+      "Remove large cilantro stems, then wash leaves and spin dry or dry with paper towels.",
+      "Add cilantro to food processor fitted with the steel blade and pulse until finely chopped. (If you don’t have a food processor, I’d chop all ingredients well by hand and then blend dressing in a blender.)",
+      "Add tomatillos, garlic, lime juice, and green Tabasco or chopped jalapeno to the food processor and pulse until ingredients are finely pureed.",
+      "Add the 2 cups of prepared dressing and pulse just a few times, until ingredients are well combined.",
+      "Chill dressing for an hour or two and serve."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["SAUCE"],
+    recipeIngredient: [
+      "2-3 T. extra-virgin olive oil",
+      "1 large onion",
+      "5-6 cloves of garlic",
+      "2 green peppers, chopped",
+      "1-2 jalapenos, seeded and membranes removed",
+      "1 ½ lbs. tomatillos, husked and quartered (4 medium to large equals ½ cup)",
+      "½ bunch cilantro, coarsely chopped",
+      "1 ½ tsp. Kosher salt",
+      "¼ tsp. black pepper",
+      "1 ½ tsp. cumin",
+      "4 cups chicken broth",
+      "2-3 T. sugar (optional and to taste)"
+    ],
+    name: "GREEN ENCHILADA SAUCE (CAFÉ RIO)",
+    recipeInstructions: [
+      "In large sauce pan or stock pot, heat olive oil over medium heat. Sauté onions and garlic until tender and fragrant.",
+      "While onions are sautéing, combine tomatillos, green peppers, jalapeno peppers, and cilantro in your blender. Process until smooth; you may have to do it in batches and add some chicken brother to make things blendable.",
+      "Pour the tomatillo mixture over the onions and garlic and add chicken broth, salt, pepper, and cumin.",
+      "Simmer 15 minutes-1 hour, depending on the consistency you want. I usuall turn the heat to high and boil it uncovered until I reach the consistency I want; it makes things go a lot faster. The sauce can also be simmered in a slow cooker all day.",
+      "Serve over tacos as an enchilada sauce, inside burritos and over burritos or as a dip for chips."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "French bread loaf",
+      "1 cup sharp cheddar cheese",
+      "½ cup mayonnaise",
+      "½ cup chopped green onion",
+      "Dash of garlic",
+      "Dash of paprika"
+    ],
+    name: "CHEESE BREAD (CAFÉ RIO)",
+    recipeInstructions: [
+      "Cut French bread loaf lengthwise",
+      "Mix together: sharp cheddar cheese, mayonnaise, chopped green onion, dash of garlic, dash of paprika.",
+      "Spread on bread, wrap loosely in foil, tent it on top. Bake at 350 degrees for 45 minutes."
+    ]
+  },
+  {
+    author: "CAFÉ RIO",
+    tags: ["MAIN DISHES", "BURRITO", "PARTY FOOD"],
+    recipeIngredient: [
+      "1 ½ batches of green enchilada sauce (CAFÉ RIO)",
+      "3 batches of pork meat (CAFÉ RIO)",
+      "3+ batches of rice (CAFÉ RIO)",
+      "2 pints of sour cream",
+      "2-3 heads of lettuce",
+      "6-8 cups cheese",
+      "50 burrito style tortillas (96 medium sized burrito tortillas used 79 for a party)",
+      "1 batch of cilantro dressing (CAFÉ RIO)",
+      "10+ cans of black beans (4 cans were gone quickly)",
+      "salsa",
+      "guacamole (optional)"
+    ],
+    name: "PORK ENCHILADAS FOR 50 PEOPLE (CAFÉ RIO)",
+    recipeInstructions: [
+      "This recipe is a guide for serving 50 people with Café Rio style food. It suggests batch sizes for the Green Enchilada Sauce, Pork, Rice, and Cilantro Dressing (recipes above).",
+      "Had 4 cans of black beans and they were gone almost before we started. I would go at least 10 cans.",
+      "HOW TO PUT TOGETHER: Place tortilla with rice first, then black beans, then meat, then sauce and cheese, roll up; spread sauce and cheese over top.",
+      "Place by the side shredded lettuce with salsa on top. Can add a dollop of sour cream and guacamole on top also."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES / VEGETABLES", "CASSEROLE"],
+    recipeIngredient: [
+      "1 can(14.5 oz.) can French Style green beans",
+      "2 cup pre-cooked long grain wild rice",
+      "½ cup sliced water chestnuts",
+      "1 (10.75 oz.)cream of celery soup",
+      "2 T. pimento",
+      "¼ tsp. salt"
+    ],
+    name: "GREEN BEAN & WILD RICE CASSEROLE",
+    recipeInstructions: [
+      "In 2 quart casserole dish, mix together all ingredients.",
+      "Bake in 350 oven for 30 minutes.",
+      "Makes 5 servings."
+    ]
+  },
+  {
+    author: "MARK KIETELS",
+    tags: ["MAIN DISHES", "PIZZA"],
+    recipeIngredient: [
+      "pizza crust",
+      "olive oil",
+      "diced hard boiled egg",
+      "rosemary",
+      "basil",
+      "garlic",
+      "browned hamburger seasoned with salt and pepper (or chicken etc.)",
+      "cheese"
+    ],
+    name: "WHITE PIZZA",
+    recipeInstructions: [
+      "Prepare a pizza crust. Puncture it with a fork and brush with olive oil.",
+      "Sprinkle with diced hard boiled egg.",
+      "Add rosemary, basil, and garlic.",
+      "Sprinkle browned hamburger seasoned with salt and pepper.",
+      "Cover with cheese and bake till cheese melts."
+    ]
+  },
+  {
+    author: "MARK KIETELS",
+    tags: ["MAIN DISHES", "BREAKFAST"],
+    recipeIngredient: [
+      "tortilla flat bread",
+      "provolone cheese",
+      "diced ham, turkey, or sausage",
+      "a teaspoon of butter",
+      "scrambled eggs",
+      "a pinch of salt",
+      "frozen peas"
+    ],
+    name: "BREAKFAST WRAP",
+    recipeInstructions: [
+      "Use tortilla flat bread. Sprinkle provolone cheese on top.",
+      "Put diced ham, turkey, or sausage on top. Add a teaspoon of butter on it.",
+      "Add scrambled eggs, a pinch of salt and frozen peas.",
+      "Roll up like a burrito then roll it up in a wet paper towel.",
+      "Microwave 1 minute on high."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "6 slices Swiss cheese",
+      "6 slices precooked ham (¼” thick)",
+      "1-10. oz. package frozen broccoli spears (can use fresh)",
+      "1-10 ¾ oz. can cream of mushroom soup",
+      "½ cup mayonnaise",
+      "½ tsp. lemon juice",
+      "¼ tsp. curry powder",
+      "1 cup onion rings, canned or frozen"
+    ],
+    name: "HAM ROLL-UPS",
+    recipeInstructions: [
+      "Place a slice of cheese on each slice of ham. Place a broccoli spear on top. Roll up and secure with toothpick.",
+      "Place roll-ups in a greased, shallow baking dish.",
+      "Prepare sauce by combining soup, mayonnaise, lemon juice, and curry powder in a small saucepan. Cook and stir until heated through.",
+      "Drizzle sauce on top of roll-ups and bake covered at 350 degrees for 25 minutes.",
+      "Top with onion rings. Bake an additional 5 minutes. Makes 6 servings."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "1 gallon Ziplock bag",
+      "3 oz. cream cheese",
+      "½ cup marg. Or butter",
+      "½ cup cocoa",
+      "1 lb. powdered sugar",
+      "1 squirt vanilla"
+    ],
+    name: "PASS AROUND FUDGE",
+    recipeInstructions: [
+      "Put all ingredients into the Ziplock bag.",
+      "Pass around and let people knead till creamy."
+    ]
+  },
+  {
+    author: "LINDA’S",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "3 – 4 quarts popcorn",
+      "1 cup brown sugar",
+      "1 cube butter",
+      "½ cup white Karo",
+      "½ tsp salt",
+      "½ tsp. baking soda"
+    ],
+    name: "CARAMEL CORN",
+    recipeInstructions: [
+      "Pop 3 – 4 quarts popcorn. Put popped popcorn into paper bag.",
+      "In a glass bowl combine: brown sugar, butter, white Karo, and salt.",
+      "Microwave to boil. Boil on high for 2 minutes. Add baking soda.",
+      "Pour over corn and shake. Eat now for gooey or back in microwave for dryer."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "1 cup light Karo",
+      "½ cup sugar",
+      "1 – 3 oz. pkg. Jello",
+      "10 cups popped corn(I use a little more)"
+    ],
+    name: "JELLO POPCORN BALLS",
+    recipeInstructions: [
+      "Bring syrup and sugar to boil. Remove from heat and add Jello. Stir, then pour over popcorn and form into balls."
+    ]
+  },
+  {
+    author: "Ila Higley",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "2 cups white sugar",
+      "1 c. brown sugar",
+      "1/3 cup white Karo syrup",
+      "2/3 C. milk",
+      "¼ cube butter",
+      "1 tsp. vanilla",
+      "popped corn"
+    ],
+    name: "POPCORN BALLS",
+    recipeInstructions: [
+      "Combine sugar, brown sugar, Karo syrup, milk, butter, and vanilla.",
+      "Boil to soft ball stage.",
+      "Pour over popped corn and form into balls."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "2/3 cup butter",
+      "2 1//4 cup sugar",
+      "½ cup water",
+      "nuts (for cookie sheet)",
+      "chocolate (for melting)",
+      "chopped nuts (for topping)"
+    ],
+    name: "ENGLISH TOFFEE",
+    recipeInstructions: [
+      "Combine butter, sugar, and water and stir until butter melts. Boil to 285 degrees on a candy thermometer.",
+      "Pour out on an ungreased cookie sheet covered with nuts.",
+      "Melt chocolate and pour over top. Add chopped nuts on top also."
+    ]
+  },
+  {
+    author: "GINA’S",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "3 cups Karo syrup",
+      "2 cups ½ & ½",
+      "2 cups sugar",
+      "2 cups butter",
+      "1 tsp. salt",
+      "2 tsp. vanilla",
+      "Can use on pretzels, rice or corn chex, peanuts, multi-grain cheerios."
+    ],
+    name: "POPCORN/SNACK COATING",
+    recipeInstructions: [
+      "Combine Karo syrup, ½ & ½, sugar, butter, salt, and vanilla.",
+      "Cook to soft ball stage. Quit at 230 degrees.",
+      "Can use on pretzels, rice or corn chex, peanuts, multi-grain cheerios."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "1 stick marg.",
+      "1 cup chocolate chips",
+      "1 cup creamy peanut butter",
+      "2 cups powdered sugar",
+      "8 cups Kellogg Crispix (13 oz. box)"
+    ],
+    name: "PUPPY CHOW",
+    recipeInstructions: [
+      "Melt first 3 ingredients (margarine, chocolate chips, peanut butter) in large pan.",
+      "Stir in cereal until well covered.",
+      "Pour into large brown bag. Add powdered sugar and shake like heck.",
+      "Pour onto a large cookie sheet to dry. Store in open container. Do not store with a tight lid or it turns into gravy train."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "½ cup margarine",
+      "2 cups peanut butter",
+      "2 ¾ cup powdered sugar",
+      "3 cups Rice Krispies",
+      "dipping chocolate"
+    ],
+    name: "PEANUTBUTTER BALLS",
+    recipeInstructions: [
+      "Mix margarine, peanut butter, powdered sugar, and Rice Krispies together and form into balls (generally chill this so it handle better to make into the balls.)",
+      "Dip in dipping chocolate. Refrigerate."
+    ]
+  },
+  {
+    author: "ALTHERA HARDY’S",
+    tags: ["DESSERT", "CANDY"],
+    recipeIngredient: [
+      "8 quarts popped corn",
+      "1 pound brown sugar",
+      "1 cup white corn syrup",
+      "2 sticks margarine",
+      "1 tsp. vanilla",
+      "1 tsp. salt"
+    ],
+    name: "CARMEL CORN",
+    recipeInstructions: [
+      "Combine brown sugar, corn syrup, margarine, vanilla, and salt. Boil syrup ingredients five minutes.",
+      "Stir over the popped corn.",
+      "Bake 250 degrees one hour, stirring every 15 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "2 lbs. hamburger, fried",
+      "1 soup can of water",
+      "8 oz. cheddar cheese",
+      "2 lbs. Velveeta cheese, cut up",
+      "2 – 10 ½ oz can cream of chicken soup",
+      "1 – 24 oz. jar salsa"
+    ],
+    name: "MEXICAN CHEESE DIP",
+    recipeInstructions: [
+      "Mix all ingredients (fried hamburger, water, cheddar cheese, Velveeta, cream of chicken soup, salsa) together in a crock pot.",
+      "Heat thoroughly until cheese is melted. Best served hot."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES / VEGETABLES"],
+    recipeIngredient: [
+      "1 lb. Idaho potatoes",
+      "3 T. onion, chopped",
+      "1 T. olive oil or vegetable oil cooking spray",
+      "½ cup fresh tomatoes, chopped",
+      "2 T. canned green chilies, drained",
+      "1 cup cheddar or mozzarella cheese",
+      "1 cup salsa",
+      "salt and pepper"
+    ],
+    name: "POTATO NACHOS",
+    recipeInstructions: [
+      "Preheat oven to 400.",
+      "Wash potatoes and thinly slice. Skins may be removed or left on.",
+      "Drizzle a cookie sheet lightly with oil. Spread potato slices on cookie sheet and sprinkle with onion, salt and pepper.",
+      "Bake for 30-35 minutes until potatoes are brown and cooked through.",
+      "Remove from oven and sprinkle tomatoes, peppers and cheese on top.",
+      "Continue to bake approximately 5 minutes until cheese is melted.",
+      "Serve hot with salsa. Serves 6"
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES / VEGETABLES"],
+    recipeIngredient: [
+      "4 russet potatoes, skin on",
+      "1 – 2 tsp. chili powder",
+      "Salt and pepper",
+      "2 T. butter or margarine, melted",
+      "oil or butter (for drizzling)"
+    ],
+    name: "BARBEQUE OVEN FRIED POTATOES",
+    recipeInstructions: [
+      "Preheat over to 400. Wash potatoes and pat dry. Cut potatoes into half-inch slices crosswise.",
+      "Place chili powder, salt and pepper in a plastic bag. Add potatoes and toss to coat.",
+      "Place potatoes on a cookie sheet and drizzle lightly with oil or butter.",
+      "Bake for 30 minutes or until tender turning once during cooking. Serves 4."
+    ]
+  },
+  {
+    author: "CELIA’S",
+    tags: ["BREAD", "PANCAKES"],
+    recipeIngredient: [
+      "5 cups flour",
+      "¼ cup baking powder",
+      "½ cup sugar",
+      "2 tsp. salt"
+    ],
+    name: "PANCAKE MIX (DRY)",
+    recipeInstructions: [
+      "Stir flour, baking powder, sugar, and salt together and store in container. Can double or triple this."
+    ]
+  },
+  {
+    author: "CELIA’S",
+    tags: ["BREAD", "PANCAKES"],
+    recipeIngredient: [
+      "2 cups dry mix (from Celia's Pancake Mix)",
+      "2 eggs",
+      "3 T. oil",
+      "2 cups milk (sour or buttermilk)"
+    ],
+    name: "PANCAKE RECIPE from Pancake Mix",
+    recipeInstructions: [
+      "Combine dry mix, eggs, oil, and milk. Mix well.",
+      "Cook on a griddle until bubbles appear and edges are set, then flip and cook other side.",
+      "Makes 10 pancakes."
+    ]
+  },
+  {
+    author: "GINA’S",
+    tags: ["BREAD"],
+    recipeIngredient: [
+      "1 cube margarine(butter)",
+      "1 cup sugar",
+      "3 large bananas, mashed",
+      "2 eggs",
+      "2 ¼ cups flour",
+      "1 tsp. soda",
+      "1 tsp. baking powder",
+      "½ tsp. salt",
+      "2/3 cup buttermilk",
+      "1 cup chopped nuts"
+    ],
+    name: "BANANA NUT BREAD",
+    recipeInstructions: [
+      "Cream butter, then add sugar.",
+      "Add: mashed bananas and eggs.",
+      "Add: flour, soda, baking powder, salt, and buttermilk.",
+      "Add chopped nuts.",
+      "Grease and flour pans. Let batter stand 20 minutes in baking pans before baking.",
+      "Bake 350 for 1 hour (little less). This makes 3 small pans. Double makes 3 large. Gina knows."
+    ]
+  },
+  {
+    author: "",
+    tags: ["BREAD", "MUFFINS"],
+    recipeIngredient: [
+      "5 eggs",
+      "1 ¼ cup oil",
+      "1-15 oz. can of pumpkin",
+      "2 cups flour",
+      "2 cups sugar",
+      "½ tsp salt",
+      "1 tsp. cinnamon",
+      "1 tsp. soda",
+      "2-3 oz. packages vanilla cook and serve dry pudding",
+      "Nuts or chocolate chips (optional)"
+    ],
+    name: "PUMPKIN BREAD OR MUFFINS",
+    recipeInstructions: [
+      "Mix eggs, oil and pumpkin.",
+      "Add dry ingredients (flour, sugar, salt, cinnamon, soda, dry pudding).",
+      "Nuts or chocolate chips may be added.",
+      "Pour in greased loaf pans and bake 350 for 50-55 minutes.",
+      "Bake muffins 375 for 12-15 minutes."
+    ]
+  },
+  {
+    author: "Kaylee Anderson",
+    tags: ["BREAD"],
+    recipeIngredient: [
+      "2 cups of butter (softened)",
+      "¾ cup sugar",
+      "2 eggs",
+      "1 cup cornmeal",
+      "1 ½ cup flour",
+      "2 tsp. baking powder",
+      "½ tsp. salt",
+      "1 ½ cups milk"
+    ],
+    name: "YUMMY CORN BREAD",
+    recipeInstructions: [
+      "Cream butter, sugar, and eggs together and set aside.",
+      "Mix cornmeal, flour, baking powder, and salt together.",
+      "Mix dry ingredients together with creamed butter, then add milk. Mix!",
+      "Spray 9” x 13” pan with Pam and bake 350 degrees for 25 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["BREAD"],
+    recipeIngredient: [
+      "1 ½ cup margarine",
+      "2/3 cup buttermilk",
+      "1 ½ cups sugar",
+      "2 eggs",
+      "2 cups grated zucchini",
+      "4 T. cocoa",
+      "2 ½ cups flour",
+      "1 tsp. baking powder",
+      "1 tsp. soda",
+      "½ tsp. salt",
+      "chocolate chips (optional)"
+    ],
+    name: "ZUCHINI BREAD",
+    recipeInstructions: [
+      "Mix margarine & sugar together. Add milk, eggs.",
+      "Mix dry ingredients (cocoa, flour, baking powder, soda, salt) together. Add to other mixture. Add zucchini.",
+      "Let stand in bread pans for 20 minutes before baking. (Add chocolate chips if desired.)",
+      "Bake 350 until done."
+    ]
+  },
 ]
