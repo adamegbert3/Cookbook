@@ -1950,4 +1950,323 @@ export const recipes = [
       "Add to vegetables and marinate overnight."
     ]
   },
+  {
+    author: "",
+    tags: ["SALADS", "DESSERT"],
+    recipeIngredient: [
+      "Layer 1: 2 cups crushed pretzels, ¾ cup melted butter, 3 T. sugar",
+      "Layer 2: 2- 8 oz. cream cheese, 1 cup sugar, 1 8 oz. cool whip",
+      "Layer 3: 6 oz. raspberry jello, 2 cups boiling water, 2- 10 oz. frozen raspberries, partially thawed"
+    ],
+    name: "PRETZEL SALAD",
+    recipeInstructions: [
+      "Layer 1: Press pretzels, butter, and sugar into 9 x 13 pan, bake at 350 for 8-10 minutes. Let cool.",
+      "Layer 2: Mix cream cheese, sugar, and cool whip together and spread on top of pretzels.",
+      "Layer 3: Mix jello, boiling water, and frozen raspberries together and let start to thicken. Pour over cream cheese mixture. Place in fridge."
+    ]
+  },
+  {
+    author: "MABEL’S",
+    tags: ["SALADS"],
+    recipeIngredient: [
+      "1 chicken, cooked and cubed",
+      "2 cups chopped celery",
+      "2 cups green grapes",
+      "1 cup walnuts",
+      "onions, finely chopped",
+      "lettuce to set salad on plate",
+      "dressing: 2 cups mayo, ¼ cup vinegar, ¼ cup sugar, garlic salt"
+    ],
+    name: "CHICKEN (OR TURKEY) SALAD",
+    recipeInstructions: [
+      "Mix chicken, celery, grapes, walnuts, and onions together.",
+      "Mix dressing ingredients (mayo, vinegar, sugar, garlic salt).",
+      "Combine salad ingredients with dressing.",
+      "Serve on lettuce."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SALADS"],
+    recipeIngredient: [
+      "8 oz. cream cheese",
+      "14 oz. mandarin oranges, drained",
+      "1 cup sugar",
+      "8 oz. cool whip",
+      "1 c. chopped pecans",
+      "2 mashed bananas",
+      "16 oz. pineapple tidbits",
+      "10 oz. pkg. frozen strawberries- thawed and drained"
+    ],
+    name: "FROZEN FRUIT SALAD",
+    recipeInstructions: [
+      "Mix together cream cheese, sugar and cool whip.",
+      "Fold in mashed bananas, pineapple, oranges, pecans and strawberries.",
+      "Freeze in 9 x 13 pan.",
+      "Thaw for 1 hour before serving."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SALADS"],
+    recipeIngredient: [
+      "2 (10. oz) pkg. frozen peas, thawed but not cooked",
+      "½ lb. bacon, fried crisp, drained and crumbled",
+      "1 (8 oz.) can water chestnuts, sliced",
+      "1 cup sliced green onions",
+      "1 pt. sour cream",
+      "1 (6 ¼ oz) can cashews"
+    ],
+    name: "FROZEN PEA SALAD",
+    recipeInstructions: [
+      "Combine and mix all ingredients.",
+      "Refrigerate before serving.",
+      "Serves 8."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES / VEGETABLES"],
+    recipeIngredient: [
+      "5 medium potatoes, peeled and thinly sliced",
+      "1 medium onion, sliced",
+      "6 T. butter or margarine",
+      "1/3 cup shredded cheddar cheese",
+      "2 T. minced fresh parsley",
+      "1 T. Worcestershire sauce",
+      "Salt and pepper to taste",
+      "1/3 cup chicken broth"
+    ],
+    name: "CAMPFIRE POTATOES",
+    recipeInstructions: [
+      "Place the potatoes and onion on a large piece of heavy-duty foil (about 20 in. x 20in.); dot with butter.",
+      "Combine the cheese, parsley, Worcestershire sauce, salt and pepper; sprinkle over potatoes.",
+      "Fold foil up around potatoes and add broth.",
+      "Seal the edges of foil well.",
+      "Grill, covered, oven medium heat for 35-40 minutes or until potatoes are tender.",
+      "Yield—4-6"
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES / VEGETABLES"],
+    recipeIngredient: [
+      "8 large potatoes (boil until tender, but not soft)",
+      "¼ cup butter or margarine",
+      "1 can cream of chicken soup",
+      "1 pint carton of sour cream + ½ cup milk",
+      "½ cup grated cheddar cheese",
+      "1/3 cup chopped onion",
+      "½ tsp. salt",
+      "paprika",
+      "1 cup crushed corn flakes or potato chips"
+    ],
+    name: "AU GRATIN POTATOES",
+    recipeInstructions: [
+      "Peel potatoes and grate.",
+      "Mix all other ingredients (butter, soup, sour cream, milk, cheese, onion, salt) and heat.",
+      "Fold into potatoes.",
+      "Place in greased 9 x 13 pan, top with paprika and 1 cup crushed corn flakes or potato chips.",
+      "Bake at 325 for 35-45 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SIDE DISHES / VEGETABLES"],
+    recipeIngredient: [
+      "4 large baking potatoes",
+      "½ cup milk",
+      "8 slices bacon",
+      "4 tablespoons butter",
+      "1 cup sour cream",
+      "½ teaspoon salt",
+      "½ teaspoon pepper",
+      "8 green onions, slice, divided",
+      "1 cup shredded Cheddar cheese, divided"
+    ],
+    name: "TWICED BAKED POTATOES",
+    recipeInstructions: [
+      "Bake potatoes in preheated (350 degree) oven for 1 hour.",
+      "Meanwhile, place bacon in a large, deep skillet. Cook over medium high heat until evenly browned. Drain, crumble and set aside.",
+      "When the potatoes are done, allow them to cool for 10 minutes. Slice potatoes in half lengthwise and scoop the flesh into a large bowl; save skins.",
+      "To the potato flesh add sour cream, milk, butter, salt, pepper, ½ cup cheese and ½ green onions.",
+      "Mix with a hand mixer until well blended and creamy.",
+      "Spoon the mixture into the potato skins.",
+      "Top each with remaining cheese, green onions and bacon and bake for another 15 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "½ cup half-and-half",
+      "1 tablespoon sugar",
+      "¼ teaspoon vanilla",
+      "ice",
+      "rock salt"
+    ],
+    name: "Homemade Ice Cream…in a bag",
+    recipeInstructions: [
+      "Put first 3 ingredients (half-and-half, sugar, vanilla) in small Ziploc bag and seal.(Make sure it is tightly closed.)",
+      "Put ice and rock salt in the larger bag and then add the filled small bag.",
+      "Seal the large bag.",
+      "Squeeze bag until ice cream is thickened, about 10-15 min. Enjoy!"
+    ]
+  },
+  {
+    author: "Mary Lou Harrison",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "1 cup sugar",
+      "2-3 T. cornstarch",
+      "2 cups cold water",
+      "3 oz. pkg. jello (flavor of fruit)"
+    ],
+    name: "HOMEMADE DANISH DESSERT",
+    recipeInstructions: [
+      "Stir together: sugar, cornstarch, and cold water.",
+      "Bring to boil, add 3 oz. pkg. jello (flavor of fruit).",
+      "Cool, put in fruit, refrigerate till set up.",
+      "Good for cake or pie."
+    ]
+  },
+  {
+    author: "BEA’S",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "2 well beaten eggs",
+      "1/3 cup sugar",
+      "¼ tsp. salt",
+      "2 cups scalded milk",
+      "1 tsp vanilla",
+      "1½ to 2 cups cooked rice",
+      "a dash of cinnamon",
+      "dash of nutmeg",
+      "raisins"
+    ],
+    name: "RICE PUDDING",
+    recipeInstructions: [
+      "Combine in bowl: well beaten eggs, sugar, and salt.",
+      "Gradually add 2 cups scalded milk. Stir to blend. Add 1 tsp vanilla.",
+      "Add cooked rice, a dash of cinnamon, dash of nutmeg and raisins.",
+      "Pour into greased 1 ½ quart casserole dish.",
+      "Set in shallow pan partially fill with water.",
+      "Bake at 325 for 1 hour or until it seems firm. It will stiffen some on cooling."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "6 egg whites",
+      "½ tsp. cream of tarter",
+      "¼ tsp. salt",
+      "1 ½ cups sugar",
+      "2 cups whipped cream",
+      "¾ cup sugar (for filling)",
+      "1 tsp. vanilla (for filling)",
+      "2 cups miniature marshmallows",
+      "2---3 oz. cream cheese",
+      "cherry pie filling with 1 tsp. lemon juice added"
+    ],
+    name: "CHERRIES ON A CLOUD",
+    recipeInstructions: [
+      "Beat egg whites, cream of tarter, and salt until foamy.",
+      "Add 1 ½ cups sugar one tablespoon at a time. Beat 10 to 15 minutes, do not under-beat.",
+      "Bake at 275 for 1 hour. Shut off oven and leave in it overnight.",
+      "For filling: Mix whipped cream, ¾ cup sugar, vanilla, miniature marshmallows, and cream cheese. Set for 6 hours.",
+      "Top with cherry pie filling with 1 tsp. lemon juice added."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "2 ¼ cup flour",
+      "2 T. sugar",
+      "¾ cup butter or margarine, softened",
+      "8oz. cream cheese, softened",
+      "1 cup powdered sugar",
+      "1 tsp. vanilla",
+      "½ tsp. salt",
+      "2 cups whipped topping",
+      "6 oz. raspberry jello",
+      "2 cups boiling water",
+      "2 pkg. (10 oz. each) sweetened frozen raspberries."
+    ],
+    name: "RASPBERRY DELIGHT",
+    recipeInstructions: [
+      "Crust: In a bowl, combine flour and 2 T. sugar; blend in butter with a wooden spoon until smooth. Press into an ungreased 13x 9 pan. Bake at 300 for 20-25 minutes or until set(crust will not brown). Cool.",
+      "Filling: Cream cream cheese, powdered sugar, vanilla and salt until smooth. Fold in whipping topping. Spread over crust.",
+      "Topping: Dissolve gelatin in boiling water, stir in raspberries. Chill for 20 minutes or until mixture begins to thicken. Spoon over filling. Refrigerate until set. Cut into squares; garnish with whipped topping and mint if desired."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "1 cup flour",
+      "1 cup sugar",
+      "1 tsp. baking powder",
+      "½ cup shortening",
+      "1 egg",
+      "fruit (for use in 13 x 9 pan or 8 x 8)"
+    ],
+    name: "CRUNCH CRUST",
+    recipeInstructions: [
+      "Combine flour, sugar, baking powder, shortening, and egg and crumble over fruit in a 13 x 9 pan.(can use 8 x8-thicker).",
+      "Bake at 350 for about 1 hour(I check it after 45 minutes because I don’t want it too brown)."
+    ]
+  },
+  {
+    author: "Dorothy Smith",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "Dough: 2 cups flour, 1 T. shortening, 3 tsp. baking powder, 1 egg, beaten, 1 tsp. salt, ½ cup milk, 2 T. sugar",
+      "butter",
+      "cinnamon",
+      "about 8 chopped apples",
+      "2 cups sugar (for syrup)",
+      "3 cups hot water (for syrup)"
+    ],
+    name: "APPLE ROLL",
+    recipeInstructions: [
+      "Mix dough ingredients, then roll into rectangle.",
+      "Spread with butter and cinnamon and about 8 chopped apples.",
+      "Roll up as for cinnamon rolls, slice about 1” thick and place in buttered pan.",
+      "Dissolve 2 cups sugar in 3 cups hot water, pour this over the rolls in pan and bake in 350 degree oven for about an hour. It only needs to brown a little.",
+      "Serve hot with ice cream."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "3 eggs",
+      "1 cup sugar",
+      "2/3 cup canned pumpkin",
+      "1 tsp. lemon juice",
+      "¾ cup flour",
+      "1 tsp. baking powder",
+      "2 tsp. cinnamon",
+      "1 tsp. ginger",
+      "nuts (optional)",
+      "1 cup powdered sugar (for spread)",
+      "8 oz. cream cheese (for spread)",
+      "4 T. margarine (for spread)",
+      "½ tsp. vanilla (for spread)",
+      "powdered sugar (for dusting towel)"
+    ],
+    name: "PUMPKIN ROLL",
+    recipeInstructions: [
+      "Mix together: eggs, 1 cup sugar, pumpkin, and lemon juice.",
+      "Add the following: flour, baking powder, cinnamon, and ginger.",
+      "After all is mixed, put in well greased and floured brownie-cookie sheet (Jelly roll pan is a little smaller and works better than a cookie sheet).",
+      "Sprinkle nuts on top. Bake 375 for 15 minutes.",
+      "Take a knife and go around the edge of pan, flip over while hot onto a kitchen towel covered with powdered sugar.",
+      "Roll up with towel like a jelly roll. Leave till completely cool.",
+      "Mix together and spread on unrolled roll: 1 cup powdered sugar, cream cheese, margarine, and vanilla.",
+      "Roll back up, refrigerate then slice to serve."
+    ]
+  },
 ]
