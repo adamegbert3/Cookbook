@@ -3459,4 +3459,231 @@ export const recipes = [
       "Bake 350 until done."
     ]
   },
+  {
+    author: "",
+    tags: ["BREAD"],
+    recipeIngredient: [
+      "2 cups Bisquick",
+      "2/3 cup milk",
+      "½ cup shredded cheddar cheese",
+      "½ cup butter or margarine (for brushing)",
+      "¼ tsp. garlic powder (for brushing)"
+    ],
+    name: "RED LOBSTER CHEDDAR BAY BISCUITS",
+    recipeInstructions: [
+      "Mix Bisquick, milk, and cheddar cheese together until it forms a soft dough.",
+      "Drop on a cookie sheet (or in a pan) and bake 450 degrees for 8 to 10 minutes until golden brown.",
+      "Melt butter and garlic powder together and brush over warm biscuits before removing from cookie sheet."
+    ]
+  },
+  {
+    author: "JEANNIE’S",
+    tags: ["BREAD", "ROLLS"],
+    recipeIngredient: [
+      "2 ½ cups warm water",
+      "¾ cup sugar",
+      "2 T. yeast (3 pkgs.)",
+      "2 ½ tsp. salt",
+      "1 cup melted butter",
+      "4 beaten eggs",
+      "8 cups flour",
+      "butter (for brushing)"
+    ],
+    name: "ROLLS",
+    recipeInstructions: [
+      "Dissolve sugar in water, add yeast and let stand for 10 minutes.",
+      "Add salt and melted butter.",
+      "Add 4 beaten eggs.",
+      "Add 8 cups flour—one cup at a time. Knead for 10 minutes.",
+      "Put into buttered bowl and let raise unto double. Punch down and make into rolls. Let raise.",
+      "Bake 375 for 12 minutes or until golden brown. Brush top with butter.",
+      "Dough will stay good in refrigerator for 4 days. Take out and warm up for 2 ½ - 3 hours before baking. Can use this for cinnamon rolls. (I put brown sugar and chocolate chips inside my rolls.)"
+    ]
+  },
+  {
+    author: "SUE’S",
+    tags: ["BREAD", "MUFFINS"],
+    recipeIngredient: [
+      "1 cup frozen blueberries(thaw in microwave)",
+      "juice from blueberries + enough milk to fill ½ cup",
+      "1 egg",
+      "¼ c. oil",
+      "1 ½ cup flour",
+      "½ cup sugar",
+      "2 tsp. baking powder",
+      "½ tsp. salt"
+    ],
+    name: "BLUEBERRY MUFFINS",
+    recipeInstructions: [
+      "Thaw blueberries. Put blueberry juice into ½ cup and add enough milk to fill it up. Mix with egg and oil.",
+      "Mix flour, sugar, baking powder, and salt in separate bowl then add to milk & egg mixture.",
+      "Fold in blueberries.",
+      "Bake 400 degrees for 20 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CHEESECAKE"],
+    recipeIngredient: [
+      "1 cup graham cracker crumbs",
+      "1 tsp. vanilla",
+      "1 cup plus 3 T. Sugar, divided",
+      "1 cup sour cream",
+      "3 T. butter, melted",
+      "4 eggs",
+      "4—8 oz. pkgs. Cream cheese",
+      "2 cups frozen blueberries"
+    ],
+    name: "BLUEBERRY SWIRL CHEESECAKE",
+    recipeInstructions: [
+      "Mix crumbs, 3 T. sugar and butter. Press firmly onto bottom of 9” X 13” pan. Bake 10 minutes.",
+      "Beat cream cheese, 1 cup sugar and vanilla in large bowl until well blended. Add sour cream. Mix well. Add eggs, one at a time. Pour mixture over crust.",
+      "Puree the blueberries in a blender. Gently drop spoonfuls of blueberries over batter. Cut through batter several times with knife for swirl effect.",
+      "Bake at 325 degrees for 45 minutes. Cool. Refrigerate at least 4 hours before serving."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CHEESECAKE"],
+    recipeIngredient: [
+      "1 graham cracker crust",
+      "2 – 8 oz. pkgs. Cream cheese",
+      "3 eggs",
+      "2/3 cup white sugar",
+      "1 tsp. vanilla",
+      "cherry or blueberry pie filling (for topping)",
+      "chocolate and caramel ice cream toppings and pecans (for 'turtle' topping - optional)"
+    ],
+    name: "CHEESECAKE (Basic)",
+    recipeInstructions: [
+      "Preheat oven to 350 degrees. In a bowl, combine all ingredients (cream cheese, eggs, sugar, vanilla) in order given. Beat at medium speed for 5 minutes.",
+      "Pour mixture into a graham cracker crust. Bake 25 to 35 minutes. Chill.",
+      "Top with cherry or blueberry pie filling. You can put chocolate and caramel ice cream toppings on the top(in a lattice design) and sprinkle with pecans to make a turtle cheesecake."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CHEESECAKE"],
+    recipeIngredient: [
+      "1 graham cracker crust",
+      "1 – 14 oz. can sweetened condensed milk",
+      "1 – 8 oz. pkg. cream cheese",
+      "1/3 cup lemon juice",
+      "1 tsp. vanilla"
+    ],
+    name: "LEMON CHEESECAKE (No-Bake)",
+    recipeInstructions: [
+      "Mix ingredients together (condensed milk, cream cheese, lemon juice, vanilla).",
+      "Pour mixture into crust and chill."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CHEESECAKE"],
+    recipeIngredient: [
+      "3 eggs",
+      "2/3 cup sugar",
+      "1 tsp vanilla",
+      "2 – 8 oz. pkgs. Cream cheese",
+      "½ c graham cracker crumbs (for dusting)",
+      "TOPPING: ½ pt. sour cream (1 cup), 3 T. sugar, ½ tsp. vanilla",
+      "pie filling (for topping - optional)"
+    ],
+    name: "CHEESECAKE (Sour Cream Topping)",
+    recipeInstructions: [
+      "Butter pie plate or 8X8” pan. Dust pan with graham cracker crumbs.",
+      "Beat eggs, sugar, vanilla and cream cheese together. Beat well about 3 minutes or until well blended.",
+      "Pour mixture into prepared pan. Bake in 350 oven for 25-30 minutes. Remove. Let stand 15 minutes.",
+      "TOPPING: Mix sour cream, 3 T. sugar and vanilla. Put mixture on top of cheesecake. Bake 10 minutes more in oven.",
+      "Cool completely. Can put any pie filling on top."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "GRILL"],
+    recipeIngredient: [
+      "¼ cup soy sauce",
+      "2 green bell peppers, cut into 2 inch pieces",
+      "3 tablespoons light brown sugar",
+      "½ pound fresh mushrooms, stems removed",
+      "3 tablespoons distilled white vinegar",
+      "1 pint cherry tomatoes",
+      "½ teaspoon garlic powder",
+      "1 fresh pineapple—peeled, cored, cubed",
+      "½ teaspoon salt",
+      "½ teaspoon garlic pepper seasoning",
+      "4 fluid ounces lemon-lime flavored carbonated beverage",
+      "2 pounds sirloin steak, cut into 1 ½ inch cubes"
+    ],
+    name: "SIRLOIN KABOBS",
+    recipeInstructions: [
+      "In a medium bowl, mix soy sauce, brown sugar, vinegar, garlic powder, seasoned salt, garlic pepper seasoning and lemon-lime beverage. Reserve about ½ cup of this marinade for basting.",
+      "Place steak in a large resealable plastic bag. Cover with the remaining marinade, and seal. Refrigerate for 8 hours or overnight.",
+      "Bring a saucepan of water to a boil. Add green peppers, and cook for 1 minute, just to blanch. Drain and set aside.",
+      "Preheat grill for high heat. Thread steak, green peppers, mushrooms, tomatoes and pineapple onto skewers in an alternating fashion. Discard marinade and the bag.",
+      "Lightly oil the grill grate. Cook kabobs on the prepared grill for 10 minutes or to desired doneness. Baste frequently with reserved marinade during the last 5 minutes of cooking. Serves 8."
+    ]
+  },
+  {
+    author: "",
+    tags: ["MAIN DISHES", "GRILL"],
+    recipeIngredient: [
+      "1/3 cup + 1 T. + 1 tsp. soy sauce",
+      "1 green onion, minced",
+      "1/3 cup + 1 T. + 1 tsp. cider vinegar",
+      "16 large mushrooms cut in half",
+      "3 T. + 1 tsp. honey",
+      "13 oz. thick bacon, cut in half",
+      "3 T. + 1 tsp. canola oil",
+      "2-8 oz. cans pineapple chunks, drained",
+      "5 skinless, boneless, chicken breast cut into chunks"
+    ],
+    name: "CHICKEN AND BACON SHISH KABOBS",
+    recipeInstructions: [
+      "In a large bowl, mix the soy sauce, cider vinegar, honey, canola oil, and green onions. Place the mushrooms and chicken into the mixture, and stir to coat. Cover and marinate in the refrigerator for at least 1 hour.",
+      "Preheat grill for high heat.",
+      "Remove the mushrooms and chicken from the marinade and shake off excess. Pour the marinade into a small sauce pan and bring to a boil over high heat. Reduce heat to medium-low and simmer for 10 minutes; set aside.",
+      "Wrap the chicken chunks with bacon, and thread onto skewers so that the bacon is secured. Alternate with mushroom halves and pineapple chunks.",
+      "Lightly oil the grill grate. Arrange skewers o the prepared grill. Cook 15 to 20 minutes, brushing occasionally with remaining soy sauce mixture, until bacon is crisp and chicken juices run clear. Serves 10"
+    ]
+  },
+  {
+    author: "",
+    tags: ["SAUCE", "MARINADE"],
+    recipeIngredient: [
+      "Lawry’s seasoning salt",
+      "garlic powder",
+      "pepper",
+      "soy sauce",
+      "meat (steaks or kabobs)"
+    ],
+    name: "EASY BEEF MARINADE",
+    recipeInstructions: [
+      "Sprinkle meat with garlic powder, Lawry’s seasoning salt, pepper and soy sauce.",
+      "Put in covered container in refrigerator for at least 1 hour, longer is a little better. I use this on steaks and kabobs both."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "DUTCH OVEN"],
+    recipeIngredient: [
+      "2 cups flour",
+      "4 tsp. baking powder",
+      "½ tsp. salt",
+      "1 ½ cups sugar",
+      "1 cup milk",
+      "¼ cup melted shortening or butter",
+      "1 ½ cups brown sugar",
+      "3 T. cocoa",
+      "2 ¾ cups hot water"
+    ],
+    name: "DUTCH OVEN PUDDIN’ CAKE",
+    recipeInstructions: [
+      "Blend together in Dutch oven: flour, baking powder, salt, and 1 ½ cups sugar.",
+      "Stir into flour mixture: milk and melted shortening or butter.",
+      "Mix brown sugar and cocoa together and sprinkle over batter.",
+      "Pour 2 ¾ cups hot water over entire batter, cover the Dutch oven, place in the coals of the campfire. Put coals on the lid. Let cook for about ½ hour. (Can cook this in an oven)",
+      "While cooking, the cake rises to the top and the chocolate sauce stays on the bottom."
+    ]
+  }
 ]
