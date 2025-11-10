@@ -2269,4 +2269,262 @@ export const recipes = [
       "Roll back up, refrigerate then slice to serve."
     ]
   },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "5 eggs separated",
+      "¾ cup sugar",
+      "5 T. flour",
+      "1 tsp. vanilla",
+      "5 T. cocoa",
+      "1 tsp. baking powder",
+      "½ tsp. salt",
+      "1 quart ice cream",
+      "powdered sugar (for dusting towel)",
+      "chocolate syrup (for serving)",
+      "whipped cream (for serving)"
+    ],
+    name: "ICE CREAM CAKE ROLL",
+    recipeInstructions: [
+      "Beat egg whites until stiff. Add half of the sugar gradually.",
+      "Combine yolks and egg white mixture. Add sifted dry ingredients (flour, cocoa, baking powder, salt) and vanilla.",
+      "Mix together and pour into jelly roll pan which has been lined with wax paper and bake 375 for 12 minutes.",
+      "Remove from oven and let cool a couple of minutes. Sprinkle powdered sugar on paper towels and turn cake onto towels.",
+      "Let cool to lukewarm and then roll lightly. When cool, unroll and stir softened ice cream and spread about 1 inch thick onto the cake.",
+      "Roll up again (discarding towels) and wrap in aluminum foil and freeze.",
+      "Serve with chocolate syrup topped with whipped cream."
+    ]
+  },
+  {
+    author: "Jeannie Stimpson",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "8 oz. cream cheese",
+      "½ cup powdered sugar",
+      "1 – 1 ½ tsp. vanilla",
+      "8 oz. cool whip",
+      "8-9” graham cracker crust",
+      "pie filling (for topping)",
+      "a spoonful of cool whip (for topping)"
+    ],
+    name: "EASY NO BAKE CHEESECAKE",
+    recipeInstructions: [
+      "Mix together: cream cheese, powdered sugar, and vanilla.",
+      "Beat in: cool whip.",
+      "Put into 8-9” graham cracker crust. Refrigerate.",
+      "Top with pie filling and a spoonful of cool whip."
+    ]
+  },
+  {
+    author: "Sandy Jones",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "Crust: 1 ½ to 2 cups crushed graham crackers, ½ cube melted margarine, ¼ cup powdered sugar",
+      "Filling: 8 oz. cream cheese at room temperature, 1 cup sugar, 3 T. lemon juice, 1 tsp. vanilla, 3 oz. pkg. lemon jello, 1 cup hot water, 1 can Sego milk (chilled to near freezing)",
+      "Topping: Danish dessert or cherry pie filling"
+    ],
+    name: "LEMON CHEESECAKE",
+    recipeInstructions: [
+      "Crust: Blend graham crackers, melted margarine, and powdered sugar and pat on bottom of sides of 13 x 9 pan.",
+      "Cream together: cream cheese, 1 cup sugar, lemon juice, and vanilla.",
+      "Dissolve 3 oz. pkg. lemon jello in 1 cup hot water. Cool.",
+      "Whip 1 can Sego milk and blend into other ingredients.",
+      "Pour into pan with crumbs. Refrigerate 2 hours, top with Danish dessert or cherry pie filling."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "2 cups flour",
+      "1 cup buttermilk",
+      "2 cups sugar",
+      "1 tsp. soda",
+      "1 cube margarine",
+      "1 tsp. vanilla",
+      "½ cup oil",
+      "¼ tsp. salt",
+      "4 T. cocoa",
+      "2 eggs",
+      "1 cup water",
+      "tub of milk chocolate frosting"
+    ],
+    name: "CHOCOLATE-BUTTERMILK SHEET CAKE",
+    recipeInstructions: [
+      "Mix flour and sugar in mixer bowl.",
+      "Bring margarine, oil, cocoa and water to boil and pour over flour and sugar mixture, mixing well.",
+      "Add the buttermilk, soda, vanilla, salt and eggs. Mix well.",
+      "Pour into well greased and floured 12 x 18 pan. Bake 20 minutes at 400.",
+      "Frost while cake is a little warm and it makes it moister. I use a tub of milk chocolate frosting."
+    ]
+  },
+  {
+    author: "Robin Corbridge",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "Crust: ½ cup margarine, ¼ tsp. salt, 1 cup water, 1 cup flour, 4 eggs",
+      "Pudding: 2 small packages of vanilla instant pudding, 3 cups cold milk, 8 oz. cream cheese",
+      "1 small cool whip",
+      "chocolate syrup"
+    ],
+    name: "ÉCLAIR CAKE",
+    recipeInstructions: [
+      "Crust: Bring margarine, salt, and water to a boil. Add 1 cup flour. Add 4 eggs—add one at a time and beat well in between each one. Bake at 400 degrees for 30 minutes. Cool completely.",
+      "Pudding: whip vanilla instant pudding and cold milk. Add cream cheese, mix well. Spread into crust.",
+      "Spread 1 small cool whip on top and drizzle chocolate syrup on top. Chill and enjoy!!!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "German Chocolate cake mix (Super Moist)",
+      "Water, vegetable oil and eggs called for in cake.",
+      "1 can (14 oz.) sweetened condensed milk",
+      "1 jar (16-17 oz.) caramel, butterscotch or fudge topping",
+      "1 whipped fluffy white frosting tub",
+      "1 cup toffee chips or bits"
+    ],
+    name: "BETTER-THAN-ALMOST-ANYTHING CAKE",
+    recipeInstructions: [
+      "Heat oven to 350. Make cake as directed for 13 x 9 pan bake and cool 15 minutes.",
+      "Poke top of warm cake ever ½ inch with handle of wooden spoon.",
+      "Drizzle sweetened con. milk evenly over top of cake; let stand until milk has been absorbed into cake.",
+      "Drizzle caramel topping.",
+      "Run knife around sides of pan to loosen cake. Cover and refrigerate about 2 hours or until chilled.",
+      "Spread frosting over top of cake. Sprinkle with toffee chips. Store covered in refrigerator."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "1cup shortening",
+      "1 tsp. salt",
+      "1 ½ cups sugar",
+      "1 tsp. vanilla",
+      "2 eggs",
+      "1 small tsp. soda",
+      "1 cup sour cream",
+      "1 tsp. baking powder",
+      "flour",
+      "powdered sugar frosting"
+    ],
+    name: "SOUR CREAM SUGAR COOKIES",
+    recipeInstructions: [
+      "Cream shortening, sugar, eggs, vanilla.",
+      "Add sour cream.",
+      "Mix dry ingredients (salt, soda, baking powder) with some flour and add to the mixture.",
+      "Continue to add enough flour to make a soft dough, but not sticky.",
+      "Roll out and cut with cookie cutters.",
+      "Bake 375 degrees for 8-12 minutes. Do not over bake. They stay soft if not cooked too long.",
+      "Frost with powdered sugar frosting."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT", "CAKE"],
+    recipeIngredient: [
+      "4 Duncan Hines Devils Food Cake Mixes",
+      "Water, vegetable oil and eggs (as per mix directions, adjusting for 2 mixes)",
+      "Filling: 2 – 12 oz. Cool Whips, 1- 8 oz. Cream cheese, 1 cup powdered sugar, 1 tsp. vanilla, 1 large package chocolate instant pudding mix",
+      "Frosting: 2 – 12 oz. Cool Whips, 1- 8 oz. Cream cheese, 1 cup powdered sugar, 1 tsp. vanilla"
+    ],
+    name: "CHOCOLATE MOUSSE WEDDING CAKE (Filled Chocolate Layer Cake)",
+    recipeInstructions: [
+      "Preheat oven to 325. Generously grease and flour pans (14” x 14” x 2” pan).",
+      "Mix 2 cake mixes at the same time: 1 1/3 cup water, 3 eggs, and ¼ cup oil for each box. Blend at low speed until moistened. Beat at medium speed for 2 minutes. Pour into pan (about ½ full) and bake immediately. Bake until toothpick inserted in center comes out clean. Cool 15 to 30 minutes in pan. Level top if risen above pan. Remove from pan. Wrap in foil and freeze. (I make the cake at least 1 week ahead of need. I like to wrap and freeze them while they are still a little warm, causes them to be moister.)",
+      "Filling (between layers): Cream powdered sugar, cream cheese and vanilla with electric mixer. Mix in cool whip. While beating, sprinkle dry pudding mix over mixture. Beat for 2 minutes. If too thick, add ¼ to 1 cup milk (1/4 cup at a time). Spread between layers.",
+      "Frosting: Same as the filling, but omit the pudding and milk. Frost, swirl with a spoon.",
+      "ALWAYS have the cool whip completely thawed. If there are ANY ice crystals in it, it will whip runny!",
+      "This makes a cake large enough to serve 98 people. Cut into pieces 1” by 2”."
+    ]
+  },
+  {
+    author: "JANET HUNT’S",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "1 cup mashed potatoes",
+      "1 cup potato water",
+      "1 cup warm milk",
+      "½ cup shortening",
+      "½ cup sugar",
+      "2 eggs",
+      "2 T. yeast",
+      "1 tsp. salt",
+      "7 cups flour",
+      "thin powdered sugar frosting or Maple frosting (½ cup butter, 2 cups powdered sugar, 2 tsp maple flavoring, 2-4 T. hot water)"
+    ],
+    name: "SPUDNUTS",
+    recipeInstructions: [
+      "Put yeast in warm milk to soften.",
+      "Melt shortening in potato water.",
+      "Mix in mashed potatoes, sugar, eggs, and salt. Add flour.",
+      "Dough will be stiff and the last bit of flour will need to be kneaded in. Let raise.",
+      "Cut into donuts and raise again.",
+      "Deep fry in oil 375 degrees. Cool and frost.",
+      "Maple frosting: Heat ½ cup butter till golden brown. Stir in 2 cups powdered sugar, 2 tsp maple flavoring. Put in 2-4 T. hot water for consistency."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "2 cups sugar",
+      "2 T. cocoa",
+      "½ cup margarine",
+      "½ cup milk",
+      "½ cup peanut butter",
+      "3 cups minute oatmeal",
+      "1 tsp. vanilla"
+    ],
+    name: "NO-BAKE COOKIES",
+    recipeInstructions: [
+      "Combine in saucepan: sugar, cocoa, margarine, and milk.",
+      "Bring to a full rolling boil. Remove from heat.",
+      "Add peanut butter, minute oatmeal and vanilla.",
+      "Drop into waxpaper and let cool. Enjoy!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "½ cup softened butter",
+      "1 cup sugar",
+      "1 egg",
+      "1 tsp. vanilla",
+      "1 cup pumpkin",
+      "½ tsp. salt",
+      "½ tsp. soda",
+      "1 tsp. baking powder",
+      "1 tsp. cinnamon",
+      "½ tsp. cloves",
+      "1 ½ cups flour",
+      "1 ½ cups chocolate chips"
+    ],
+    name: "PUMPKIN CHIP COOKIES",
+    recipeInstructions: [
+      "Cream first five ingredients (butter, sugar, egg, vanilla, pumpkin).",
+      "Add the remaining ingredients (salt, soda, baking powder, cinnamon, cloves, flour, chocolate chips) and mix well.",
+      "Bake 375 for 10 minutes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["DESSERT"],
+    recipeIngredient: [
+      "3 T. marg. or butter",
+      "1 pkg. marshmallows (about 40, or 1 jar 7 oz. jar of marshmallow cream)",
+      "6 cups Rice Krispies"
+    ],
+    name: "RICE KRISPIE TREATS",
+    recipeInstructions: [
+      "Melt margarine or butter in large saucepan over low heat. Add marshmallows and stir until completely melted. Remove from heat.",
+      "Mix in Rice Krispies and stir until well coated.",
+      "Spread the mixture using a buttered spatula or waxed paper evenly into a 13 X 9 inch pan coated with cooking spray(I like butter).",
+      "Cut into squares when cool. (Best if use fresh marshmallows. You can substitute 1 jar 7 oz. jar of marshmallow cream.)"
+    ]
+  },
 ]
