@@ -1709,4 +1709,245 @@ export const recipes = [
       "Serve with bread cubes (French bread works good), celery, broccoli, hot dogs, etc."
     ]
   },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "FONDUE"],
+    recipeIngredient: [
+      "1 cup evaporated milk",
+      "2 cups white sugar",
+      "4 Tbls. butter",
+      "4 Tbls. corn syrup"
+    ],
+    name: "CARAMEL FONDUE",
+    recipeInstructions: [
+      "In a small saucepan, mix the evaporated milk, sugar, butter and corn syrup.",
+      "Heat up over medium heat and bring to a boil while stirring.",
+      "Let the mixture boil and thicken for about 5 minutes.",
+      "Pour the content into your warm fondue pot.",
+      "Dip bite size pieces of various dippers using a fondue fork. Enjoy and repeat but no double-dipping!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "FONDUE"],
+    recipeIngredient: [
+      "1/4 cup butter",
+      "2/3 cup cream (35%)",
+      "1 ½ cup corn syrup",
+      "1 cup brown sugar packed",
+      "1 tsp. vanilla"
+    ],
+    name: "CARAMEL BUTTERSCOCH FONDUE",
+    recipeInstructions: [
+      "In a small saucepan over low heat, melt the butter, cream, corn syrup and brown sugar while stirring constantly.",
+      "Once these ingredients are fully melted, transfer the content into your fondue pot.",
+      "Add the vanilla and mix well.",
+      "Dip marshmallows or various bite size pieces of dippers. Enjoy and repeat but no double-dipping!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "FONDUE"],
+    recipeIngredient: [
+      "½ cup butter",
+      "1 cup white corn syrup",
+      "2 cups packed brown sugar",
+      "1 can sweetened condensed milk",
+      "2 Tbls. water",
+      "2 tsp vanilla"
+    ],
+    name: "TOFFEE FONDUE",
+    recipeInstructions: [
+      "In a small saucepan, melt the butter.",
+      "Add the corn syrup, brown sugar, milk and water.",
+      "Mix well and keep stirring over medium heat until consistency is thick.",
+      "Pour the content into your chocolate fondue pot and mix in the vanilla.",
+      "Dip bite size pieces of various dippers. Enjoy and repeat but no double-dipping!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "FONDUE"],
+    recipeIngredient: [
+      "1 cup cream (15%)",
+      "3 Tbls. sugar",
+      "1 tsp. vanilla",
+      "50 mini marshmellows"
+    ],
+    name: "VANILLA MARSHMELLOW FONDUE",
+    recipeInstructions: [
+      "In a small saucepan over medium heat, pour the cream, sugar and vanilla.",
+      "Stir constantly and reduce the heat before it starts boiling.",
+      "Add the marshmallows and stir until all marshmallows have melted.",
+      "Pour the vanilla marshmallow mixture into a warm fondue pot.",
+      "Dip bite-size pieces of various dippers. Enjoy and repeat but no double-dipping!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "FONDUE"],
+    recipeIngredient: [
+      "½ cup evaporated milk",
+      "25 to 25 mini-marshmellows",
+      "¾ cup chocolate chips, semisweet",
+      "2/3 cup graham cracker crumbs",
+      "assortment of large marshmellows for dipping"
+    ],
+    name: "SMORES FONDUE",
+    recipeInstructions: [
+      "In a small saucepan over low heat, mix the evaporated milk and mini marshmallows.",
+      "Stir constantly and ensure the mixture does not come to a boil.",
+      "Once all the marshmallows have melted, increase the heat to medium-low and add all chocolate chips.",
+      "Mix well and ensure all chocolate chips are melted and that the mixture does not boil.",
+      "Add the graham cracker crumbs and mix well.",
+      "Transfer the smores mixture to a warm chocolate fondue pot.",
+      "Dip large marshmallows. Enjoy and repeat but no double-dipping!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["SOUPS"],
+    recipeIngredient: [
+      "½ lb. hamburger",
+      "¾ cup chopped onion",
+      "¾ cup shredded carrots",
+      "¾ cup diced celery",
+      "1 tsp. dried basil",
+      "1 tsp. parsley flakes",
+      "4 T. butter or marg. (divided)",
+      "¼ cup flour",
+      "3 cups chicken broth",
+      "1 ½ cups milk",
+      "8 oz. Velveeta cheese (cubed)",
+      "4 cups diced, peeled potatoes",
+      "¾ tsp. salt",
+      "¼ - ½ tsp. pepper",
+      "¼ cup sour cream"
+    ],
+    name: "CHEESEBURGER SOUP",
+    recipeInstructions: [
+      "In 3-quart saucepan, brown beef, drain and set aside.",
+      "In the same pan, sauté onion, carrots, celery, basil and parsley in 1 T. butter until vegetables are tender, about 10 minutes.",
+      "Add broth, potatoes and beef; bring to a boil.",
+      "Reduce heat, cover and simmer for 10-12 minutes or until potatoes are tender.",
+      "Meanwhile, in small skillet, melt remaining butter, add flour; cook and stir for 3-5 minutes or until bubbly.",
+      "Add to soup; bring to a boil. Cook and stir for 2 minutes.",
+      "Reduce heat to low. Add cheese, milk, salt and pepper.",
+      "Cook and stir until cheese melts.",
+      "Remove from heat; blend in sour cream.",
+      "Yield: 8 servings"
+    ]
+  },
+  {
+    author: "",
+    tags: ["SOUPS"],
+    recipeIngredient: [
+      "1 cup chopped onion",
+      "1 cup chopped celery",
+      "3 cups diced potatoes",
+      "3 cans chopped clams",
+      "1 cube butter",
+      "¾ cup flour",
+      "1 qt. milk",
+      "1 pint half and half cream",
+      "1 ½ tsp. salt",
+      "2 tsp. sugar",
+      "Pepper"
+    ],
+    name: "CLAM CHOWDER",
+    recipeInstructions: [
+      "Combine onion, celery, potatoes, and clams and cook over medium heat until tender.",
+      "Make white sauce: Melt butter. Blend in flour, salt, sugar, and pepper.",
+      "Add milk and half and half cream, stirring constantly till thick.",
+      "Add sauce to vegetables and clams and cook over medium heat to desired thickness."
+    ]
+  },
+  {
+    author: "WEIGHT WATCHERS",
+    tags: ["SOUPS"],
+    recipeIngredient: [
+      "onion",
+      "1 cup beef broth",
+      "1 can Mexican tomatoes",
+      "1 can regular tomatoes",
+      "1 can whole corn",
+      "1 can black beans",
+      "1 can white beans",
+      "1 can refried beans",
+      "1 pkg. taco seasoning"
+    ],
+    name: "TACO SOUP",
+    recipeInstructions: [
+      "Mix together and simmer for 1 hour."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SOUPS"],
+    recipeIngredient: [
+      "1 onion, chopped",
+      "1 cup carrots, chopped",
+      "2 T. margarine",
+      "1 lb. browned hamburger",
+      "½ tsp. Accent",
+      "1 cup diced potatoes",
+      "salt & pepper to taste",
+      "2 cups tomato juice",
+      "1/3 cup flour",
+      "1 quart cold milk"
+    ],
+    name: "HAMBURGER SOUP",
+    recipeInstructions: [
+      "Cook onion and carrots in 2 T. margarine.",
+      "Add: browned hamburger, Accent, diced potatoes, salt & pepper, and tomato juice.",
+      "Cook until vegetables are tender.",
+      "Thicken before serving with 1/3 cup flour mixed in 1 quart cold milk.",
+      "Heat to boiling, serve."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SOUPS"],
+    recipeIngredient: [
+      "1 ¼ lb. hamburger",
+      "shredded cheese",
+      "1 med. onion, chopped",
+      "nacho chips",
+      "2 cans Mexican style tomatoes",
+      "1 can tomato sauce",
+      "1 cup water",
+      "1 (15 oz.) can pinto beans",
+      "1 pkg. taco seasoning",
+      "1 (15 oz.) whole kernel corn"
+    ],
+    name: "TACO SOUP",
+    recipeInstructions: [
+      "Brown beef in large pot. Add onion and sear. Drain off excess fat.",
+      "Mash tomatoes in their liquid. Add to beef plus add tomato sauce and water.",
+      "Add beans, corn and taco seasoning.",
+      "Bring to boil. Reduce heat, then simmer 5 minutes.",
+      "If desired, top with cheese and serve with chips.",
+      "P.S. can use V-8 juice for tomatoes."
+    ]
+  },
+  {
+    author: "",
+    tags: ["SALADS"],
+    recipeIngredient: [
+      "1 (16 oz.) pkg. frozen mixed vegetables",
+      "1 small pkg. frozen peas and carrots",
+      "½ c. chopped onion",
+      "2/3 c. chopped celery",
+      "1 cup chopped green vegetables(radishes, green pepper, etc.)",
+      "2 can black pitted olives, sliced",
+      "1 pkg. dry Hidden Valley salad dressing mix (Ranch)",
+      "1 cup mayonnaise"
+    ],
+    name: "CALICO SALAD",
+    recipeInstructions: [
+      "Cook frozen vegetables. Drain thoroughly and let cool.",
+      "Mix together dry Ranch mix and mayonnaise.",
+      "Add to vegetables and marinate overnight."
+    ]
+  },
 ]
