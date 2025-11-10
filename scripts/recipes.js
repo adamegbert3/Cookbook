@@ -1409,5 +1409,304 @@ export const recipes = [
             "Leftovers are best when you add a splash of milk after it is reheated, but only then.",
             "DO NOT substitute it for the heavy cream or you will get a curdled mess and a lot of wasted food."
         ]
-    }
+    },
+    {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "2 eggs",
+      "12 sticks string cheese (I cut them in half)",
+      "1 T. water",
+      "3 T. flour",
+      "1 cup dry bread crumbs",
+      "1 T. butter",
+      "2 1/2 tsp. Italian seasoning",
+      "1 cup marinara or spaghetti sauce, heated",
+      "½ tsp. garlic powder",
+      "1/8 tsp. pepper",
+      "(I used Italian Style Bread Crumbs instead of mixing them)"
+    ],
+    name: "MOZZARELLA STICKS",
+    recipeInstructions: [
+      "In small bowl, beat eggs and water.",
+      "In plastic (Ziploc) bag, combine bread crumbs, Italian seasoning, garlic powder and pepper.",
+      "Coat cheese sticks in flour, then dip in egg mixture and then shake in bread crumb mixture.",
+      "Repeat egg mixture and bread crumb mixture.",
+      "Cover and chill on baking sheet for at least 4 hours or overnight.",
+      "Drizzle with butter before baking.",
+      "Bake, uncovered, at 400 degrees for 6 to 8 minutes or until heated through.",
+      "Allow to stand 3 to 5 minutes before serving."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "10 oz. sour cream",
+      "¾ cup cauliflower, chopped",
+      "1-8 oz. cream cheese, softened",
+      "¾ cup broccoli, chopped",
+      "1 cup shredded Cheddar cheese",
+      "½ cup carrots, shredded",
+      "1-1 oz. pkg. Hidden Valley Ranch",
+      "½ cup ham, cubed (optional)",
+      "5-10” flour tortillas"
+    ],
+    name: "VEGETABLE ROLL-UPS",
+    recipeInstructions: [
+      "Mix sour cream, cream cheese, ranch mix, shredded cheese and ham.",
+      "Spread mixture evenly over flour tortillas.",
+      "Top with vegetables lightly.",
+      "Sprinkle more shredded cheese on top.",
+      "Roll and cover tightly with plastic wrap, twisting ends.",
+      "Refrigerate several hours.",
+      "Cut into ½” slices and serve."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "12 ounces sausage",
+      "8 oz. package cream cheese",
+      "2 pounds fresh mushrooms",
+      "2-3 cups bread crumbs"
+    ],
+    name: "STUFFED MUSHROOMS",
+    recipeInstructions: [
+      "Brown sausage until cooked through. Remove from heat and drain fat.",
+      "Stir in cream cheese.",
+      "Wash and remove stems from mushrooms. Chop the stems and mix in with sausage mixture.",
+      "Fill caps with mixture.",
+      "Turn stuffed mushrooms upside-down and dip in bread crumbs.",
+      "Turn back right side up.",
+      "Bake on baking sheet at 350 degrees for 15 minutes.",
+      "Makes 40 mushrooms"
+    ]
+  },
+  {
+    author: "Bea Brower",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "1 can chili without beans",
+      "1 small onion, chopped",
+      "1 can refried beans",
+      "1 lb. Velveeta cheese, cubed",
+      "1 lb. hamburger, browned and drained, seasoned with salt and pepper"
+    ],
+    name: "BEAN DIP",
+    recipeInstructions: [
+      "Put in crock pot for 1 to 2 hours.",
+      "Serve hot."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "1 lb. country style sausage",
+      "1 pint sour cream",
+      "½ large green pepper",
+      "1 can green chilies",
+      "½ small onion",
+      "3 small tomatoes",
+      "8 oz. cream cheese"
+    ],
+    name: "SAUSAGE DIP",
+    recipeInstructions: [
+      "In a large skillet, brown sausage; drain grease.",
+      "Add onions and green peppers; cook for a while longer.",
+      "Add remaining ingredients.",
+      "Serve hot.",
+      "Really good with tortilla chips or Wheat thins."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "Layer 1: 8 oz. cream cheese, 2 T. mayonnaise, 1 ½ tsp. Worcestershire, 1 T. minced onion, pinch of salt, 1 T. lemon juice",
+      "Layer 2: ½ c. catsup, 1 tsp. sugar, ½ T. Worcestershire, ½ tsp. minced onion",
+      "Layer 3: a can of small shrimp, drained"
+    ],
+    name: "SHRIMP DIP",
+    recipeInstructions: [
+      "Combine layer 1 and spread on large plate.",
+      "Combine layer 2 and spread over cream cheese layer.",
+      "Sprinkle shrimp on top.",
+      "Eat with crackers."
+    ]
+  },
+  {
+    author: "KATHY ARRITT’S",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "1 cup sour cream",
+      "1 cup mayo",
+      "1 T. dill weed",
+      "1 T. Bon Appettite(this is hard to find)",
+      "1 T. Parsley"
+    ],
+    name: "DILLY DIP",
+    recipeInstructions: [
+      "Mix together and chill."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "8 oz. cream cheese",
+      "¼ cup powdered sugar",
+      "¾ cup brown sugar",
+      "1 tsp. vanilla"
+    ],
+    name: "CARMEL DIP",
+    recipeInstructions: [
+      "Warm cream cheese to room temperature.",
+      "Mix in sugars, add vanilla and serve.",
+      "I use the electric mixer on this and beat until it is smooth."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "7 oz. marshmallow cream",
+      "8 oz. cream cheese"
+    ],
+    name: "FRUIT DIP",
+    recipeInstructions: [
+      "Whip together.",
+      "Delicious on all fruit."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "6 oz. roasted chicken breast",
+      "1 lb. Velveeta, cut up",
+      "¼ cup chopped green peppers",
+      "¼ cup chopped red peppers",
+      "1 small onion, chopped",
+      "½ cup sour cream"
+    ],
+    name: "CHEESY CHICKEN FAJITA DIP",
+    recipeInstructions: [
+      "Microwave all ingredients, except sour cream, in 2-quart microwavable bowl on high for 6 – 8 minutes or until Velveeta is melted, stirring every 3 minutes.",
+      "Stir in sour cream. Serve hot with wheat thins or vegetables."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "16 oz. can refried beans",
+      "1 cup chopped tomatoes",
+      "½ tsp. chili powder",
+      "4 strips bacon, crumbled",
+      "4 oz. chopped & drained green chilies",
+      "2 avocados peeled and mashed",
+      "½ cup miracle whip",
+      "1 cup Monterey Jack cheese",
+      "¼ cup chopped onion",
+      "½ tsp. salt",
+      "Dash hot pepper sauce(I don’t use)",
+      "1 cup chopped olives"
+    ],
+    name: "MEXICAN DIP WITH TORTILLA CHIPS",
+    recipeInstructions: [
+      "1st layer: beans and chili powder",
+      "2nd layer: avocados, bacon, onion, Miracle whip and seasoning",
+      "Next: olives, tomatoes and chilies",
+      "Top with cheese (shredded)"
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "3 medium tomatoes, chopped",
+      "1 green onion, sliced",
+      "1 -2 garlic cloves, minced (1 tsp. dry)",
+      "3 T. finely chopped green pepper",
+      "1 T. lemon juice",
+      "1 ½ tsp. minced fresh basil or ½ tsp. dried basil",
+      "½ tsp. chili powder",
+      "½ tsp. salt",
+      "1/8 tsp. pepper"
+    ],
+    name: "MICROWAVE SALSA",
+    recipeInstructions: [
+      "In a microwave-safe bowl, combine the tomatoes, onion and garlic.",
+      "Add green pepper, lemon juice and seasonings; mix well.",
+      "Microwave on high for 45-60 seconds or until heated through.",
+      "Salsa can be stored in the refrigerator for up to 3 days.",
+      "Yield: 4 cups. The family really like this!!"
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "8 oz white chocolate, chopped",
+      "3 1/2 cups milk",
+      "6 hard peppermint candies, crushed fine(IC friendly)",
+      "1/2 peppermint extract",
+      "2/3 cup whipping cream"
+    ],
+    name: "WHITE PEPPERMINT HOT CHOCOLATE",
+    recipeInstructions: [
+      "Beat chilled cream with crushed mints until stiff peaks form. Refrigerate for about an hour.",
+      "Meanwhile, heat milk to a simmer, them mix in white chocolate.",
+      "Whisk until chocolate is melted and smooth.",
+      "Add mint extract and stir through.",
+      "Pour into mugs and top with minty whipped cream."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS"],
+    recipeIngredient: [
+      "1 cup heavy cream",
+      "6 ounces white chocolate, cut into small pieces",
+      "3 cup milk",
+      "1/2 tsp vanilla extract"
+    ],
+    name: "HOT WHITE CHOCOLATE",
+    recipeInstructions: [
+      "Cook heavy cream in small saucepan over med/low heat.",
+      "Place chocolate in heat-proof bowl and set aside.",
+      "When cream simmers (about 4 min), remove from heat and pour over chocolate.",
+      "When chocolate begins to melt, stir to combine cream and chocolate until mixture is melted. Set aside.",
+      "In medium saucepan over med heat, warm milk until hot but not boiling (about 5min).",
+      "When milk steams, reduce heat and slowly whisk in chocolate mixture until combined.",
+      "Remove from heat and whisk in vanilla.",
+      "Whisk until light foam forms. Ladle into heat proof bowls and serve immediately."
+    ]
+  },
+  {
+    author: "",
+    tags: ["APPETIZERS, DIPS, & DRINKS", "FONDUE"],
+    recipeIngredient: [
+      "4 T. butter or marg.",
+      "¼ tsp. paprika",
+      "3 large T. flour",
+      "½ T. Worchester Sauce",
+      "¼ tsp. salt",
+      "2 cups milk",
+      "2 ½ cups grated cheese (1 lb. Velveeta)"
+    ],
+    name: "CHEESE FONDUE",
+    recipeInstructions: [
+      "Melt butter in sauce pan.",
+      "Blend in flour, salt, paprika.",
+      "Add milk, stirring constantly till thick.",
+      "Add Worcestershire sauce and cheese.",
+      "Continue to cook until cheese is melted.",
+      "Pour into heated fondue pot.",
+      "Serve with bread cubes (French bread works good), celery, broccoli, hot dogs, etc."
+    ]
+  },
 ]
