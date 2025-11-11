@@ -1,5 +1,4 @@
 export const recipes = [
-        // Egbert Breakfast
     {
         author: "Misha Jones",
         tags: ["Breakfast"],
