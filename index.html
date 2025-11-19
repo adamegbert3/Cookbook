@@ -2,60 +2,154 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta property="og:title" content="Recipes">
-    <meta property="og:type" content="website">
-    <meta property="og:description" content="Recipes">
-    <meta property="og:image" content="images/recipe-book.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cookbook</title>
-    <meta name="description" content="Recipes">
-    <link rel="stylesheet" href="styles/recipes.css">
-    <script src="scripts/main.js" type="module" defer></script>
+    <title>Cookbook Login</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Configure Tailwind for custom theme -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-green': '#10B981', // Emerald 500
+                        'secondary-orange': '#F59E0B', // Amber 500
+                        'dark-bg': '#1F2937', // Gray 800
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Apply smooth transitions to interactive elements */
+        .form-input {
+            transition: all 0.3s ease;
+        }
+        .form-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.4); /* Emerald/Primary-Green focus ring */
+            border-color: #10B981;
+        }
+        /* Style the background for a warm kitchen feel */
+        body {
+            background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+            min-height: 100vh;
+        }
+    </style>
 </head>
-<body>
-   <header>
-    <div id="header">
-        <!-- <img src="images/recipe-book.png" alt="recipe book image" id="recipe-book-img">
-        <h1>Cookbook</h1>
-        <button><a href="suggestions.html">Have a suggestion? Submit it here!</a></button> -->
-        <!-- HEADER BAR CONTAINER -->
-<header class="header-container">
-    
-    <!-- 1. LEFT - COOKBOOK ICON -->
-     <img src="images/recipe-book.png" alt="recipe book image" id="recipe-book-img">
-    <!-- <a href="#" class="logo" aria-label="Cookbook Home">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-cookbook" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.467 9.588 5 8.25 5c-2.438 0-4.437 1.258-4.437 2.809 0 1.55.999 2.484 2.188 2.898V14m5.253-7.747h4.5M12 6.253c1.168.786 2.412 1.253 3.75 1.253 2.438 0 4.437-1.258 4.437-2.809 0-1.55-.999-2.484-2.188-2.898V14m-5.253 1.747h4.5m-5.25-4.5h4.5m-5.25 4.5h4.5M12 14v5m0 0a2 2 0 01-2 2h-1a2 2 0 01-2-2v-3a2 2 0 012-2h3m0 5a2 2 0 012-2h1a2 2 0 012 2v3a2 2 0 01-2 2h-3" />
-        </svg>
-    </a> -->
-    
-    <!-- 2. CENTER - MAIN TITLE -->
-    <h1 class="header-title">
-        Welcome to the Egbert & Wheeler Cookbook!
-    </h1>
-    
-    <!-- This element is needed to push the profile link to the right -->
-    <div class="spacer"></div>
+<body class="font-sans flex items-center justify-center p-4">
 
-    <!-- 3. RIGHT - PROFILE ICON -->
-    <a href="#" class="profile-link" aria-label="Profile">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-profile" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M5.121 17.804A7.96 7.96 0 0112 15a7.96 7.96 0 016.879 2.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-    </a>
-
-</header>
-    </div>
-   </header>
-   <main>
-        <form action="">
-            <input type="text" name="searchbar" id="searchbar" placeholder="Find a recipe">
-            <button><img src="images/search.svg" alt="searchbutton" id="buttonimg" width="30px"></button>
-        </form>
-        <div id ="recipes">    
+    <!-- Login Container Card -->
+    <div class="w-full max-w-sm bg-white p-8 md:p-10 shadow-2xl rounded-xl border border-gray-100 transform transition duration-500 hover:shadow-3xl">
+        
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <!-- Cookbook Icon/Logo Placeholder (Using an emoji for quick visual identity) -->
+            <p class="text-6xl mb-2">🍽️</p>
+            <h1 class="text-3xl font-bold text-gray-800">Welcome Back, Chef!</h1>
+            <p class="text-sm text-gray-500 mt-1">Sign in to access your digital cookbook.</p>
         </div>
-   </main>
-   <footer>
-    </footer>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="space-y-6">
+            
+            <!-- Email/Username Input -->
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    placeholder="you@example.com"
+                    required 
+                    class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-green focus:border-primary-green"
+                >
+            </div>
+
+            <!-- Password Input -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="••••••••"
+                    required 
+                    class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-green focus:border-primary-green"
+                >
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="flex justify-end text-sm">
+                <a href="#" class="font-medium text-primary-green hover:text-secondary-orange transition duration-200" onclick="alertPlaceholder('Forgot Password clicked!')">
+                    Forgot Password?
+                </a>
+            </div>
+
+            <!-- Login Button -->
+            <button 
+                type="submit" 
+                class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-sm font-semibold text-white bg-primary-green hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-primary-green focus:ring-opacity-50 transition duration-300 transform active:scale-95"
+            >
+                Log In
+            </button>
+
+        </form>
+        
+        <!-- Sign Up Prompt -->
+        <p class="mt-8 text-center text-sm text-gray-600">
+            Don't have an account? 
+            <a href="#" class="font-medium text-secondary-orange hover:text-primary-green transition duration-200" onclick="alertPlaceholder('Sign Up clicked!')">
+                Create Account
+            </a>
+        </p>
+
+    </div>
+
+    <!-- Custom Modal/Message Box for alerts (Since alert() is forbidden) -->
+    <div id="messageBox" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+            <h3 class="text-xl font-semibold text-gray-800 mb-4">Message</h3>
+            <p id="messageText" class="text-gray-600 mb-6"></p>
+            <button onclick="hideMessageBox()" class="w-full py-2 bg-primary-green text-white rounded-lg hover:bg-emerald-600 transition">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Placeholder function for custom message box (instead of alert())
+        function alertPlaceholder(message) {
+            document.getElementById('messageText').textContent = message;
+            document.getElementById('messageBox').classList.remove('hidden');
+            document.getElementById('messageBox').classList.add('flex');
+        }
+
+        function hideMessageBox() {
+            document.getElementById('messageBox').classList.add('hidden');
+            document.getElementById('messageBox').classList.remove('flex');
+        }
+
+        // JavaScript to handle form submission
+        document.getElementById('loginForm').addEventListener('submit', function(event) {
+            event.preventDefault(); // Prevent the default form submission (page reload)
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            // Log data for demonstration (replace this with your actual authentication logic)
+            console.log('Login attempt with:');
+            console.log('Email:', email);
+            console.log('Password:', password);
+            
+            // Show a success/placeholder message
+            alertPlaceholder("Login simulated! Check the console for input data. Ready to connect to a real backend!");
+
+            // In a real app, you would fetch('your-auth-endpoint', { method: 'POST', body: JSON.stringify({ email, password }) }) here.
+        });
+    </script>
 </body>
 </html>
