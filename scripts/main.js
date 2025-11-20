@@ -1,14 +1,15 @@
 import { recipes } from "./recipes.js";
+import { auth, onAuthStateChanged } from "./firestoreapi.js";
 
 function Random(num) {
     return Math.floor(Math.random() * num);
 }
 
-function GetRandomRecipe(list) {
-    const listlength = list.length;
-    const random = Random(listlength);
-    return list[random];
-}
+// function GetRandomRecipe(list) {
+//     const listlength = list.length;
+//     const random = Random(listlength);
+//     return list[random];
+// }
 
 function RecipeTemplate(recipe) {
     return `\
@@ -36,7 +37,7 @@ function tagsTemplate(tags){
     return html;
 }
 
-function renderRecipes() {
+function renderRecipes(recipes) {
     let html = '';
     recipes.forEach(recipe => {
         html += RecipeTemplate(recipe);
@@ -59,7 +60,7 @@ function init() {
   // get a random recipe
 //   const recipe = GetRandomRecipe(recipes)
   // render the recipe with renderRecipes.
-  renderRecipes();
+  renderRecipes(recipes);
 }
 init();
 
@@ -83,3 +84,18 @@ function searchHandler(e) {
 }
 
 document.getElementById('buttonimg').addEventListener('click', searchHandler);
+document.getElementById('searchbar').addEventListener('keypress', function
+    (event) {
+        e.preventDefault();
+        if (event.key === "Enter") {
+            document.getElementById('buttonimg').click();
+        }
+    }
+);
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        document.getElementById("notsigned").style.display = 'none';
+        document.getElementById('recipes').style.display = 'block';
+    }
+});

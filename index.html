@@ -58,12 +58,12 @@
             
             <!-- Email/Username Input -->
             <div>
-                <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label for="Email" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
                 <input 
                     type="email" 
                     id="email" 
                     name="email" 
-                    placeholder="you@example.com"
+                    placeholder="email@email.com"
                     required 
                     class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-green focus:border-primary-green"
                 >
@@ -84,7 +84,7 @@
 
             <!-- Forgot Password Link -->
             <div class="flex justify-end text-sm">
-                <a href="#" class="font-medium text-primary-green hover:text-secondary-orange transition duration-200" onclick="alertPlaceholder('Forgot Password clicked!')">
+                <a href="#" class="font-medium text-primary-green hover:text-secondary-orange transition duration-200" onclick="sendReset()">
                     Forgot Password?
                 </a>
             </div>
@@ -102,7 +102,7 @@
         <!-- Sign Up Prompt -->
         <p class="mt-8 text-center text-sm text-gray-600">
             Don't have an account? 
-            <a href="#" class="font-medium text-secondary-orange hover:text-primary-green transition duration-200" onclick="alertPlaceholder('Sign Up clicked!')">
+            <a href="#" class="font-medium text-secondary-orange hover:text-primary-green transition duration-200" onclick="showSignUp()">
                 Create Account
             </a>
         </p>
@@ -120,36 +120,59 @@
         </div>
     </div>
 
-    <script>
-        // Placeholder function for custom message box (instead of alert())
-        function alertPlaceholder(message) {
-            document.getElementById('messageText').textContent = message;
-            document.getElementById('messageBox').classList.remove('hidden');
-            document.getElementById('messageBox').classList.add('flex');
-        }
-
-        function hideMessageBox() {
-            document.getElementById('messageBox').classList.add('hidden');
-            document.getElementById('messageBox').classList.remove('flex');
-        }
-
-        // JavaScript to handle form submission
-        document.getElementById('loginForm').addEventListener('submit', function(event) {
-            event.preventDefault(); // Prevent the default form submission (page reload)
-
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-
-            // Log data for demonstration (replace this with your actual authentication logic)
-            console.log('Login attempt with:');
-            console.log('Email:', email);
-            console.log('Password:', password);
+    <div id="signUp" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+            <form id="signUpForm" class="space-y-6">
             
-            // Show a success/placeholder message
-            alertPlaceholder("Login simulated! Check the console for input data. Ready to connect to a real backend!");
+                <!-- Email/Username Input -->
+                <div>
+                    <label for="Email" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                    <input 
+                        type="email" 
+                        id="emailSign" 
+                        name="email" 
+                        placeholder="email@email.com"
+                        required 
+                        class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-green focus:border-primary-green"
+                    >
+                </div>
 
-            // In a real app, you would fetch('your-auth-endpoint', { method: 'POST', body: JSON.stringify({ email, password }) }) here.
-        })
-    </script>
+                <!-- Password Input -->
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                    <input 
+                        type="password" 
+                        id="passwordSign" 
+                        name="password" 
+                        placeholder="••••••••"
+                        required 
+                        class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-green focus:border-primary-green"
+                    >
+                </div>
+                <button type="submit" onclick="hideSignUpBox()" class="w-full py-2 bg-primary-green text-white rounded-lg hover:bg-emerald-600 transition">
+                Submit
+                </button>
+            </form> 
+        </div>
+    </div>
+
+    <div id="reset" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-xl shadow-2xl max-w-sm w-full">
+            <input 
+                        type="email" 
+                        id="emailReset" 
+                        name="email" 
+                        placeholder="email@email.com"
+                        required 
+                        class="form-input w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-primary-green focus:border-primary-green"
+                    >
+        
+            <button onclick="submitReset()" class="w-full py-2 bg-primary-green text-white rounded-lg hover:bg-emerald-600 transition">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <script src="./scripts/login.js" type="module"></script>
 </body>
 </html>

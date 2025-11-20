@@ -19,6 +19,10 @@ body {
     word-wrap: break-word;
 }
 
+#recipes {
+    display: none;
+}
+
 .header-container {
     position: relative;
     display: flex;
