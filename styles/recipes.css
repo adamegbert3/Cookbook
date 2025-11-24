@@ -267,6 +267,9 @@ img {
   color: white;
   border-color: #45a049;
 }
+#recipe {
+    padding: 40px;
+}
 
 
 @media screen and (min-width: 600px) {
@@ -290,11 +293,30 @@ img {
 
 @media (max-width: 639px) {
     .header-container {
-        max-width: 100%; 
-        margin: 0; 
-        border-radius: 0;
+        max-width: 120%; 
+        margin: 25px 0 0 0; 
+        border-radius: 50px;
         padding-left: 1rem;
         padding-right: 1rem;
         height: 64px; 
     }
+}
+@media print {
+  /* Hide things you don't need on paper */
+  nav, footer, button, .search-bar {
+    display: none;
+  }
+
+  /* Make text black and white to save ink */
+  body {
+    background-color: white;
+    color: black;
+    font-size: 12pt; /* Make text readable */
+  }
+
+  /* Ensure the recipe takes up the full width */
+  .recipe-container {
+    width: 100%;
+    margin: 0;
+  }
 }
