@@ -9,7 +9,56 @@
   <header>
     <a href="homepage.html"><button>Back to Homepage</button></a>
   </header>
+  <button id="cookModeBtn" type="button">
+  
+  Enable Cook Mode 🍳
+  </button>
   <div id="recipe"></div>
   <script type="module" src="./scripts/recipePage.js"></script>
+  <script>
+        // Select the button from the HTML above
+        const btn = document.getElementById('cookModeBtn');
+        
+        // Variable to store the "lock"
+        let wakeLock = null;
+
+        // Function to turn Cook Mode ON
+        async function turnOn() {
+            try {
+                // Ask browser for the lock
+                wakeLock = await navigator.wakeLock.request('screen');
+                
+                // Change button look to Green
+                btn.classList.add('active');
+                btn.textContent = 'Cook Mode IS ON 🍳';
+                
+            } catch (err) {
+                // If it fails (usually because it's not HTTPS or localhost)
+                alert("Cook Mode failed. Are you using Live Server?");
+                console.error(err);
+            }
+        }
+
+        // Function to turn Cook Mode OFF
+        function turnOff() {
+            if (wakeLock) {
+                wakeLock.release();
+                wakeLock = null;
+            }
+            // Change button look back to Gray
+            btn.classList.remove('active');
+            btn.textContent = 'Enable Cook Mode 🍳';
+        }
+
+        // When the button is clicked...
+        btn.addEventListener('click', () => {
+            // If lock is null (off), turn it on. Otherwise, turn it off.
+            if (wakeLock === null) {
+                turnOn();
+            } else {
+                turnOff();
+            }
+        });
+    </script>
 </body>
 </html>
