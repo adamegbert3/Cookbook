@@ -36,19 +36,110 @@
     </a>
 
     </header>
+    <a href="homepage.html"><button>Back to Homepage</button></a>
 <body>
   <div id="recipe"></div>
     <div class="homepagebtn"></div>
-  <header>
-    <a href="homepage.html"><button>Back to Homepage</button></a>
-  </header>
   <h4>Tools:</h4>
   <button id="cookModeBtn" type="button">
   Enable Cook Mode 🍳
   </button>
+  <button id="copy-btn" onclick="copyIngredients()">📋 Copy Ingredients for Shopping</button>
+    <ul id="ingredient-list">
+    <li>2 cups flour</li>
+    <li>1 tsp vanilla</li>
+    <li>3 eggs</li>
+    </ul>
+    <div id="focus-mode-container" style="display:none; border: 2px solid #333; padding: 20px; text-align: center; border-radius: 10px; background: #f9f9f9;">
+  
+  <h3 id="step-counter">Step 1 of 5</h3>
+  
+  <p id="current-step-text" style="font-size: 1.5em; min-height: 100px;">
+    Preheat oven to 350 degrees.
+  </p>
+
+  <button onclick="changeStep(-1)">⬅️ Back</button>
+  <button onclick="changeStep(1)">Next ➡️</button>
+  <br><br>
+  <button onclick="exitFocusMode()" style="background:red; color:white;">Exit Focus Mode</button>
+
+</div>
+
+<button id="start-focus-btn" onclick="startFocusMode()">📺 Start Step-by-Step Mode</button>
+
+<ol id="normal-instructions">
+  <li>Preheat oven to 350 degrees.</li>
+  <li>Mix the flour and sugar.</li>
+  <li>Add eggs and vanilla.</li>
+  <li>Bake for 20 minutes.</li>
+  <li>Let cool and serve.</li>
+</ol>
   <script type="module" src="./scripts/recipePage.js"></script>
   <script>
+//     function copyIngredients() {
+//   // 1. Find the list
+//   const list = document.getElementById('ingredient-list');
+  
+//   // 2. Get all the list items (li)
+//   const items = list.getElementsByTagName('li');
+  
+//   // 3. Create a variable to hold the text
+//   // We start with the Recipe Title (optional, but nice)
+//   let textToCopy = "Shopping List for " + document.title + ":\n\n";
+  
+//   // 4. Loop through every item and add it to our text
+//   for (let i = 0; i < items.length; i++) {
+//     // We add a dash "-" and a new line "\n" to make it look like a list
+//     textToCopy += "- " + items[i].innerText + "\n";
+//   }
+  
+//   // 5. The Magic Command: Write to Clipboard
+//   navigator.clipboard.writeText(textToCopy).then(() => {
+    
+//     // Success! Let's change the button text so the user knows it worked
+//     const btn = document.getElementById('copy-btn');
+//     const originalText = btn.innerText;
+    
+//     btn.innerText = "✅ Copied!";
+//     btn.style.backgroundColor = "#4CAF50"; // Turn green
+//     btn.style.color = "white";
+    
+//     // Reset the button back to normal after 2 seconds
+//     setTimeout(() => {
+//       btn.innerText = originalText;
+//       btn.style.backgroundColor = ""; // Reset color
+//       btn.style.color = "";
+//     }, 2000);
+    
+//   }).catch(err => {
+//     console.error('Failed to copy: ', err);
+//     alert("Oops, could not copy text.");
+//   });
+// }
+
         // Select the button from the HTML above
+// Run this immediately on page load
+(function addToHistory() {
+  // 1. Get the current page details
+  const pageTitle = document.title;
+  const pageUrl = window.location.href;
+  
+  // 2. Get the existing history list
+  let history = JSON.parse(localStorage.getItem('recipeHistory')) || [];
+  
+  // 3. Remove this page if it's already in the list (so we don't have duplicates)
+  history = history.filter(item => item.url !== pageUrl);
+  
+  // 4. Add this page to the FRONT of the list
+  history.unshift({ title: pageTitle, url: pageUrl });
+  
+  // 5. Keep only the top 3
+  if (history.length > 5) history.pop();
+  
+  // 6. Save it back
+  localStorage.setItem('recipeHistory', JSON.stringify(history));
+})();
+
         const btn = document.getElementById('cookModeBtn');
         
         // Variable to store the "lock"
@@ -90,8 +181,108 @@
                 turnOff();
             }
         });
+// Add this code to make your lists interactive
+document.addEventListener('DOMContentLoaded', function() {
+  // Find all list items inside your ingredient lists
+  var ingredients = document.querySelectorAll('ul li, ol li');
+  
+  ingredients.forEach(function(item) {
+    item.addEventListener('click', function() {
+      // Toggle the "checked" class on or off
+      this.classList.toggle('checked');
+    });
+  });
+});
+
+        // 1. Run this when page loads to check your stats
+document.addEventListener('DOMContentLoaded', () => {
+  // Use the Recipe Title as the unique key
+  const recipeKey = 'cookCount-' + document.title;
+  
+  // Get saved number
+  const count = localStorage.getItem(recipeKey) || 0;
+  const lastDate = localStorage.getItem('lastDate-' + document.title);
+  
+  updateText(count, lastDate);
+});
+
+// 2. The Main Function
+function celebrateInHouse(btnElement) {
+  // A. Do the visual confetti
+  fireConfetti(btnElement);
+
+  // B. Do the math (Update stats)
+  const recipeKey = 'cookCount-' + document.title;
+  let count = parseInt(localStorage.getItem(recipeKey) || 0);
+  count++; // Add 1
+  
+  const today = new Date().toLocaleDateString();
+  
+  // Save it
+  localStorage.setItem(recipeKey, count);
+  localStorage.setItem('lastDate-' + document.title, today);
+  
+  // Update screen
+  updateText(count, today);
+}
+
+// 3. Helper to update the text
+function updateText(count, date) {
+  const textElement = document.getElementById('cook-counter');
+  if (count > 0) {
+    textElement.innerHTML = `You've cooked this <strong>${count} times</strong>! (Last: ${date})`;
+  }
+}
+
+// 4. THE IN-HOUSE CONFETTI ENGINE (No external links!)
+function fireConfetti(btn) {
+  const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+  
+  // Create 50 pieces of confetti
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div');
+    piece.classList.add('confetti-piece');
+    
+    // Pick a random color
+    piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    
+    // Random spread direction (Left or Right)
+    // We use CSS variables to tell the animation where to go
+    const randomX = (Math.random() * 200 - 100) + 'vw'; // Random horizontal landing
+    piece.style.setProperty('--x-end', randomX);
+    
+    // Start exactly where the button is
+    const rect = btn.getBoundingClientRect();
+    piece.style.top = rect.top + 'px';
+    piece.style.left = (rect.left + rect.width / 2) + 'px';
+    
+    // Randomize fall speed (between 1s and 3s)
+    const duration = Math.random() * 2 + 1 + 's';
+    piece.style.animation = `fall-down ${duration} linear forwards`;
+    
+    // Add to page
+    document.body.appendChild(piece);
+    
+    // Clean up: Remove the div after animation finishes (to keep site fast)
+    setTimeout(() => {
+      piece.remove();
+    }, 3000);
+  }
+}
     </script>
     <button id="voice-btn" onclick="toggleVoiceControl()">🎙️ Voice: OFF</button>
+
+    <div class="celebration-area" style="text-align:center; padding: 30px; border-top: 1px solid #ddd;">
+  
+  <button onclick="celebrateInHouse(this)" style="font-size: 1.5em; padding: 10px 20px; cursor: pointer; border-radius: 8px; border:none; background:#ffeb3b;">
+    🎉 I Made This!
+  </button>
+  
+  <p id="cook-counter" style="color: #555; margin-top: 10px; font-style: italic;">
+    You haven't cooked this yet.
+  </p>
+
+</div>
 
 <style>
   #voice-btn {
