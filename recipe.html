@@ -125,6 +125,34 @@
   }
   
 </style>
+<div class="chef-notes">
+  <h4>👨‍🍳 Chef's Notes</h4>
+  <textarea id="notes-tacos" placeholder="Write your notes here... (Saved automatically)" oninput="saveNotes(this.id)"></textarea>
+</div>
+<script>
+    // 1. When the page loads, fill the box with saved notes
+document.addEventListener('DOMContentLoaded', () => {
+  // Find all textareas
+  let allNotes = document.querySelectorAll('textarea');
+  
+  allNotes.forEach(box => {
+    // specific ID of this box
+    let id = box.id; 
+    // Get saved text from memory
+    let savedText = localStorage.getItem(id);
+    
+    if (savedText) {
+      box.value = savedText;
+    }
+  });
+});
+
+// 2. Save whenever the user types
+function saveNotes(id) {
+  let box = document.getElementById(id);
+  localStorage.setItem(id, box.value);
+}
+</script>
 </body>
 <script>
   // 1. Setup the Voice Recognition Tool
