@@ -270,6 +270,9 @@ img {
 #recipe {
     padding: 40px;
 }
+.material-symbols-outlined {
+    font-size: 300px;
+}
 
 
 @media screen and (min-width: 600px) {
