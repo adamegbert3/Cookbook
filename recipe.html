@@ -91,5 +91,105 @@
             }
         });
     </script>
+    <button id="voice-btn" onclick="toggleVoiceControl()">🎙️ Voice: OFF</button>
+
+<style>
+  #voice-btn {
+    position: fixed; /* Sticks to the screen */
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000; /* Stays on top of images */
+    padding: 15px 20px;
+    border-radius: 50px;
+    border: none;
+    background-color: #333; /* Dark gray */
+    color: white;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    transition: background-color 0.3s;
+  }
+  
+  /* This style is for when it is listening */
+  #voice-btn.listening {
+  background-color: #2ecc71; /* Now it's Green! */
+  animation: pulse 1.5s infinite; 
+}
+
+  /* Cool pulsing animation */
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+  
+</style>
 </body>
+<script>
+  // 1. Setup the Voice Recognition Tool
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  
+  let recognition;
+  let isListening = false;
+  
+  // CHANGED NAME: We use 'voiceBtn' instead of 'btn' to avoid conflicts
+  const voiceBtn = document.getElementById('voice-btn');
+
+  if (SpeechRecognition) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = true; 
+    recognition.lang = 'en-US';    
+
+    recognition.onresult = function(event) {
+      const current = event.resultIndex;
+      const transcript = event.results[current][0].transcript.toLowerCase().trim();
+      
+      console.log("I heard: " + transcript);
+
+      if (transcript.includes('scroll down') || transcript.includes('down')) {
+        window.scrollBy({ top: 500, behavior: 'smooth' });
+      }
+      else if (transcript.includes('scroll up') || transcript.includes('up')) {
+        window.scrollBy({ top: -500, behavior: 'smooth' });
+      }
+      else if (transcript.includes('stop') || transcript.includes('off')) {
+        toggleVoiceControl(); 
+      }
+    };
+
+    recognition.onerror = function(event) {
+      if(event.error === 'not-allowed') {
+        alert("Please allow Microphone access!");
+        toggleVoiceControl(); 
+      }
+    };
+  } else {
+    // If browser doesn't support it
+    if(voiceBtn) voiceBtn.style.display = 'none';
+  }
+
+  function toggleVoiceControl() {
+    if (!SpeechRecognition) {
+      alert("Browser doesn't support Voice Control.");
+      return;
+    }
+
+    if (isListening) {
+      // Turn OFF
+      recognition.stop();
+      isListening = false;
+      // UPDATED NAME HERE
+      voiceBtn.innerText = "🎙️ Voice: OFF";
+      voiceBtn.classList.remove('listening'); 
+    } else {
+      // Turn ON
+      recognition.start();
+      isListening = true;
+      // UPDATED NAME HERE
+      voiceBtn.innerText = "🔴 Listening...";
+      voiceBtn.classList.add('listening'); 
+    }
+  }
+</script>
 </html>
