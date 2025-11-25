@@ -273,6 +273,62 @@ img {
 .material-symbols-outlined {
     font-size: 300px;
 }
+button {
+    cursor: pointer;
+    font-size: 16px;
+    border-radius: 8px;
+    padding: 10px 15px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    transition: background-color 0.3s ease;
+}
+.folders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 20px;
+}
+main button {
+    background-color: none;
+    color: none;
+    text-decoration: none;
+    margin: none;
+
+}
+/* This style runs when an item is clicked */
+.checked {
+  text-decoration: line-through;
+  color: #888; /* Grays it out */
+  opacity: 0.6;
+}
+/* Makes it look clickable */
+li {
+  cursor: pointer;
+  user-select: none; /* Stops it from highlighting text when you tap fast */
+}
+
+
+/* The Confetti Particle */
+.confetti-piece {
+  position: fixed;
+  width: 10px;
+  height: 10px;
+  background-color: #f00; /* Default color (JS changes this) */
+  top: 50%;
+  left: 50%;
+  z-index: 9999; /* On top of everything */
+  pointer-events: none; /* Click through it */
+  opacity: 1;
+  border-radius: 2px;
+}
+
+/* The Animation (Fall Down and Fade Out) */
+@keyframes fall-down {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--x-end), 100vh) rotate(720deg); opacity: 0; }
+}
 
 
 @media screen and (min-width: 600px) {
