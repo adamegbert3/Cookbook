@@ -1,101 +1,112 @@
-import { recipes } from "./recipes.js";
-import { auth, onAuthStateChanged } from "./firestoreapi.js";
+import { db, auth, onAuthStateChanged } from "./firestoreapi.js";
+import { ref, get, child } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-function Random(num) {
-    return Math.floor(Math.random() * num);
+// --- DEBUG HELPER ---
+function logToScreen(message, isError = false) {
+    console.log(message);
+    const container = document.getElementById('recipes');
+    if (container) {
+        const style = isError ? "color: red; font-weight: bold;" : "color: blue;";
+        container.innerHTML += `<p style="${style}">${message}</p>`;
+    }
 }
 
-// function GetRandomRecipe(list) {
-//     const listlength = list.length;
-//     const random = Random(listlength);
-//     return list[random];
-// }
-
-function RecipeTemplate(recipe) {
-    return `\
-    <div class="recipe-card" data-name="${recipe.name}">\
-        <div id="info">\
-            <div id="tags">\
-                ${tagsTemplate(recipe.tags)}\
-            </div>\
-                <h2>${recipe.name}</h2>\
-            </div>\
+// --- GATEKEEPER ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // 1. User found
+        document.getElementById("notsigned").style.display = 'none';
+        const recipesGrid = document.getElementById('recipes');
+        recipesGrid.style.display = 'flex';
         
-        <div id="author">\
-            <p>By: ${recipe.author}</p>\
-            </div>\
-        </div>\
-    </div>`;
-}
+        // Clear previous logs
+        recipesGrid.innerHTML = "";
+        logToScreen("✅ User is logged in: " + user.email);
+        logToScreen("⏳ Attempting to fetch data from Database...");
 
-function tagsTemplate(tags){
+        // 2. Fetch Data
+        const dbRef = ref(db);
+        
+        // We try to get data from the Root "/"
+        get(child(dbRef, "/")).then((snapshot) => {
+            if (snapshot.exists()) {
+                logToScreen("✅ Connection successful! Data found.");
+                const data = snapshot.val();
+                
+                // Convert data
+                let allRecipes = [];
+                if (Array.isArray(data)) {
+                    allRecipes = data;
+                    logToScreen(`✅ Data is an Array with ${allRecipes.length} items.`);
+                } else if (typeof data === 'object') {
+                    allRecipes = Object.values(data);
+                    logToScreen(`✅ Data is an Object. Converted to ${allRecipes.length} items.`);
+                } else {
+                    logToScreen("⚠️ Data format is unexpected: " + typeof data, true);
+                }
+
+                // If we have recipes, render them (this clears the logs, so we know it worked)
+                if (allRecipes.length > 0) {
+                    renderRecipes(allRecipes); 
+                } else {
+                    logToScreen("⚠️ Data found, but list is empty.", true);
+                }
+
+            } else {
+                logToScreen("❌ Database connected, but NO DATA found at this path.", true);
+                logToScreen("💡 Hint: Are your recipes inside a folder? Try changing '/' to 'recipes'.");
+            }
+        }).catch((error) => {
+            logToScreen("❌ ERROR: " + error.message, true);
+            logToScreen("💡 Hint: Check your Rules tab in Firebase Console.", true);
+        });
+
+    } else {
+        document.getElementById("notsigned").style.display = 'block';
+        document.getElementById('recipes').style.display = 'none';
+    }
+});
+
+// --- RENDER FUNCTION (Standard) ---
+function renderRecipes(recipeList) {
+    const container = document.getElementById('recipes');
+    container.innerHTML = ""; // Clear the debug messages
+    
     let html = '';
-    tags.forEach(tag => {
-        html += '<p>' + tag + '</p>';
+    recipeList.forEach(recipe => {
+        // Skip null entries if they exist
+        if (!recipe) return;
+
+        const tags = recipe.tags || [];
+        const author = recipe.author || "The Egbert Family";
+        
+        html += `
+        <div class="recipe-card" data-name="${recipe.name}">
+            <div id="info">
+                <div id="tags">${tags.map(t => `<p>${t}</p>`).join('')}</div>
+                <h2>${recipe.name}</h2>
+            </div>
+            <div id="author"><p>By: ${author}</p></div>
+        </div>`;
     });
+    container.innerHTML = html;
 
-    return html;
-}
-
-function renderRecipes(recipes) {
-    let html = '';
-    recipes.forEach(recipe => {
-        html += RecipeTemplate(recipe);
-    });
-    document.getElementById('recipes').innerHTML = html;
-
-    // click handler for all recipe cards
+    // Re-attach click listeners
     document.querySelectorAll(".recipe-card").forEach(card => {
         card.addEventListener("click", () => {
             const name = card.getAttribute("data-name");
-            // store name in localStorage
-            localStorage.setItem("selectedRecipe", name);
-            // navigate to a new page
-            window.location.href = "recipe.html";
+            const selectedRecipe = recipeList.find(r => r.name === name);
+            
+            // Slug Logic
+            const recipeId = selectedRecipe.name.toLowerCase()
+                .replace(/ /g, '-')
+                .replace(/[^\w-]+/g, '');
+
+            localStorage.setItem("currentRecipeData", JSON.stringify(selectedRecipe));
+            window.location.href = `recipe.html?id=${recipeId}`;
         });
     });
 }
 
-function init() {
-  // get a random recipe
-//   const recipe = GetRandomRecipe(recipes)
-  // render the recipe with renderRecipes.
-  renderRecipes(recipes);
-}
-init();
-
-function filter(query) {
-    const filtered = recipes.filter(recipe => {
-        const filterednames = recipe.name.toLowerCase().includes(query);
-        const filteredtags = recipe.tags.some(tag => tag.toLowerCase().includes(query));
-        return filterednames || filteredtags
-    });
-    const sorted = filtered.sort((a,b) => a.name.localeCompare(b.name));
-    return sorted;
-}
-
-
-function searchHandler(e) {
-    e.preventDefault();
-    let search = document.getElementById('searchbar').value;
-    const searchlower = search.toLowerCase();
-    const filteredrecipes = filter(searchlower);
-    renderRecipes(filteredrecipes);
-}
-
-document.getElementById('buttonimg').addEventListener('click', searchHandler);
-document.getElementById('searchbar').addEventListener('keypress', function
-    (event) {
-        e.preventDefault();
-        if (event.key === "Enter") {
-            document.getElementById('buttonimg').click();
-        }
-    }
-);
-
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        document.getElementById("notsigned").style.display = 'none';
-        document.getElementById('recipes').style.display = 'block';
-    }
-});
+// Simple search handler stub to prevent errors
+document.getElementById('buttonimg')?.addEventListener('click', (e) => e.preventDefault());

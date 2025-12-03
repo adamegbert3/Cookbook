@@ -52,34 +52,7 @@
     </div>
 </div>
 
-<h3>Ingredients</h3>
-<ul id="ingredient-list">
-    <li>2 cups flour</li>
-    <li>1 tsp vanilla</li>
-    <li>3 eggs</li>
-</ul>
-  <h3 id="step-counter">Step 1 of 5</h3>
-  
-  <p id="current-step-text" style="font-size: 1.5em; min-height: 100px;">
-    Preheat oven to 350 degrees.
-  </p>
 
-  <button onclick="changeStep(-1)">⬅️ Back</button>
-  <button onclick="changeStep(1)">Next ➡️</button>
-  <br><br>
-  <button onclick="exitFocusMode()" style="background:red; color:white;">Exit Focus Mode</button>
-
-</div>
-
-<button id="start-focus-btn" onclick="startFocusMode()">📺 Start Step-by-Step Mode</button>
-
-<ol id="normal-instructions">
-  <li>Preheat oven to 350 degrees.</li>
-  <li>Mix the flour and sugar.</li>
-  <li>Add eggs and vanilla.</li>
-  <li>Bake for 20 minutes.</li>
-  <li>Let cool and serve.</li>
-</ol>
   <script type="module" src="./scripts/recipePage.js"></script>
   <script>
     // Variable to track the current size (default is 16px)
@@ -349,32 +322,8 @@ function fireConfetti(btn) {
 </style>
 <div class="chef-notes">
   <h4>👨‍🍳 Chef's Notes</h4>
-  <textarea id="notes-tacos" placeholder="Write your notes here... (Saved automatically)" oninput="saveNotes(this.id)"></textarea>
+  <textarea id="chef-notes-area" placeholder="Write your notes here..." oninput="saveNotes('chef-notes-area')"></textarea>
 </div>
-<script>
-    // 1. When the page loads, fill the box with saved notes
-document.addEventListener('DOMContentLoaded', () => {
-  // Find all textareas
-  let allNotes = document.querySelectorAll('textarea');
-  
-  allNotes.forEach(box => {
-    // specific ID of this box
-    let id = box.id; 
-    // Get saved text from memory
-    let savedText = localStorage.getItem(id);
-    
-    if (savedText) {
-      box.value = savedText;
-    }
-  });
-});
-
-// 2. Save whenever the user types
-function saveNotes(id) {
-  let box = document.getElementById(id);
-  localStorage.setItem(id, box.value);
-}
-</script>
 </body>
 <script>
   // 1. Setup the Voice Recognition Tool

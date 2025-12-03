@@ -9,6 +9,9 @@
 --primary-font: 'Arial', Helvetica, sans-serif;
 --secondary-font: 'Amatic SC', cursive;
 }
+* {
+    box-sizing: border-box;
+}
 
 body {
     font-family: var(--primary-font);
@@ -17,6 +20,11 @@ body {
     margin: 0;
     overflow-x: hidden;
     word-wrap: break-word;
+    width: 100%;
+    max-width: 100vw;       /* Viewport Width */
+    overflow-x: hidden;     /* Emergency brake for horizontal scroll */
+    margin: 0;
+    padding: 0;
 }
 
 #recipes {
@@ -160,19 +168,25 @@ form {
 img {
     max-width: 100%;
 }
-
+/* --- MASTER RECIPE CARD STYLE --- */
 .recipe-card {
-    border: 5px solid black;
-    margin-top: 20px;
-    margin: 25px auto;
-    width: 95%;
-    border-radius: 20px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between; 
-    height: 100%; 
-    box-sizing: border-box;
-    padding-right: 20px;
+    /* Mobile First Logic */
+    width: 90%;            /* Leave 5% space on each side */
+    max-width: 600px;      /* Don't let it get huge on desktop */
+    margin: 0 auto;        /* Center it */
+    
+    /* Visuals */
+    background: white;
+    padding: 20px;
+    border: 3px solid #333;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+
+/* Add a hover effect so it feels interactive */
+.recipe-card:hover {
+    transform: scale(1.02);
 }
 
 #recipes img {
@@ -183,13 +197,21 @@ img {
     margin: 10px auto;
 }
 
+#tags {
+    display: flex;
+    justify-content: center; /* Centers the tags */
+    flex-wrap: wrap;
+    gap: 10px;
+    width: 100%;
+}
+
 #tags p {
     border: 2px solid grey;
-    padding: 5px;
-    margin-top: 15px;
-    margin-left: 15px;
-    width: fit-content;
-    font-size: 20px;
+    padding: 5px 15px;
+    margin: 0; /* Remove old margins */
+    border-radius: 15px; /* Make them pill-shaped */
+    font-size: 16px;
+    background-color: #f9f9f9;
 }
 
 h2 {
@@ -327,6 +349,89 @@ li {
   opacity: 1;
   border-radius: 2px;
 }
+/* Make the Chef Notes box nice and big */
+#chef-notes-area {
+    width: 95%;              /* Takes up most of the screen width */
+    min-height: 200px;       /* Starts tall */
+    padding: 15px;           /* Breathing room for text */
+    font-size: 1.1rem;       /* Easy to read text */
+    border: 2px solid #aaa;  /* Nice border */
+    border-radius: 10px;     /* Rounded corners */
+    margin-top: 10px;
+    resize: vertical;        /* Allows you to drag the corner to make it even bigger */
+    font-family: inherit;    /* Matches your website font */
+}
+
+#chef-notes-area:focus {
+    border-color: var(--secondary-color); /* Highlights when you type */
+    outline: none;
+}
+/* --- CENTER EVERYTHING --- */
+
+/* 1. Center the Main Container */
+main {
+    display: flex;
+    flex-direction: column; /* Stack items top to bottom */
+    align-items: center;    /* Center them horizontally */
+    width: 100%;
+}
+
+/* 2. Center the Search Bar */
+form#search-form {
+    margin: 20px auto;      /* Auto margins on left/right centers it */
+    justify-content: center;
+}
+
+/* 3. Center the Category Buttons */
+.folders {
+    display: flex;
+    justify-content: center; /* Pushes buttons to the middle */
+    flex-wrap: wrap;         /* Allows them to wrap on phones */
+    width: 100%;
+}
+
+/* 4. Center the Recipe Grid */
+#recipes {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    
+    /* This is the magic spacer! */
+    gap: 40px;  
+    
+    /* Adds breathing room at the bottom of the page */
+    padding-bottom: 50px; 
+}
+
+#info {
+    text-align: center;
+}
+
+/* Center the author text specifically */
+#author {
+    text-align: center;
+    margin-right: 0; /* Removes your old right-align logic */
+}
+/* Remove the bullets and center the list items */
+#history-list {
+    list-style: none; /* No bullets */
+    padding: 0;       /* Remove left padding */
+    text-align: center;
+    margin-bottom: 0;
+}
+
+/* Add a little space between the links */
+#history-list li {
+    margin-bottom: 5px;
+}
+
+#recent-recipes-box {
+    text-align: center; /* Ensures the header "Last Recipe Used" is centered too */
+    max-width: 600px;   /* Keeps the gray box from stretching too wide */
+    margin: 20px auto;  /* Centers the gray box */
+    border-radius: 15px; /* Matches your rounded theme */
+}
 
 /* The Animation (Fall Down and Fade Out) */
 @keyframes fall-down {
@@ -337,8 +442,9 @@ li {
 
 @media screen and (min-width: 600px) {
     .recipe-card {
-        display: flex;
-        flex-direction: row;
+        /* We want to KEEP it as a column, just maybe with more padding */
+        flex-direction: column; 
+        padding: 40px; 
     }
 }
 
@@ -356,12 +462,18 @@ li {
 
 @media (max-width: 639px) {
     .header-container {
-        max-width: 120%; 
-        margin: 25px 0 0 0; 
-        border-radius: 50px;
-        padding-left: 1rem;
-        padding-right: 1rem;
-        height: 64px; 
+        width: 95%;           /* Fits inside the screen */
+        max-width: 100%;      /* NEVER exceed screen size */
+        margin: 20px auto;    /* Centers it */
+        border-radius: 20px;
+        padding: 0 1rem;
+        height: auto;         /* Lets it grow if text is long */
+        min-height: 64px;
+    }
+    
+    .header-title {
+        font-size: 1.5rem;    /* Shrink text slightly for small phones */
+        position: relative;   /* Stops it from floating weirdly */
     }
 }
 @media print {

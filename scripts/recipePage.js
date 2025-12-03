@@ -1,32 +1,118 @@
-import { recipes } from "./recipes.js";
+// recipePage.js - FINAL VERSION
+
+// 1. Get the ID from the URL (e.g., ?id=fruit-dip)
+const urlParams = new URLSearchParams(window.location.search);
+const recipeId = urlParams.get('id');
+
+console.log("Recipe Page Loaded. ID:", recipeId);
 
 function loadRecipe() {
-    const name = localStorage.getItem("selectedRecipe");
-    const recipe = recipes.find(r => r.name === name);
+    // 2. Get the data passed from the Homepage
+    const storedData = localStorage.getItem("currentRecipeData");
 
-    if (!recipe) {
-        document.getElementById("recipe").innerHTML = "<h2>Recipe not found.</h2>";
+    const recipeContainer = document.getElementById("recipe");
+    if (!recipeContainer) {
+        console.error("CRITICAL ERROR: Could not find <div id='recipe'> in HTML.");
         return;
     }
 
+    if (!storedData) {
+        recipeContainer.innerHTML = "<h2>No recipe loaded. Go back to <a href='homepage.html'>Homepage</a>.</h2>";
+        return;
+    }
+
+    // 3. Parse the data
+    let recipe;
+    try {
+        recipe = JSON.parse(storedData);
+    } catch (e) {
+        console.error("Data corrupted:", e);
+        return;
+    }
+
+    // 4. Build the HTML
+    const ingredients = recipe.recipeIngredient || [];
+    const instructions = recipe.recipeInstructions || [];
+    const tags = recipe.tags || [];
+
     const html = `
         <h1>${recipe.name}</h1>
-        <h2>By: ${recipe.author}</h2>
+        <h2>By: ${recipe.author || "The Egbert Family"}</h2>
+        
         <h3>Ingredients</h3>
-        <ul>
-            ${recipe.recipeIngredient.map(i => `<li>${i}</li>`).join("")}
+        <ul id="ingredient-list">
+            ${ingredients.map(i => `<li>${i}</li>`).join("")}
         </ul>
 
         <h3>Instructions</h3>
-        <ol>
-            ${recipe.recipeInstructions.map(step => `<li>${step}</li>`).join("")}
+        <ol id="normal-instructions">
+            ${instructions.map(step => `<li>${step}</li>`).join("")}
         </ol>
 
-        <h3>Tags</h3>
-        <p>${recipe.tags.join(", ")}</p>
+        <div class="tags-section">
+            <strong>Tags:</strong> ${tags.join(", ")}
+        </div>
     `;
 
-    document.getElementById("recipe").innerHTML = html;
+    // 5. Inject into the page
+    recipeContainer.innerHTML = html;
+    document.title = recipe.name;
+    
+    // 6. Load Notes & Counts
+    loadUserUserData();
 }
 
+function loadUserUserData() {
+    if (!recipeId) return;
+
+    // Load Chef Notes
+    const savedNotes = localStorage.getItem(`notes-${recipeId}`);
+    const noteBox = document.getElementById('chef-notes-area'); 
+    if (noteBox) {
+        noteBox.value = savedNotes || ""; 
+    }
+
+    // Load Cook Count
+    const count = localStorage.getItem(`cook-${recipeId}`) || 0;
+    const lastDate = localStorage.getItem(`date-${recipeId}`);
+    updateText(count, lastDate);
+}
+
+function updateText(count, date) {
+    const textElement = document.getElementById('cook-counter');
+    if (textElement) {
+        if (count > 0) {
+            textElement.innerHTML = `You've cooked this <strong>${count} times</strong>! (Last: ${date})`;
+        } else {
+            textElement.innerHTML = "You haven't cooked this yet.";
+        }
+    }
+}
+
+// Global functions for HTML interaction
+window.saveNotes = function(elementId) {
+    const box = document.getElementById(elementId);
+    if (recipeId && box) {
+        localStorage.setItem(`notes-${recipeId}`, box.value);
+    }
+}
+
+window.celebrateInHouse = function(btnElement) {
+    if (!recipeId) return;
+
+    // Fire confetti if available
+    if (typeof fireConfetti === "function") fireConfetti(btnElement);
+
+    let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
+    count++;
+    
+    const today = new Date().toLocaleDateString();
+    
+    localStorage.setItem(`cook-${recipeId}`, count);
+    localStorage.setItem(`date-${recipeId}`, today);
+    
+    updateText(count, today);
+}
+
+// Start the engine
 loadRecipe();
