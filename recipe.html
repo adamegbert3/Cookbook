@@ -40,18 +40,24 @@
 <body>
   <div id="recipe"></div>
     <div class="homepagebtn"></div>
-  <h4>Tools:</h4>
-  <button id="cookModeBtn" type="button">
-  Enable Cook Mode 🍳
-  </button>
-  <button id="copy-btn" onclick="copyIngredients()">📋 Copy Ingredients for Shopping</button>
-    <ul id="ingredient-list">
+  <div class="tools-section">
+    <h4 style="text-align: center; margin-bottom: 10px;">Kitchen Tools</h4>
+    
+    <div class="tool-bar">
+        <button id="cookModeBtn" type="button">Enable Cook Mode 🍳</button>
+        <button id="copy-btn" onclick="copyIngredients()">📋 Copy Ingredients</button>
+        <button id="start-focus-btn" onclick="startFocusMode()">📺 Step-by-Step Mode</button>
+        <button onclick="resizeText(1)" title="Increase Text Size">Make Text Bigger ➕</button>
+        <button onclick="resizeText(-1)" title="Decrease Text Size">Make Text Smaller ➖</button>
+    </div>
+</div>
+
+<h3>Ingredients</h3>
+<ul id="ingredient-list">
     <li>2 cups flour</li>
     <li>1 tsp vanilla</li>
     <li>3 eggs</li>
-    </ul>
-    <div id="focus-mode-container" style="display:none; border: 2px solid #333; padding: 20px; text-align: center; border-radius: 10px; background: #f9f9f9;">
-  
+</ul>
   <h3 id="step-counter">Step 1 of 5</h3>
   
   <p id="current-step-text" style="font-size: 1.5em; min-height: 100px;">
@@ -76,6 +82,31 @@
 </ol>
   <script type="module" src="./scripts/recipePage.js"></script>
   <script>
+    // Variable to track the current size (default is 16px)
+let currentFontSize = 18;
+
+function resizeText(multiplier) {
+  // 1. Update the size variable
+  // We add (1 * multiplier) to go up, or (-1 * multiplier) to go down
+  // We multiply by 2 so the jump is significant enough to notice
+  currentFontSize += (2 * multiplier);
+
+  // 2. Set limits so it doesn't get too small or crazy big
+  if (currentFontSize < 14) currentFontSize = 14; // Minimum size
+  if (currentFontSize > 34) currentFontSize = 34; // Maximum size
+
+  // 3. Select the elements we want to resize
+  // We target the lists (ul, ol) and paragraphs (p)
+  const textElements = document.querySelectorAll('#ingredient-list li, #normal-instructions li, p');
+
+  // 4. Loop through them and apply the new size
+  textElements.forEach(element => {
+    element.style.fontSize = currentFontSize + "px";
+    
+    // Optional: Increase line-height slightly as text gets bigger for readability
+    element.style.lineHeight = "1.5"; 
+  });
+}
 //     function copyIngredients() {
 //   // 1. Find the list
 //   const list = document.getElementById('ingredient-list');

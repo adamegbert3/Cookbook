@@ -250,21 +250,26 @@ img {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
 }
-/* Default state (Inactive) */
-#cookModeBtn {
-  padding: 10px 20px;
-  font-size: 1rem;
-  cursor: pointer;
-  border: 2px solid #ccc;
-  border-radius: 5px;
-  transition: background-color 0.3s;
+/* 1. CONTAINER: Keeps buttons in a nice row */
+.tool-bar {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
-/* Active State (Screen is being kept awake) */
+/* 2. COOK MODE BUTTON: Inherits the teal color now */
+#cookModeBtn {
+  /* No background-color set here, so it uses the main button teal! */
+  transition: transform 0.2s ease, background-color 0.3s;
+}
+
+/* 3. ACTIVE STATE: Turns Green when clicked */
 #cookModeBtn.active {
-  background-color: #4CAF50; /* Green */
-  color: white;
-  border-color: #45a049;
+  background-color: #4CAF50; /* Force Green */
+  border: 2px solid #45a049;
+  transform: scale(1.05); 
 }
 #recipe {
     padding: 40px;
