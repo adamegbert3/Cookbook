@@ -1,103 +1,54 @@
 import { db, auth, onAuthStateChanged } from "./firestoreapi.js";
 import { ref, get, child } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
 
-// --- DEBUG HELPER ---
-function logToScreen(message, isError = false) {
-    console.log(message);
-    const container = document.getElementById('recipes');
-    if (container) {
-        const style = isError ? "color: red; font-weight: bold;" : "color: blue;";
-        container.innerHTML += `<p style="${style}">${message}</p>`;
-    }
+// 1. GLOBAL VARIABLE (Accessible by everyone)
+let allRecipes = []; 
+
+// --- HELPER FUNCTIONS ---
+
+function RecipeTemplate(recipe) {
+    const tags = recipe.tags || []; 
+    const author = recipe.author || "The Egbert Family";
+
+    return `
+    <div class="recipe-card" data-name="${recipe.name}">
+        <div id="info">
+            <div id="tags">
+                ${tagsTemplate(tags)}
+            </div>
+            <h2>${recipe.name}</h2>
+        </div>
+        <div id="author">
+            <p>By: ${author}</p>
+        </div>
+    </div>`;
 }
 
-// --- GATEKEEPER ---
-onAuthStateChanged(auth, (user) => {
-    if (user) {
-        // 1. User found
-        document.getElementById("notsigned").style.display = 'none';
-        const recipesGrid = document.getElementById('recipes');
-        recipesGrid.style.display = 'flex';
-        
-        // Clear previous logs
-        recipesGrid.innerHTML = "";
-        logToScreen("✅ User is logged in: " + user.email);
-        logToScreen("⏳ Attempting to fetch data from Database...");
+function tagsTemplate(tags){
+    let html = '';
+    tags.forEach(tag => {
+        html += '<p>' + tag + '</p>';
+    });
+    return html;
+}
 
-        // 2. Fetch Data
-        const dbRef = ref(db);
-        
-        // We try to get data from the Root "/"
-        get(child(dbRef, "/")).then((snapshot) => {
-            if (snapshot.exists()) {
-                logToScreen("✅ Connection successful! Data found.");
-                const data = snapshot.val();
-                
-                // Convert data
-                let allRecipes = [];
-                if (Array.isArray(data)) {
-                    allRecipes = data;
-                    logToScreen(`✅ Data is an Array with ${allRecipes.length} items.`);
-                } else if (typeof data === 'object') {
-                    allRecipes = Object.values(data);
-                    logToScreen(`✅ Data is an Object. Converted to ${allRecipes.length} items.`);
-                } else {
-                    logToScreen("⚠️ Data format is unexpected: " + typeof data, true);
-                }
-
-                // If we have recipes, render them (this clears the logs, so we know it worked)
-                if (allRecipes.length > 0) {
-                    renderRecipes(allRecipes); 
-                } else {
-                    logToScreen("⚠️ Data found, but list is empty.", true);
-                }
-
-            } else {
-                logToScreen("❌ Database connected, but NO DATA found at this path.", true);
-                logToScreen("💡 Hint: Are your recipes inside a folder? Try changing '/' to 'recipes'.");
-            }
-        }).catch((error) => {
-            logToScreen("❌ ERROR: " + error.message, true);
-            logToScreen("💡 Hint: Check your Rules tab in Firebase Console.", true);
-        });
-
-    } else {
-        document.getElementById("notsigned").style.display = 'block';
-        document.getElementById('recipes').style.display = 'none';
-    }
-});
-
-// --- RENDER FUNCTION (Standard) ---
 function renderRecipes(recipeList) {
     const container = document.getElementById('recipes');
-    container.innerHTML = ""; // Clear the debug messages
-    
+    if (!container) return;
+
     let html = '';
     recipeList.forEach(recipe => {
-        // Skip null entries if they exist
-        if (!recipe) return;
-
-        const tags = recipe.tags || [];
-        const author = recipe.author || "The Egbert Family";
-        
-        html += `
-        <div class="recipe-card" data-name="${recipe.name}">
-            <div id="info">
-                <div id="tags">${tags.map(t => `<p>${t}</p>`).join('')}</div>
-                <h2>${recipe.name}</h2>
-            </div>
-            <div id="author"><p>By: ${author}</p></div>
-        </div>`;
+        html += RecipeTemplate(recipe);
     });
     container.innerHTML = html;
 
-    // Re-attach click listeners
+    // Click handler
     document.querySelectorAll(".recipe-card").forEach(card => {
         card.addEventListener("click", () => {
             const name = card.getAttribute("data-name");
-            const selectedRecipe = recipeList.find(r => r.name === name);
+            const selectedRecipe = allRecipes.find(r => r.name === name);
             
-            // Slug Logic
+            // Generate Slug
             const recipeId = selectedRecipe.name.toLowerCase()
                 .replace(/ /g, '-')
                 .replace(/[^\w-]+/g, '');
@@ -108,5 +59,148 @@ function renderRecipes(recipeList) {
     });
 }
 
-// Simple search handler stub to prevent errors
-document.getElementById('buttonimg')?.addEventListener('click', (e) => e.preventDefault());
+// Global Filter Function
+function filter(query) {
+    if (!allRecipes) return [];
+    
+    const filtered = allRecipes.filter(recipe => {
+        const name = recipe.name || "";
+        const tags = recipe.tags || [];
+        const filterednames = name.toLowerCase().includes(query);
+        const filteredtags = tags.some(tag => tag.toLowerCase().includes(query));
+        return filterednames || filteredtags
+    });
+    return filtered.sort((a,b) => (a.name || "").localeCompare(b.name || ""));
+}
+
+// --- DATABASE FETCHING ---
+
+// --- DATABASE FETCHING ---
+
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        document.getElementById("notsigned").style.display = 'none';
+        const recipesGrid = document.getElementById('recipes');
+        recipesGrid.style.display = 'flex'; 
+        recipesGrid.innerHTML = "<p>Loading recipes...</p>";
+
+        const dbRef = ref(db);
+        
+        get(child(dbRef, "/")).then((snapshot) => {
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                
+                // 1. Convert to Array
+                if (Array.isArray(data)) {
+                    allRecipes = data;
+                } else {
+                    allRecipes = Object.values(data);
+                }
+
+                // 2. NEW: Sort Alphabetically immediately!
+                allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+                console.log("Recipes loaded & sorted:", allRecipes.length);
+                renderRecipes(allRecipes);
+
+            } else {
+                recipesGrid.innerHTML = "<p>No recipes found.</p>";
+            }
+        }).catch((error) => {
+            console.error("Error fetching recipes:", error);
+            recipesGrid.innerHTML = `<p>Error: ${error.message}</p>`;
+        });
+
+    } else {
+        document.getElementById("notsigned").style.display = 'block';
+        document.getElementById('recipes').style.display = 'none';
+    }
+});
+
+// --- SEARCH POPUP LOGIC ---
+
+// --- INTERACTION LOGIC (Search + Categories) ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // PART A: SEARCH POPUP
+    const searchBtn = document.getElementById('header-search-btn');
+    const closeBtn = document.getElementById('close-search');
+    const overlay = document.getElementById('search-overlay');
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('searchbar');
+
+    // 1. Open Search
+    if (searchBtn && overlay) {
+        searchBtn.addEventListener('click', () => {
+            overlay.classList.add('show-search');
+            if (searchInput) searchInput.focus();
+        });
+    }
+
+    // 2. Close Search
+    if (closeBtn && overlay) {
+        closeBtn.addEventListener('click', () => {
+            overlay.classList.remove('show-search');
+        });
+    }
+
+    // 3. Close on Outside Click
+    if (overlay) {
+        window.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('show-search');
+            }
+        });
+    }
+
+    // 4. Handle Search Submit
+    if (searchForm) {
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault(); 
+            const query = searchInput.value.toLowerCase();
+            
+            const results = filter(query);
+            renderRecipes(results);
+            
+            overlay.classList.remove('show-search');
+        });
+    }
+
+    // PART B: CATEGORY BUTTONS (With Toggle Logic)
+    const categoryBtns = document.querySelectorAll('.folders button');
+    
+    if (categoryBtns) {
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const button = e.currentTarget; // The specific button clicked
+                
+                // 1. Check if this button is ALREADY active
+                const isAlreadyActive = button.classList.contains('active-filter');
+
+                // 2. Reset ALL buttons (Turn them all back to Teal/Inactive)
+                categoryBtns.forEach(b => b.classList.remove('active-filter'));
+
+                if (isAlreadyActive) {
+                    // --- SCENARIO: TURNING OFF ---
+                    // If it was already active, we just clicked to turn it off.
+                    // Do NOT add the class back. 
+                    console.log("Clearing filters...");
+                    
+                    // Show ALL recipes (using the global variable)
+                    renderRecipes(allRecipes); 
+                } else {
+                    // --- SCENARIO: TURNING ON ---
+                    // It was not active, so let's activate it.
+                    button.classList.add('active-filter');
+                    
+                    // Filter the list
+                    const category = button.innerText.toLowerCase();
+                    console.log("Filtering by:", category);
+                    const results = filter(category);
+                    renderRecipes(results);
+                }
+            });
+        });
+    }
+});

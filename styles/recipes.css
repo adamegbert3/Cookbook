@@ -309,12 +309,37 @@ button {
     border: none;
     transition: background-color 0.3s ease;
 }
+/* The Container for the buttons */
 .folders {
     display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
+    justify-content: center; /* Pushes buttons to center */
+    flex-wrap: wrap;         /* Wraps them on mobile */
+    gap: 12px;               /* Space BETWEEN buttons */
+    margin: 20px auto;       /* Centers the whole block */
+    width: 95%;
+    max-width: 900px;
+}
+
+/* The Buttons themselves */
+.folders button {
+    padding: 12px 20px;      /* MORE padding = Professional look */
+    font-size: 1rem;
+    border: none;
+    border-radius: 12px;     /* Softer corners */
+    background-color: var(--secondary-color);
+    color: white;
+    cursor: pointer;
+    transition: transform 0.2s, opacity 0.2s;
+    
+    /* Fix for centering text inside button */
+    display: flex;
+    align-items: center;
     justify-content: center;
-    margin-top: 20px;
+}
+
+.folders button:hover {
+    transform: scale(1.05);
+    opacity: 0.9;
 }
 main button {
     background-color: none;
@@ -426,13 +451,168 @@ form#search-form {
     margin-bottom: 5px;
 }
 
+/* Professional "Last Recipe" Container */
 #recent-recipes-box {
-    text-align: center; /* Ensures the header "Last Recipe Used" is centered too */
-    max-width: 600px;   /* Keeps the gray box from stretching too wide */
-    margin: 20px auto;  /* Centers the gray box */
-    border-radius: 15px; /* Matches your rounded theme */
+    text-align: center;      /* Centers the text inside */
+    background-color: #f9fafb; /* Very light gray background */
+    border: 1px solid #e5e7eb; /* Subtle border */
+    border-radius: 20px;     /* Soft corners */
+    padding: 25px;           /* Breathing room inside the box */
+    
+    /* Center the box itself */
+    width: 90%;
+    max-width: 500px;
+    margin: 30px auto;       /* Top/Bottom margin 30px, Left/Right AUTO (Centers it) */
+    
+    /* Professional Shadow */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); 
 }
 
+/* The Title inside that box */
+#recent-recipes-box h3 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    text-transform: uppercase; /* Looks cleaner */
+    letter-spacing: 1px;
+}
+/* Style for the Single Last Recipe Link */
+/* The Actual Link Button */
+.last-recipe-link {
+    display: inline-flex;    /* Keeps icon and text aligned */
+    align-items: center;
+    justify-content: center;
+    gap: 10px;               /* Space between text and arrow */
+    
+    padding: 12px 30px;      /* Big, comfortable click area */
+    background: var(--primary-color);
+    color: white;
+    text-decoration: none;
+    
+    font-family: var(--secondary-font);
+    font-size: 1.4rem;       /* Nice and readable */
+    font-weight: bold;
+    border-radius: 50px;     /* Pill shape */
+    
+    /* Smooth hover effects */
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.last-recipe-link:hover {
+    transform: translateY(-3px); /* Lifts up slightly */
+    box-shadow: 0 10px 15px rgba(0,0,0,0.15); /* Shadow grows */
+    background-color: var(--secondary-color);
+}
+/* --- HEADER SEARCH ICON --- */
+#header-search-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: 5px;
+    color: var(--primary-color);
+    transition: transform 0.2s;
+}
+
+#header-search-btn:hover {
+    transform: scale(1.1);
+    color: var(--secondary-color);
+}
+
+/* --- THE SEARCH POPUP OVERLAY --- */
+.hidden-overlay {
+    display: none; /* Hidden by default */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); /* Dark see-through background */
+    backdrop-filter: blur(5px); /* Blurs the website behind it! */
+    z-index: 1000; /* sits on top of everything */
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.3s ease;
+}
+
+/* The White Box inside the overlay */
+.search-box-content {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    width: 90%;
+    max-width: 500px;
+    position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+/* The Input Field (Big and Clean) */
+#searchbar {
+    width: 70%;
+    padding: 15px;
+    font-size: 1.2rem;
+    border: 2px solid #eee;
+    border-radius: 10px 0 0 10px; /* Rounded left corners */
+    outline: none;
+}
+
+#searchbar:focus {
+    border-color: var(--secondary-color);
+}
+
+/* The GO Button */
+#search-submit {
+    width: 20%;
+    padding: 15px;
+    font-size: 1.2rem;
+    background-color: var(--secondary-color);
+    color: white;
+    border: 2px solid var(--secondary-color);
+    border-radius: 0 10px 10px 0; /* Rounded right corners */
+    cursor: pointer;
+}
+
+/* Close Button (X) */
+#close-search {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #999;
+    cursor: pointer;
+}
+
+/* Flex helper to show the overlay */
+.show-search {
+    display: flex !important;
+}
+/* --- ACTIVE FILTER BUTTON STATE --- */
+
+/* When the button is clicked/active */
+.folders button.active-filter {
+    background-color: var(--primary-color); /* Dark Blue */
+    color: white;
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.2); /* looks "pressed in" */
+    transform: scale(1.05); /* stays slightly bigger */
+    font-weight: bold;
+    border: 2px solid var(--primary-color);
+}
+
+/* Optional: Add a checkmark icon before the text when active */
+.folders button.active-filter::before {
+    content: "✓ ";
+    margin-right: 5px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
 /* The Animation (Fall Down and Fade Out) */
 @keyframes fall-down {
   0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }

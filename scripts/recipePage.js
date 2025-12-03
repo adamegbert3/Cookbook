@@ -57,6 +57,12 @@ function loadRecipe() {
     // 5. Inject into the page
     recipeContainer.innerHTML = html;
     document.title = recipe.name;
+    // --- NEW: Save just THIS recipe as the last one ---
+    const lastRecipeData = {
+        name: recipe.name,
+        id: recipeId
+};
+    localStorage.setItem('lastRecipeSingle', JSON.stringify(lastRecipeData));
     
     // 6. Load Notes & Counts
     loadUserUserData();
