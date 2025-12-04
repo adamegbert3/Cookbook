@@ -122,3 +122,40 @@ window.celebrateInHouse = function(btnElement) {
 
 // Start the engine
 loadRecipe();
+
+// --- TUTORIAL LOGIC ---
+
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Check if user has already seen this
+    const hasSeenTutorial = localStorage.getItem('tutorialSeen');
+
+    if (!hasSeenTutorial) {
+        const tutorialOverlay = document.getElementById('tutorial-overlay');
+        const closeTutBtn = document.getElementById('close-tutorial');
+        const demoEgg = document.getElementById('demo-egg');
+
+        if (tutorialOverlay) {
+            // Show it after a short delay (so the recipe loads first)
+            setTimeout(() => {
+                tutorialOverlay.classList.add('show-search'); // Re-using your existing "Show" class
+            }, 1000);
+        }
+
+        // 2. Interactive Demo Logic (Clicking the egg)
+        if (demoEgg) {
+            demoEgg.addEventListener('click', () => {
+                demoEgg.classList.toggle('checked');
+            });
+        }
+
+        // 3. Close & Save "Seen" Status
+        if (closeTutBtn) {
+            closeTutBtn.addEventListener('click', () => {
+                tutorialOverlay.classList.remove('show-search');
+                
+                // IMPORTANT: Save this so it never shows again!
+                localStorage.setItem('tutorialSeen', 'true');
+            });
+        }
+    }
+});

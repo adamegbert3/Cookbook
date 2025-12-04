@@ -45,8 +45,8 @@
     
     <div class="tool-bar">
         <button id="cookModeBtn" type="button">Enable Cook Mode 🍳</button>
-        <button id="copy-btn" onclick="copyIngredients()">📋 Copy Ingredients</button>
-        <button id="start-focus-btn" onclick="startFocusMode()">📺 Step-by-Step Mode</button>
+        <!-- <button id="copy-btn" onclick="copyIngredients()">📋 Copy Ingredients</button>
+        <button id="start-focus-btn" onclick="startFocusMode()">📺 Step-by-Step Mode</button> -->
         <button onclick="resizeText(1)" title="Increase Text Size">Make Text Bigger ➕</button>
         <button onclick="resizeText(-1)" title="Decrease Text Size">Make Text Smaller ➖</button>
     </div>
@@ -288,6 +288,19 @@ function fireConfetti(btn) {
 
 </div>
 
+<div id="tutorial-overlay" class="hidden-overlay">
+    <div class="tutorial-box">
+        <h3>👨‍🍳 Chef's Tip!</h3>
+        <p>Did you know? You can tap on any ingredient to cross it off as you shop or cook!</p>
+        
+        <div id="demo-egg" class="demo-ingredient">
+            Tap me to try! 🥚
+        </div>
+
+        <button id="close-tutorial">Got it, let's cook!</button>
+    </div>
+</div>
+
 <style>
   #voice-btn {
     position: fixed; /* Sticks to the screen */
@@ -322,7 +335,7 @@ function fireConfetti(btn) {
 </style>
 <div class="chef-notes">
   <h4>👨‍🍳 Chef's Notes</h4>
-  <textarea id="chef-notes-area" placeholder="Write your notes here..." oninput="saveNotes('chef-notes-area')"></textarea>
+  <textarea id="chef-notes-area" placeholder="Write your notes here... (They will be saved on device)" oninput="saveNotes('chef-notes-area')"></textarea>
 </div>
 </body>
 <script>
