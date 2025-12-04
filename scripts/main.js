@@ -122,6 +122,31 @@ onAuthStateChanged(auth, (user) => {
 // --- INTERACTION LOGIC (Search + Categories) ---
 
 document.addEventListener('DOMContentLoaded', () => {
+
+    // --- MEAL PLANNER: LOAD DISPLAY ---
+function loadMealPlan() {
+    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    days.forEach(day => {
+        const element = document.getElementById(`plan-${day}`);
+        if (element && plan[day]) {
+            element.innerText = plan[day];
+            element.parentElement.style.borderColor = "var(--secondary-color)"; // Highlight filled days
+        }
+    });
+}
+
+// Global Clear Function
+window.clearMealPlan = function() {
+    if(confirm("Clear entire week?")) {
+        localStorage.removeItem('mealPlan');
+        location.reload();
+    }
+}
+
+// Run on load
+loadMealPlan();
     
     // PART A: SEARCH POPUP
     const searchBtn = document.getElementById('header-search-btn');

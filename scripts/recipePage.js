@@ -123,6 +123,28 @@ window.celebrateInHouse = function(btnElement) {
 // Start the engine
 loadRecipe();
 
+// --- MEAL PLANNER: ADD RECIPE ---
+const planBtn = document.getElementById('plan-meal-btn');
+
+if (planBtn) {
+    planBtn.addEventListener('click', () => {
+        // Simple prompt (Professional apps might use a custom modal, but this is fast)
+        const day = prompt("Which day? (Mon, Tue, Wed, Thu, Fri, Sat, Sun)");
+        
+        if (day) {
+            const shortDay = day.substring(0, 3); // Ensure "Monday" becomes "Mon"
+            const recipeName = document.title;
+            
+            // Save to memory
+            const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+            plan[shortDay] = recipeName;
+            localStorage.setItem('mealPlan', JSON.stringify(plan));
+            
+            if(typeof showToast === "function") showToast(`Added to ${shortDay}!`);
+        }
+    });
+}
+
 // --- TUTORIAL LOGIC ---
 
 document.addEventListener('DOMContentLoaded', () => {

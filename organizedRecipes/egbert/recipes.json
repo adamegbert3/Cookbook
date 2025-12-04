@@ -555,6 +555,27 @@
     ]
   },
   {
+  "author": "Todd W.",
+  "tags": [
+    "Breakfast"
+  ],
+  "name": "Crèpes",
+  "recipeIngredient": [
+    "1 cup flour (farine)",
+    "2 tablespoons sugar (sucre)",
+    "½ teaspoon salt (sel)",
+    "2 cups milk (lait)",
+    "2 eggs",
+    "½ teaspoon vanilla",
+    "2 tablespoons oil (hulie)"
+  ],
+  "recipeInstructions": [
+    "Stir together using half the milk to get rid of the lumps.",
+    "Then slowly add milk until thin enough!",
+    "Note: You most likely will not need the full 2 cups of milk."
+  ]
+},
+  {
     "author": "Sue E.",
     "tags": [
       "Breakfast"
@@ -713,6 +734,27 @@
       "Add scrambled eggs, a pinch of salt and frozen peas.",
       "Roll up like a burrito then roll it up in a wet paper towel.",
       "Microwave 1 minute on high."
+    ]
+  },
+  {
+    "author": "Peggy Myers",
+    "tags": [
+      "Desserts"
+    ],
+    "name": "Rainbow Jello",
+    "recipeIngredient": [
+      "6 small packages jello (Lime, lemon, orange, strawberry, cherry, black cherry)",
+      "1 (16 ounce) sour cream",
+      "Water (boiling and cold)"
+    ],
+    "recipeInstructions": [
+      "Work with 1 package jello at a time. Dissolve 1 package jello (begin with lime) in 1 cup boiling water.",
+      "Divide in half. Mix ½ with ⅓ cup sour cream and pour into a 9x13 inch pan.",
+      "Let stand for 30 minutes in refrigerator. (Don't worry if there isn't much in pan - just make sure what's there covers bottom of pan.)",
+      "At end of 30 minutes, add 3 tablespoons cold water to second half and pour over first layer in pan. Let this layer set for 30 minutes.",
+      "Repeat this procedure with lemon, then orange, strawberry, cherry, black cherry, letting each layer set 30 minutes.",
+      "Is best when stands overnight.",
+      "Cut in squares to serve."
     ]
   },
   {
@@ -1727,6 +1769,29 @@
       "Bake at 300 degrees, covered, for 1 to 1 ½ hours."
     ]
   },
+{
+    "author": "Tara Egbert",
+    "tags": [
+      "Main Dishes"
+    ],
+    "name": "Stroganoff",
+    "recipeIngredient": [
+      "2 cans of cream of mushroom soup",
+      "¼ teaspoon salt",
+      "Pepper to taste",
+      "¼ teaspoon garlic powder",
+      "1 tablespoon dried onion",
+      "¼ - ½ cup milk",
+      "½ - ¾ cup sour cream",
+      "Hamburger, cooked",
+      "Noodles"
+    ],
+    "recipeInstructions": [
+      "Cook noodles.",
+      "Once cooked, add all other ingredients and stir until all is incorporated.",
+      "Note: 5 batches for Egbert Family"
+    ]
+  },
   {
     "author": "Sue E.",
     "tags": [
@@ -2647,6 +2712,27 @@
       "Put in covered container in refrigerator for at least 1 hour, longer is a little better. I use this on steaks and kabobs both."
     ]
   },
+  {
+  "author": "Sue E.",
+  "tags": [
+      "Sides, Veggies & Breads"
+  ],
+  "name": "Banana Bread",
+  "recipeIngredient": [
+    "2 cups flour",
+    "1 teaspoon baking soda",
+    "¼ teaspoon baking powder",
+    "1 cup sugar",
+    "½ cup shortening",
+    "3 bananas",
+    "1 teaspoon salt"
+  ],
+  "recipeInstructions": [
+    "Bake at 300 degrees for an hour.",
+    "Ready in 1 hour and 10 minutes.",
+    "Serves 8 people."
+  ]
+},
   {
     "author": "Stacy G.",
     "tags": [
