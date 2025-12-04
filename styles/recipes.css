@@ -659,6 +659,42 @@ form#search-form {
     transform: scale(1.05);
 }
 
+#meal-plan-box {
+    background: var(--card-bg);
+    padding: 20px;
+    border-radius: 20px;
+    margin: 20px auto;
+    width: 90%;
+    max-width: 800px;
+    text-align: center;
+    box-shadow: 0 4px 10px var(--shadow-color);
+}
+
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Auto-responsive! */
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.day-card {
+    background: var(--bg-color);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+}
+
+.day-card span {
+    color: var(--primary-color);
+    font-weight: bold;
+    margin-top: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis; /* ... if text is too long */
+}
+
 /* Bouncy Animation Keyframes */
 @keyframes popIn {
     from { transform: scale(0.5); opacity: 0; }
