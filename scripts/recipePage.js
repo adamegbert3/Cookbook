@@ -37,7 +37,7 @@ function loadRecipe() {
 
     const html = `
         <h1>${recipe.name}</h1>
-        <h2>By: ${recipe.author || "The Egbert Family"}</h2>
+        <h2>From: ${recipe.author || "The Egbert Family"}</h2>
         
         <h3>Ingredients</h3>
         <ul id="ingredient-list">

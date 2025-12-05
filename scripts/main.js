@@ -19,7 +19,7 @@ function RecipeTemplate(recipe) {
             <h2>${recipe.name}</h2>
         </div>
         <div id="author">
-            <p>By: ${author}</p>
+            <p>From: ${author}</p>
         </div>
     </div>`;
 }
