@@ -1,18 +1,35 @@
-/* Corrected Import for Amatic SC */
+/* =========================================
+   1. IMPORTS & VARIABLES
+   ========================================= */
 @import url("https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap");
 
 :root {
---primary-color: #0a4d74;
---secondary-color: #59c3c3;
---text-dark: #333;
---text-light: #ebebeb;
---primary-font: 'Arial', Helvetica, sans-serif;
---secondary-font: 'Amatic SC', cursive;
+    /* --- Original App Colors --- */
+    --primary-color: #0a4d74;
+    --secondary-color: #59c3c3;
+    --text-dark: #333;
+    --text-light: #ebebeb;
+    --primary-font: 'Arial', Helvetica, sans-serif;
+    --secondary-font: 'Amatic SC', cursive;
+
+    /* --- New Login Theme Colors (From Tailwind Config) --- */
+    --emerald-500: #10B981;
+    --emerald-600: #059669;
+    --amber-500: #F59E0B;
+    --gray-100: #F3F4F6;
+    --gray-300: #D1D5DB;
+    --gray-500: #6B7280;
+    --gray-700: #374151;
+    --gray-800: #1F2937;
 }
+
 * {
     box-sizing: border-box;
 }
 
+/* =========================================
+   2. GLOBAL & MAIN APP STYLES
+   ========================================= */
 body {
     font-family: var(--primary-font);
     background-color: var(--text-light);
@@ -21,16 +38,31 @@ body {
     overflow-x: hidden;
     word-wrap: break-word;
     width: 100%;
-    max-width: 100vw;       /* Viewport Width */
-    overflow-x: hidden;     /* Emergency brake for horizontal scroll */
-    margin: 0;
+    max-width: 100vw;
     padding: 0;
 }
 
-#recipes {
-    display: none;
+/* Print Styles */
+@media print {
+  nav, footer, button, .search-bar { display: none; }
+  body { background-color: white; color: black; font-size: 12pt; }
+  .recipe-container { width: 100%; margin: 0; }
 }
 
+/* =========================================
+   3. RECIPE DASHBOARD STYLES (Your Original Code)
+   ========================================= */
+
+#recipes {
+    display: none; /* Often manipulated by JS */
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 40px;
+    padding-bottom: 50px;
+}
+
+/* Header Container */
 .header-container {
     position: relative;
     display: flex;
@@ -41,7 +73,6 @@ body {
     padding-left: 2rem; 
     padding-right: 2rem; 
     border-radius: 3rem; 
-    
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid #f3f4f6; 
@@ -55,10 +86,7 @@ body {
 
 .header-title {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    top: 0; left: 0; right: 0; bottom: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -70,700 +98,395 @@ body {
     user-select: none;
 }
 
-.spacer {
-    flex-grow: 1; 
-}
-
-.icon {
-    width: 2.5rem; 
-    height: 2.5rem;
-    transition: color 0.15s ease;
-}
-
+/* Icons & Logos */
+.spacer { flex-grow: 1; }
+.icon { width: 2.5rem; height: 2.5rem; transition: color 0.15s ease; }
 .logo, .profile-link {
+    display: block; padding: 0.5rem; 
+    transition: transform 0.15s ease;
+    flex-shrink: 0; position: relative; z-index: 10; 
+}
+.logo:hover, .profile-link:hover { transform: scale(1.05); }
+.icon-cookbook { color: var(--secondary-color); }
+.icon-profile { color: var(--primary-color); }
+.profile-link:hover .icon-profile { color: var(--secondary-color); }
+
+/* Auth Status Indicator */
+.auth-status-container {
+    position: absolute; top: 100%; right: 0;
+    padding: 8px 15px; margin-top: 5px;
+    background-color: var(--text-dark); color: var(--text-light);
+    border-radius: 0.75rem; font-size: 0.8rem; font-weight: 400;
+    z-index: 5; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    white-space: nowrap;
+}
+.auth-status-container span { font-weight: 700; word-break: break-all; }
+.auth-loading {
+    display: inline-block; width: 15px; height: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 50%; border-top-color: var(--secondary-color);
+    animation: spin 1s ease-in-out infinite; margin-right: 8px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Forms & Inputs */
+form {
+    display: flex; margin: 20px auto;
+    border-radius: 3%; width: 95%;
+    border: 1px solid black; max-width: 500px;
+}
+#searchbar {
+    width: 100%; height: 35px; border: none;
+    padding: 0 10px; outline: none;
+}
+#buttonimg { width: 20px; height: 100%; border: none; }
+img { max-width: 100%; }
+
+/* Recipe Cards */
+.recipe-card {
+    width: 90%; max-width: 600px; margin: 0 auto;
+    background: white; padding: 20px;
+    border: 3px solid #333; border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+.recipe-card:hover { transform: scale(1.02); }
+#recipes img { margin: 10px auto; width: 55%; max-height: 320px; display: grid; height: 100%; }
+
+/* Tags */
+#tags {
+    display: flex; justify-content: center;
+    flex-wrap: wrap; gap: 10px; width: 100%;
+}
+#tags p {
+    border: 2px solid grey; padding: 5px 15px; margin: 0;
+    border-radius: 15px; font-size: 16px; background-color: #f9f9f9;
+}
+
+/* Typography & Layout Details */
+h2 {
+    color: var(--primary-color); margin-left: 15px; margin-bottom: 0;
+    font-family: var(--secondary-font); font-size: 30px;
+}
+.social { margin-left: 35%; }
+.social img { width: 300px; }
+#bottom-link { text-align: center; }
+#desc p { display: block; }
+#author { font-style: italic; text-align: center; margin-bottom: 10px; }
+.recipe { width: 90%; max-width: 400px; margin: auto; }
+.recipes-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+
+/* Interactive Elements */
+.homepagebtn { padding: 30px; text-align: center; display: grid; grid-template-columns: 1fr 1fr 1fr; }
+.tool-bar { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+#cookModeBtn { transition: transform 0.2s ease, background-color 0.3s; }
+#cookModeBtn.active { background-color: #4CAF50; border: 2px solid #45a049; transform: scale(1.05); }
+
+#recipe { padding: 40px; }
+.material-symbols-outlined { font-size: 300px; }
+
+/* Standard Buttons */
+button {
+    cursor: pointer; font-size: 16px; border-radius: 8px;
+    padding: 10px 15px; background-color: var(--secondary-color);
+    color: white; border: none; transition: background-color 0.3s ease;
+}
+
+/* Folder/Filter Buttons */
+.folders {
+    display: flex; justify-content: center; flex-wrap: wrap;
+    gap: 12px; margin: 20px auto; width: 95%; max-width: 900px;
+}
+.folders button {
+    padding: 12px 20px; font-size: 1rem; border: none;
+    border-radius: 12px; background-color: var(--secondary-color);
+    color: white; cursor: pointer; transition: transform 0.2s, opacity 0.2s;
+    display: flex; align-items: center; justify-content: center;
+}
+.folders button:hover { transform: scale(1.05); opacity: 0.9; }
+.folders button.active-filter {
+    background-color: var(--primary-color); color: white;
+    box-shadow: inset 0 3px 5px rgba(0,0,0,0.2);
+    transform: scale(1.05); font-weight: bold; border: 2px solid var(--primary-color);
+}
+.folders button.active-filter::before { content: "✓ "; margin-right: 5px; }
+
+/* Lists & Confetti */
+main button { background-color: none; color: none; text-decoration: none; margin: none; }
+.checked { text-decoration: line-through; color: #888; opacity: 0.6; }
+li { cursor: pointer; user-select: none; }
+.confetti-piece {
+  position: fixed; width: 10px; height: 10px; background-color: #f00;
+  top: 50%; left: 50%; z-index: 9999; pointer-events: none;
+  opacity: 1; border-radius: 2px;
+}
+
+/* Chef Notes */
+#chef-notes-area {
+    width: 95%; min-height: 200px; padding: 15px; font-size: 1.1rem;
+    border: 2px solid #aaa; border-radius: 10px; margin-top: 10px;
+    resize: vertical; font-family: inherit;
+}
+#chef-notes-area:focus { border-color: var(--secondary-color); outline: none; }
+
+/* Centering Utilities */
+main { display: flex; flex-direction: column; align-items: center; width: 100%; }
+form#search-form { margin: 20px auto; justify-content: center; }
+#info { text-align: center; }
+
+/* History List */
+#history-list { list-style: none; padding: 0; text-align: center; margin-bottom: 0; }
+#history-list li { margin-bottom: 5px; }
+
+/* Recent Recipes Box */
+#recent-recipes-box {
+    text-align: center; background-color: #f9fafb; border: 1px solid #e5e7eb;
+    border-radius: 20px; padding: 25px; width: 90%; max-width: 500px;
+    margin: 30px auto; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+#recent-recipes-box h3 {
+    margin-top: 0; margin-bottom: 15px; color: var(--primary-color);
+    font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;
+}
+
+/* Last Recipe Link */
+.last-recipe-link {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 10px; padding: 12px 30px; background: var(--primary-color);
+    color: white; text-decoration: none; font-family: var(--secondary-font);
+    font-size: 1.4rem; font-weight: bold; border-radius: 50px;
+    transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+.last-recipe-link:hover {
+    transform: translateY(-3px); box-shadow: 0 10px 15px rgba(0,0,0,0.15);
+    background-color: var(--secondary-color);
+}
+
+/* Search Popup */
+#header-search-btn {
+    background: none; border: none; cursor: pointer; padding: 8px;
+    margin-right: 5px; color: var(--primary-color); transition: transform 0.2s;
+}
+#header-search-btn:hover { transform: scale(1.1); color: var(--secondary-color); }
+
+.hidden-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
+    z-index: 1000; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;
+}
+.search-box-content {
+    background: white; padding: 40px; border-radius: 20px; text-align: center;
+    width: 90%; max-width: 500px; position: relative;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+}
+.search-box-content #searchbar {
+    width: 70%; padding: 15px; font-size: 1.2rem; border: 2px solid #eee;
+    border-radius: 10px 0 0 10px; outline: none;
+}
+.search-box-content #searchbar:focus { border-color: var(--secondary-color); }
+#search-submit {
+    width: 20%; padding: 15px; font-size: 1.2rem;
+    background-color: var(--secondary-color); color: white;
+    border: 2px solid var(--secondary-color); border-radius: 0 10px 10px 0; cursor: pointer;
+}
+#close-search {
+    position: absolute; top: 10px; right: 15px; background: none;
+    border: none; font-size: 1.5rem; color: #999; cursor: pointer;
+}
+.show-search { display: flex !important; }
+
+/* Tutorial & Modals */
+.tutorial-box {
+    background: white; padding: 30px; border-radius: 20px; text-align: center;
+    max-width: 400px; width: 85%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);
+    border-top: 5px solid var(--secondary-color);
+    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.demo-ingredient {
+    margin: 20px auto; padding: 12px; border: 2px dashed #ccc;
+    border-radius: 8px; cursor: pointer; font-size: 1.1rem;
+    font-weight: bold; color: var(--primary-color); transition: all 0.2s;
+}
+.demo-ingredient.checked {
+    text-decoration: line-through; color: #999;
+    background-color: #f3f3f3; border-color: #eee;
+}
+#close-tutorial {
+    background-color: var(--primary-color); color: white; padding: 12px 30px;
+    border: none; border-radius: 50px; font-size: 1rem; cursor: pointer;
+    font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+#close-tutorial:hover { transform: scale(1.05); }
+
+/* Meal Plan */
+#meal-plan-box {
+    background: var(--card-bg); padding: 20px; border-radius: 20px;
+    margin: 20px auto; width: 90%; max-width: 800px; text-align: center;
+    box-shadow: 0 4px 10px var(--shadow-color);
+}
+.week-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 10px; margin-top: 15px;
+}
+.day-card {
+    background: var(--bg-color); padding: 10px; border-radius: 10px;
+    border: 1px solid #ddd; display: flex; flex-direction: column; font-size: 0.9rem;
+}
+.day-card span {
+    color: var(--primary-color); font-weight: bold; margin-top: 5px;
+    overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Animations */
+@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fall-down {
+  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+  100% { transform: translate(var(--x-end), 100vh) rotate(720deg); opacity: 0; }
+}
+
+/* Media Queries */
+@media screen and (min-width: 600px) {
+    .recipe-card { flex-direction: column; padding: 40px; }
+}
+@media (min-width: 640px) {
+    .header-title { font-size: 2.5rem; }
+}
+@media screen and (min-width: 960px) {
+    body { max-width: 960px; margin: 0 auto; }
+}
+@media (max-width: 639px) {
+    .header-container { width: 95%; max-width: 100%; margin: 20px auto; border-radius: 20px; padding: 0 1rem; height: auto; min-height: 64px; }
+    .header-title { font-size: 1.5rem; position: relative; }
+}
+
+/* =========================================
+   4. NEW LOGIN PAGE STYLES
+   (This section is scoped to .login-page so it doesn't break the app)
+   ========================================= */
+
+/* Login Page Specific Background */
+body.login-page {
+    /* Overrides the global body max-width and background */
+    max-width: 100vw !important;
+    background: linear-gradient(135deg, #F9FAFB 0%, #F3F4F6 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+}
+
+/* The Main Card */
+.login-card {
+    width: 100%;
+    max-width: 400px;
+    background: white;
+    padding: 2.5rem;
+    border-radius: 12px;
+    border: 1px solid var(--gray-100);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    transition: transform 0.5s ease, box-shadow 0.5s ease;
+}
+.login-card:hover { transform: translateY(-2px); box-shadow: 0 30px 60px -10px rgba(0, 0, 0, 0.3); }
+
+/* Login Header */
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+/* >>> REPLACE THE OLD .logo-icon WITH THIS <<< */
+.logo-icon {
+    font-size: 2.5rem;     /* Reduced from 3.75rem so it's not huge */
+    margin-bottom: 0.5rem; /* Adjusted spacing below it */
+    margin-top: 0;         /* Ensures it stays at the top of the container */
+    line-height: 1;        /* Keeps the emoji from creating extra vertical space */
+    display: inline-block; /* Helps it sit stably */
+}
+/* >>> END REPLACEMENT <<< */
+.header-container svg {
+    width: 60px;
+    height: 60px;
+    max-width: 100%;
+}
+
+/* Just in case it's an <img> tag and not an <svg> tag */
+.header-container img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain; 
+}
+.logo {
+    /* Existing styles you had */
     display: block;
     padding: 0.5rem; 
     transition: transform 0.15s ease;
     flex-shrink: 0; 
     position: relative; 
     z-index: 10; 
-}
-
-.logo:hover, .profile-link:hover {
-    transform: scale(1.05);
-}
-
-.icon-cookbook {
-    color: var(--secondary-color); 
-}
-
-.icon-profile {
-    color: var(--primary-color); 
-}
-
-.profile-link:hover .icon-profile {
-    color: var(--secondary-color); 
-}
-
-.auth-status-container {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    padding: 8px 15px;
-    margin-top: 5px;
-    background-color: var(--text-dark);
-    color: var(--text-light);
-    border-radius: 0.75rem;
-    font-size: 0.8rem;
-    font-weight: 400;
-    z-index: 5;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-}
-
-.auth-status-container span {
-    font-weight: 700;
-    word-break: break-all;
-}
-
-.auth-loading {
-    display: inline-block;
-    width: 15px;
-    height: 15px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 50%;
-    border-top-color: var(--secondary-color);
-    animation: spin 1s ease-in-out infinite;
-    margin-right: 8px;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
-
-form {
-    display: flex;
-    margin: 0 auto;
-    border-radius: 3%;
-    width: 95%;
-    border: 1px solid black;
-    max-width: 500px;
-    margin-top: 20px;
-}
-
-#searchbar {
-    width:100%;
-    height: 35px;
-    border: none;
-    padding: 0 10px;
-    outline: none;
-}
-
-#buttonimg {
-    width: 20px;
-    height: 100%;
-    border: none;
-}
-
-img {
-    max-width: 100%;
-}
-/* --- MASTER RECIPE CARD STYLE --- */
-.recipe-card {
-    /* Mobile First Logic */
-    width: 90%;            /* Leave 5% space on each side */
-    max-width: 600px;      /* Don't let it get huge on desktop */
-    margin: 0 auto;        /* Center it */
     
-    /* Visuals */
-    background: white;
-    padding: 20px;
-    border: 3px solid #333;
-    border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    /* --- THE MISSING INGREDIENT --- */
+    /* This creates a constraint so the image inside cannot expand */
+    width: 80px;  
+    height: 80px;
 }
 
-
-/* Add a hover effect so it feels interactive */
-.recipe-card:hover {
-    transform: scale(1.02);
-}
-
-#recipes img {
-    margin: 10px;
-    width: 90%;
-    display: grid;
-    height: 100%;
-    margin: 10px auto;
-}
-
-#tags {
-    display: flex;
-    justify-content: center; /* Centers the tags */
-    flex-wrap: wrap;
-    gap: 10px;
-    width: 100%;
-}
-
-#tags p {
-    border: 2px solid grey;
-    padding: 5px 15px;
-    margin: 0; /* Remove old margins */
-    border-radius: 15px; /* Make them pill-shaped */
-    font-size: 16px;
-    background-color: #f9f9f9;
-}
-
-h2 {
-    color: var(--primary-color);
-    margin-left: 15px;
-    margin-bottom: 0;
-    font-family: var(--secondary-font);
-    font-size: 30px;
-}
-.social img{
-    width: 300px;
-}
-
-.social {
-    margin-left: 35%;
-}
-
-#bottom-link {
-    text-align: center;
-}
-
-#desc p {
-    display: block;
-}
-
-#recipes img {
-    width: 55%;
-    max-height: 320px;
-    margin: auto 10px;
-}
-
-#author {
-    font-style: italic;
-    text-align: right;
-    margin-left: 15px;
-    margin-top: 0;
-    margin-bottom: 10px;
-}
-.recipe {
-  width: 90%;
-  max-width: 400px;
-  margin: auto;
-}
-.recipes-container {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 20px;
-}
-img {
-  max-width: 70px;
-  height: auto;
-  border-radius: 10px;
-}
-.homepagebtn {
-    padding: 30px 30px 30px 30px;
-    text-align: center;
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-}
-/* 1. CONTAINER: Keeps buttons in a nice row */
-.tool-bar {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-}
-
-/* 2. COOK MODE BUTTON: Inherits the teal color now */
-#cookModeBtn {
-  /* No background-color set here, so it uses the main button teal! */
-  transition: transform 0.2s ease, background-color 0.3s;
-}
-
-/* 3. ACTIVE STATE: Turns Green when clicked */
-#cookModeBtn.active {
-  background-color: #4CAF50; /* Force Green */
-  border: 2px solid #45a049;
-  transform: scale(1.05); 
-}
-#recipe {
-    padding: 40px;
-}
-.material-symbols-outlined {
-    font-size: 300px;
-}
-button {
-    cursor: pointer;
-    font-size: 16px;
-    border-radius: 8px;
-    padding: 10px 15px;
-    background-color: var(--secondary-color);
-    color: white;
-    border: none;
-    transition: background-color 0.3s ease;
-}
-/* The Container for the buttons */
-.folders {
-    display: flex;
-    justify-content: center; /* Pushes buttons to center */
-    flex-wrap: wrap;         /* Wraps them on mobile */
-    gap: 12px;               /* Space BETWEEN buttons */
-    margin: 20px auto;       /* Centers the whole block */
-    width: 95%;
-    max-width: 900px;
-}
-
-/* The Buttons themselves */
-.folders button {
-    padding: 12px 20px;      /* MORE padding = Professional look */
-    font-size: 1rem;
-    border: none;
-    border-radius: 12px;     /* Softer corners */
-    background-color: var(--secondary-color);
-    color: white;
-    cursor: pointer;
-    transition: transform 0.2s, opacity 0.2s;
-    
-    /* Fix for centering text inside button */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.folders button:hover {
-    transform: scale(1.05);
-    opacity: 0.9;
-}
-main button {
-    background-color: none;
-    color: none;
-    text-decoration: none;
-    margin: none;
-
-}
-/* This style runs when an item is clicked */
-.checked {
-  text-decoration: line-through;
-  color: #888; /* Grays it out */
-  opacity: 0.6;
-}
-/* Makes it look clickable */
-li {
-  cursor: pointer;
-  user-select: none; /* Stops it from highlighting text when you tap fast */
-}
-
-
-/* The Confetti Particle */
-.confetti-piece {
-  position: fixed;
-  width: 10px;
-  height: 10px;
-  background-color: #f00; /* Default color (JS changes this) */
-  top: 50%;
-  left: 50%;
-  z-index: 9999; /* On top of everything */
-  pointer-events: none; /* Click through it */
-  opacity: 1;
-  border-radius: 2px;
-}
-/* Make the Chef Notes box nice and big */
-#chef-notes-area {
-    width: 95%;              /* Takes up most of the screen width */
-    min-height: 200px;       /* Starts tall */
-    padding: 15px;           /* Breathing room for text */
-    font-size: 1.1rem;       /* Easy to read text */
-    border: 2px solid #aaa;  /* Nice border */
-    border-radius: 10px;     /* Rounded corners */
-    margin-top: 10px;
-    resize: vertical;        /* Allows you to drag the corner to make it even bigger */
-    font-family: inherit;    /* Matches your website font */
-}
-
-#chef-notes-area:focus {
-    border-color: var(--secondary-color); /* Highlights when you type */
-    outline: none;
-}
-/* --- CENTER EVERYTHING --- */
-
-/* 1. Center the Main Container */
-main {
-    display: flex;
-    flex-direction: column; /* Stack items top to bottom */
-    align-items: center;    /* Center them horizontally */
-    width: 100%;
-}
-
-/* 2. Center the Search Bar */
-form#search-form {
-    margin: 20px auto;      /* Auto margins on left/right centers it */
-    justify-content: center;
-}
-
-/* 3. Center the Category Buttons */
-.folders {
-    display: flex;
-    justify-content: center; /* Pushes buttons to the middle */
-    flex-wrap: wrap;         /* Allows them to wrap on phones */
-    width: 100%;
-}
-
-/* 4. Center the Recipe Grid */
-#recipes {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    
-    /* This is the magic spacer! */
-    gap: 40px;  
-    
-    /* Adds breathing room at the bottom of the page */
-    padding-bottom: 50px; 
-}
-
-#info {
-    text-align: center;
-}
-
-/* Center the author text specifically */
-#author {
-    text-align: center;
-    margin-right: 0; /* Removes your old right-align logic */
-}
-/* Remove the bullets and center the list items */
-#history-list {
-    list-style: none; /* No bullets */
-    padding: 0;       /* Remove left padding */
-    text-align: center;
-    margin-bottom: 0;
-}
-
-/* Add a little space between the links */
-#history-list li {
-    margin-bottom: 5px;
-}
-
-/* Professional "Last Recipe" Container */
-#recent-recipes-box {
-    text-align: center;      /* Centers the text inside */
-    background-color: #f9fafb; /* Very light gray background */
-    border: 1px solid #e5e7eb; /* Subtle border */
-    border-radius: 20px;     /* Soft corners */
-    padding: 25px;           /* Breathing room inside the box */
-    
-    /* Center the box itself */
-    width: 90%;
-    max-width: 500px;
-    margin: 30px auto;       /* Top/Bottom margin 30px, Left/Right AUTO (Centers it) */
-    
-    /* Professional Shadow */
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); 
-}
-
-/* The Title inside that box */
-#recent-recipes-box h3 {
-    margin-top: 0;
-    margin-bottom: 15px;
-    color: var(--primary-color);
-    font-size: 1.1rem;
-    text-transform: uppercase; /* Looks cleaner */
-    letter-spacing: 1px;
-}
-/* Style for the Single Last Recipe Link */
-/* The Actual Link Button */
-.last-recipe-link {
-    display: inline-flex;    /* Keeps icon and text aligned */
-    align-items: center;
-    justify-content: center;
-    gap: 10px;               /* Space between text and arrow */
-    
-    padding: 12px 30px;      /* Big, comfortable click area */
-    background: var(--primary-color);
-    color: white;
-    text-decoration: none;
-    
-    font-family: var(--secondary-font);
-    font-size: 1.4rem;       /* Nice and readable */
-    font-weight: bold;
-    border-radius: 50px;     /* Pill shape */
-    
-    /* Smooth hover effects */
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-.last-recipe-link:hover {
-    transform: translateY(-3px); /* Lifts up slightly */
-    box-shadow: 0 10px 15px rgba(0,0,0,0.15); /* Shadow grows */
-    background-color: var(--secondary-color);
-}
-/* --- HEADER SEARCH ICON --- */
-#header-search-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
-    margin-right: 5px;
-    color: var(--primary-color);
-    transition: transform 0.2s;
-}
-
-#header-search-btn:hover {
-    transform: scale(1.1);
-    color: var(--secondary-color);
-}
-
-/* --- THE SEARCH POPUP OVERLAY --- */
-.hidden-overlay {
-    display: none; /* Hidden by default */
-    position: fixed;
-    top: 0;
-    left: 0;
+/* This ensures whatever image/svg is inside fills the box nicely */
+.logo img, 
+.logo svg {
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); /* Dark see-through background */
-    backdrop-filter: blur(5px); /* Blurs the website behind it! */
-    z-index: 1000; /* sits on top of everything */
-    align-items: center;
-    justify-content: center;
-    animation: fadeIn 0.3s ease;
+    object-fit: contain;
 }
 
-/* The White Box inside the overlay */
-.search-box-content {
-    background: white;
-    padding: 40px;
-    border-radius: 20px;
-    text-align: center;
-    width: 90%;
-    max-width: 500px;
-    position: relative;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-/* The Input Field (Big and Clean) */
-#searchbar {
-    width: 70%;
-    padding: 15px;
-    font-size: 1.2rem;
-    border: 2px solid #eee;
-    border-radius: 10px 0 0 10px; /* Rounded left corners */
-    outline: none;
-}
-
-#searchbar:focus {
-    border-color: var(--secondary-color);
-}
-
-/* The GO Button */
-#search-submit {
-    width: 20%;
-    padding: 15px;
-    font-size: 1.2rem;
-    background-color: var(--secondary-color);
-    color: white;
-    border: 2px solid var(--secondary-color);
-    border-radius: 0 10px 10px 0; /* Rounded right corners */
-    cursor: pointer;
-}
-
-/* Close Button (X) */
-#close-search {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: #999;
-    cursor: pointer;
-}
-
-/* Flex helper to show the overlay */
-.show-search {
-    display: flex !important;
-}
-/* --- ACTIVE FILTER BUTTON STATE --- */
-
-/* When the button is clicked/active */
-.folders button.active-filter {
-    background-color: var(--primary-color); /* Dark Blue */
-    color: white;
-    box-shadow: inset 0 3px 5px rgba(0,0,0,0.2); /* looks "pressed in" */
-    transform: scale(1.05); /* stays slightly bigger */
+.login-header h1 {
+    font-size: 1.875rem;
     font-weight: bold;
-    border: 2px solid var(--primary-color);
-}
-
-/* Optional: Add a checkmark icon before the text when active */
-.folders button.active-filter::before {
-    content: "✓ ";
-    margin-right: 5px;
-}
-/* --- TUTORIAL MODAL --- */
-.tutorial-box {
-    background: white;
-    padding: 30px;
-    border-radius: 20px;
-    text-align: center;
-    max-width: 400px;
-    width: 85%;
-    box-shadow: 0 20px 25px rgba(0,0,0,0.2);
-    border-top: 5px solid var(--secondary-color); /* Teal accent on top */
-    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy entrance */
-}
-
-/* The Fake Ingredient to practice on */
-.demo-ingredient {
-    margin: 20px auto;
-    padding: 12px;
-    border: 2px dashed #ccc;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 1.1rem;
-    font-weight: bold;
-    color: var(--primary-color);
-    transition: all 0.2s;
-}
-
-/* What happens when they click the demo */
-.demo-ingredient.checked {
-    text-decoration: line-through;
-    color: #999;
-    background-color: #f3f3f3;
-    border-color: #eee;
-}
-
-/* The 'Got It' Button */
-#close-tutorial {
-    background-color: var(--primary-color);
-    color: white;
-    padding: 12px 30px;
-    border: none;
-    border-radius: 50px;
-    font-size: 1rem;
-    cursor: pointer;
-    font-weight: bold;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-#close-tutorial:hover {
-    transform: scale(1.05);
-}
-
-#meal-plan-box {
-    background: var(--card-bg);
-    padding: 20px;
-    border-radius: 20px;
-    margin: 20px auto;
-    width: 90%;
-    max-width: 800px;
-    text-align: center;
-    box-shadow: 0 4px 10px var(--shadow-color);
-}
-
-.week-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Auto-responsive! */
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.day-card {
-    background: var(--bg-color);
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid #ddd;
-    display: flex;
-    flex-direction: column;
-    font-size: 0.9rem;
-}
-
-.day-card span {
-    color: var(--primary-color);
-    font-weight: bold;
-    margin-top: 5px;
-    overflow: hidden;
-    text-overflow: ellipsis; /* ... if text is too long */
-}
-
-/* Bouncy Animation Keyframes */
-@keyframes popIn {
-    from { transform: scale(0.5); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-/* The Animation (Fall Down and Fade Out) */
-@keyframes fall-down {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-  100% { transform: translate(var(--x-end), 100vh) rotate(720deg); opacity: 0; }
-}
-
-
-@media screen and (min-width: 600px) {
-    .recipe-card {
-        /* We want to KEEP it as a column, just maybe with more padding */
-        flex-direction: column; 
-        padding: 40px; 
-    }
-}
-
-@media (min-width: 640px) {
-    .header-title {
-        font-size: 2.5rem; 
-    }
-}
-
-@media screen and (min-width: 960px) {
-    body {
-        max-width: 960px;
-    }
-}
-
-@media (max-width: 639px) {
-    .header-container {
-        width: 95%;           /* Fits inside the screen */
-        max-width: 100%;      /* NEVER exceed screen size */
-        margin: 20px auto;    /* Centers it */
-        border-radius: 20px;
-        padding: 0 1rem;
-        height: auto;         /* Lets it grow if text is long */
-        min-height: 64px;
-    }
-    
-    .header-title {
-        font-size: 1.5rem;    /* Shrink text slightly for small phones */
-        position: relative;   /* Stops it from floating weirdly */
-    }
-}
-@media print {
-  /* Hide things you don't need on paper */
-  nav, footer, button, .search-bar {
-    display: none;
-  }
-
-  /* Make text black and white to save ink */
-  body {
-    background-color: white;
-    color: black;
-    font-size: 12pt; /* Make text readable */
-  }
-
-  /* Ensure the recipe takes up the full width */
-  .recipe-container {
-    width: 100%;
+    color: var(--gray-800);
     margin: 0;
-  }
 }
+
+/* Login Form Elements */
+.login-form { display: flex; flex-direction: column; gap: 1.5rem; }
+.input-group label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--gray-700); margin-bottom: 0.25rem; }
+.form-input {
+    width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300);
+    border-radius: 0.5rem; transition: all 0.3s ease; box-sizing: border-box;
+}
+.form-input:focus { outline: none; border-color: var(--emerald-500); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.4); }
+
+/* Login Buttons & Links */
+.forgot-password { display: flex; justify-content: flex-end; font-size: 0.875rem; }
+.forgot-password a, .signup-prompt a { color: var(--emerald-500); text-decoration: none; font-weight: 500; transition: color 0.2s; }
+.forgot-password a:hover, .signup-prompt a:hover { color: var(--amber-500); }
+
+.login-btn, .modal-btn {
+    width: 100%; display: flex; justify-content: center; padding: 0.75rem 1rem;
+    border: none; border-radius: 0.5rem; background-color: var(--emerald-500);
+    color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer;
+    transition: background-color 0.3s, transform 0.1s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+.login-btn:hover, .modal-btn:hover { background-color: var(--emerald-600); }
+.login-btn:active { transform: scale(0.95); }
+
+.cancel-btn {
+    width: 100%; margin-top: 10px; padding: 10px; background: transparent;
+    border: 1px solid var(--gray-300); border-radius: 0.5rem; cursor: pointer; color: var(--gray-500);
+}
+.cancel-btn:hover { background-color: var(--gray-100); }
+.signup-prompt { margin-top: 2rem; text-align: center; font-size: 0.875rem; color: var(--gray-500); }
+
+/* Modals */
+.hidden { display: none !important; }
+.modal {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(31, 41, 55, 0.5); display: flex;
+    align-items: center; justify-content: center; padding: 1rem; z-index: 50; backdrop-filter: blur(2px);
+}
+.modal-content {
+    background: white; padding: 1.5rem; border-radius: 0.75rem;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 24rem; width: 100%; text-align: center;
+}
+.modal-content h3 { margin-top: 0; color: var(--gray-800); margin-bottom: 1rem; }
