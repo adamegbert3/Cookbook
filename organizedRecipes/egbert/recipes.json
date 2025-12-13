@@ -1734,6 +1734,30 @@
     ]
   },
   {
+    "author": "Paul Cookbook", 
+    "tags": ["Desserts"], 
+    "recipeIngredient": [
+        "COOKIES:",
+        "3/4 cup shortening", 
+        "2 eggs",
+        "1 pkg. devils food cake mix with pudding",
+        "FROSTING:",
+        "4 ounce cream cheese, room temperature", 
+        "1 teaspoon vanilla extract", 
+        "2 - 2 1/2 cup powdered sugar"
+    ],
+    "name": "Homemade Oreos", 
+    "recipeInstructions": [
+        "Cookies: Mix shortening, eggs and cake mix with electric mixer until stiff dough.", 
+        "Roll into small balls, using scant teaspoonful of dough per ball.", 
+        "Place on ungreased cookie sheet and bake at 375 degrees for 9 minutes.",
+        "Cool on cookie sheet for a few minutes before removing.",
+        "Frosting: Combine cream cheese, vanilla and powdered sugar with mixer, beating until fluffy.",
+        "Assemble cookies with cream cheese frosting between two cookies.",
+        "Makes about 40 Oreos."
+    ]
+},
+  {
     "author": "Jesse P.",
     "tags": [
       "Desserts"
@@ -1769,6 +1793,32 @@
       "Bake at 300 degrees, covered, for 1 to 1 ½ hours."
     ]
   },
+  {
+    "author": "",
+    "tags": ["Main Dish"],
+    "recipeIngredient": [
+        "CRUST:",
+        "3-4 cup flour",
+        "1 tsp. salt",
+        "2 T. sugar",
+        "1 T. yeast",
+        "1 ½ cup warm water",
+        "2 T. oil",
+        "SAUCE:",
+        "1 (16-oz) can tomato sauce",
+        "¼ tsp. salt",
+        "⅛ tsp garlic salt",
+        "¾ tsp. Italian seasoning",
+        "1 T. sugar"
+    ],
+    "name": "Heavenly Pizza",
+    "recipeInstructions": [
+        "Crust: Dissolve yeast in water and sugar. Add salt and oil. Knead in flour. Let it rest, then roll out. Covers 2 round pizza pans or 1 cookie sheet.",
+        "Sauce: Mix tomato sauce, salt, garlic salt, Italian seasoning, and sugar together. Bring to a boil; let cool.",
+        "Assembly: Cover crust with sauce and top as desired.",
+        "Bake at 450 Fahrenheit for 15-20 minutes, until done. Rounds cook faster than cookie sheets."
+    ]
+},
 {
     "author": "Tara Egbert",
     "tags": [
