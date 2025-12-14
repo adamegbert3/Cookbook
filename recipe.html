@@ -3,6 +3,7 @@
 <head>
   <title>Recipe</title>
   <link rel="stylesheet" type="text/css" href="./styles/recipes.css">
+  <link rel="manifest" href="/manifest.json">
 </head>
 <header>
     <div id="header">
@@ -44,6 +45,7 @@
     <h4 style="text-align: center; margin-bottom: 10px;">Kitchen Tools</h4>
     
     <div class="tool-bar">
+      <button onclick="saveRecipeOffline()" class="login-btn" style="margin-top: 20px;"> ⛺ Save Offline</button>
         <button id="cookModeBtn" type="button">Enable Cook Mode 🍳</button>
         <button id="plan-meal-btn" class="tool-btn">📅 Add to Meal Plan</button>
         <!-- <button id="copy-btn" onclick="copyIngredients()">📋 Copy Ingredients</button>
@@ -402,6 +404,32 @@ function fireConfetti(btn) {
       // UPDATED NAME HERE
       voiceBtn.innerText = "🔴 Listening...";
       voiceBtn.classList.add('listening'); 
+    }
+  }
+</script>
+<script>
+  // 1. Register the Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Cookbook is ready for offline use!', reg.scope))
+        .catch(err => console.log('Service Worker failed:', err));
+    });
+  }
+
+  // 2. Function to Save the Current Recipe
+  async function saveRecipeOffline() {
+    if ('caches' in window) {
+      try {
+        const cache = await caches.open('cookbook-v1');
+        await cache.add(window.location.href);
+        alert('⛺ Recipe saved! You can now open this page while camping (offline).');
+      } catch (err) {
+        console.error(err);
+        alert('Could not save recipe.');
+      }
+    } else {
+      alert('Your browser does not support offline saving.');
     }
   }
 </script>

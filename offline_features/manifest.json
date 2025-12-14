@@ -1,0 +1,20 @@
+{
+  "name": "My Digital Cookbook",
+  "short_name": "Cookbook",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ebebeb",
+  "theme_color": "#0a4d74",
+  "icons": [
+    {
+      "src": "https://fav.farm/🍽️", 
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://fav.farm/🍽️",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

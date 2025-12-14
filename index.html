@@ -4,93 +4,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/recipes.css">
 </head>
 <body class="login-page">
 
     <div class="login-card">
-        
         <div class="login-header">
-            <p class="logo-icon">🍽️</p>
-            <h1>Welcome Back, Chef!</h1>
+            <div class="logo-icon">🍽️</div>
+            <h1>Welcome Back,<br>Chef!</h1>
             <p class="subtitle">Sign in to access your digital cookbook.</p>
         </div>
 
         <form id="loginForm" class="login-form">
-            
             <div class="input-group">
-                <label for="email">Username</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    placeholder="email@email.com"
-                    required 
-                    class="form-input"
-                >
+                <label for="email">Email Address</label>
+                <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
             </div>
 
             <div class="input-group">
                 <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    placeholder="••••••••"
-                    required 
-                    class="form-input"
-                >
+                <input type="password" id="password" class="form-input" placeholder="••••••••" required>
             </div>
 
-            <div class="forgot-password">
+            <div class="forgot-link">
                 <a href="#" onclick="sendReset()">Forgot Password?</a>
             </div>
 
-            <button type="submit" class="login-btn">
-                Log In
-            </button>
-
+            <button type="submit" class="login-btn">Log In</button>
         </form>
-        
-        <p class="signup-prompt">
-            Don't have an account? 
-            <a href="#" onclick="showSignUp()">Create Account</a>
-        </p>
 
+        <div class="signup-link">
+            Don't have an account? <a href="#" onclick="showSignUp()">Create Account</a>
+        </div>
     </div>
 
     <div id="messageBox" class="modal hidden">
         <div class="modal-content">
-            <h3>Message</h3>
             <p id="messageText"></p>
             <button onclick="hideMessageBox()" class="modal-btn">OK</button>
-        </div>
-    </div>
-
-    <div id="signUp" class="modal hidden">
-        <div class="modal-content">
-            <h3>Create Account</h3>
-            <form id="signUpForm" class="login-form">
-                <div class="input-group">
-                    <label for="emailSign">Username</label>
-                    <input type="email" id="emailSign" required class="form-input" placeholder="email@email.com">
-                </div>
-                <div class="input-group">
-                    <label for="passwordSign">Password</label>
-                    <input type="password" id="passwordSign" required class="form-input" placeholder="••••••••">
-                </div>
-                <button type="submit" class="login-btn">Sign Up</button>
-                <button type="button" onclick="document.getElementById('signUp').classList.add('hidden')" class="cancel-btn">Cancel</button>
-            </form> 
-        </div>
-    </div>
-
-    <div id="reset" class="modal hidden">
-        <div class="modal-content">
-            <h3>Reset Password</h3>
-            <input type="email" id="emailReset" placeholder="email@email.com" class="form-input">
-            <button onclick="submitReset()" class="modal-btn">Send Reset Link</button>
-            <button onclick="document.getElementById('reset').classList.add('hidden')" class="cancel-btn">Cancel</button>
         </div>
     </div>
 
