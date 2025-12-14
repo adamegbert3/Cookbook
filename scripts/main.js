@@ -10,8 +10,18 @@ function RecipeTemplate(recipe) {
     const tags = recipe.tags || []; 
     const author = recipe.author || "The Egbert Family";
 
+    // 1. Logic: Decide the icon
+    const statusIcon = recipe.reviewed ? "✅" : "❌";
+
+    // 2. Logic: Create the full text text
+    // Result: "Reviewed: ✅" or "Reviewed: ❌"
+    const statusText = `Reviewed: ${statusIcon}`;
+
     return `
     <div class="recipe-card" data-name="${recipe.name}">
+        
+        <div class="status-badge">${statusText}</div>
+
         <div id="info">
             <div id="tags">
                 ${tagsTemplate(tags)}
