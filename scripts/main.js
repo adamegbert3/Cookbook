@@ -1,27 +1,41 @@
-import { db, auth, onAuthStateChanged } from "./firestoreapi.js";
-import { ref, get, child } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+import { db, auth } from './firebase-config.js'; 
 
-// 1. GLOBAL VARIABLE (Accessible by everyone)
+// COMBINED IMPORT
+import { 
+    collection, 
+    getDocs, 
+    doc, 
+    getDoc,       
+    setDoc,
+    updateDoc,    
+    arrayUnion,   
+    arrayRemove   
+} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+// 2. GLOBAL VARIABLES
 let allRecipes = []; 
+let userFavorites = []; 
 
 // --- HELPER FUNCTIONS ---
 
 function RecipeTemplate(recipe) {
     const tags = recipe.tags || []; 
     const author = recipe.author || "The Egbert Family";
-
-    // 1. Logic: Decide the icon
     const statusIcon = recipe.reviewed ? "✅" : "❌";
-
-    // 2. Logic: Create the full text text
-    // Result: "Reviewed: ✅" or "Reviewed: ❌"
     const statusText = `Reviewed: ${statusIcon}`;
+
+    // Check favorites
+    const isFav = userFavorites.includes(recipe.id);
+    const heartIcon = isFav ? "❤️" : "🤍";
 
     return `
     <div class="recipe-card" data-name="${recipe.name}">
-        
+        <button class="heart-btn card-heart" onclick="toggleHeart(event, '${recipe.id}')">
+            ${heartIcon}
+        </button>
         <div class="status-badge">${statusText}</div>
-
         <div id="info">
             <div id="tags">
                 ${tagsTemplate(tags)}
@@ -36,9 +50,11 @@ function RecipeTemplate(recipe) {
 
 function tagsTemplate(tags){
     let html = '';
-    tags.forEach(tag => {
-        html += '<p>' + tag + '</p>';
-    });
+    if(Array.isArray(tags)) {
+        tags.forEach(tag => {
+            html += '<p>' + tag + '</p>';
+        });
+    }
     return html;
 }
 
@@ -58,12 +74,14 @@ function renderRecipes(recipeList) {
             const name = card.getAttribute("data-name");
             const selectedRecipe = allRecipes.find(r => r.name === name);
             
-            // Generate Slug
+            // Save data for the next page
+            localStorage.setItem("currentRecipeData", JSON.stringify(selectedRecipe));
+            
+            // Generate slug
             const recipeId = selectedRecipe.name.toLowerCase()
                 .replace(/ /g, '-')
                 .replace(/[^\w-]+/g, '');
-
-            localStorage.setItem("currentRecipeData", JSON.stringify(selectedRecipe));
+                
             window.location.href = `recipe.html?id=${recipeId}`;
         });
     });
@@ -73,99 +91,130 @@ function renderRecipes(recipeList) {
 function filter(query) {
     if (!allRecipes) return [];
     
-    const filtered = allRecipes.filter(recipe => {
-        const name = recipe.name || "";
-        const tags = recipe.tags || [];
-        const filterednames = name.toLowerCase().includes(query);
-        const filteredtags = tags.some(tag => tag.toLowerCase().includes(query));
-        return filterednames || filteredtags
-    });
-    return filtered.sort((a,b) => (a.name || "").localeCompare(b.name || ""));
+    return allRecipes.filter(recipe => {
+        const name = (recipe.name || "").toLowerCase();
+        const tags = Array.isArray(recipe.tags) ? recipe.tags : [];
+        const matchName = name.includes(query);
+        const matchTag = tags.some(tag => tag.toLowerCase().includes(query));
+        return matchName || matchTag;
+    }).sort((a,b) => (a.name || "").localeCompare(b.name || ""));
 }
 
-// --- DATABASE FETCHING ---
 
-// --- DATABASE FETCHING ---
+// --- MAIN LOGIC ---
 
-onAuthStateChanged(auth, (user) => {
+// Wait for Login Check
+onAuthStateChanged(auth, async (user) => {
+    
+    // 1. User is Logged In
     if (user) {
-        document.getElementById("notsigned").style.display = 'none';
-        const recipesGrid = document.getElementById('recipes');
-        recipesGrid.style.display = 'flex'; 
-        recipesGrid.innerHTML = "<p>Loading recipes...</p>";
+        console.log("Logged in as:", user.email);
 
-        const dbRef = ref(db);
+        // UI Updates
+        const notSignedMsg = document.getElementById("notsigned");
+        if(notSignedMsg) notSignedMsg.style.display = 'none';
         
-        get(child(dbRef, "/")).then((snapshot) => {
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                
-                // 1. Convert to Array
-                if (Array.isArray(data)) {
-                    allRecipes = data;
-                } else {
-                    allRecipes = Object.values(data);
-                }
+        const recipesGrid = document.getElementById('recipes');
+        if(recipesGrid) {
+            recipesGrid.style.display = 'flex'; 
+            recipesGrid.innerHTML = "<p>Loading recipes from Firestore...</p>";
+        }
 
-                // 2. NEW: Sort Alphabetically immediately!
+        // --- A. LOAD FAVORITES ---
+        try {
+            const userSnap = await getDoc(doc(db, "users", user.uid));
+            
+            if (userSnap.exists()) {
+                userFavorites = userSnap.data().favorites || [];
+                console.log("Loaded favorites:", userFavorites.length);
+            } else {
+                userFavorites = [];
+            }
+        } catch (err) {
+            console.error("Error loading user profile:", err);
+            userFavorites = []; 
+        } // <--- THIS WAS THE MISSING BRACKET!
+
+        // --- B. LOAD NOTES (If on recipe page) ---
+        const noteBox = document.getElementById('chefNotes');
+        if (noteBox) {
+            console.log("On recipe page, loading notes...");
+            loadUserNote();
+        }
+
+        // --- C. LOAD RECIPES (If on homepage) ---
+        if(recipesGrid) {
+            try {
+                const recipesRef = collection(db, "recipes");
+                const querySnapshot = await getDocs(recipesRef);
+                
+                // Reset list
+                allRecipes = [];
+
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    // Combine ID with data
+                    allRecipes.push({ id: doc.id, ...data });
+                });
+
+                // Sort Alphabetically
                 allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
-                console.log("Recipes loaded & sorted:", allRecipes.length);
+                console.log("Recipes loaded:", allRecipes.length);
                 renderRecipes(allRecipes);
 
-            } else {
-                recipesGrid.innerHTML = "<p>No recipes found.</p>";
+            } catch (error) {
+                console.error("Error getting recipes:", error);
+                if(recipesGrid) recipesGrid.innerHTML = `<p>Error loading recipes. Check console.</p>`;
             }
-        }).catch((error) => {
-            console.error("Error fetching recipes:", error);
-            recipesGrid.innerHTML = `<p>Error: ${error.message}</p>`;
-        });
+        }
 
-    } else {
-        document.getElementById("notsigned").style.display = 'block';
-        document.getElementById('recipes').style.display = 'none';
+    } 
+    // 2. User is NOT Logged In
+    else {
+        console.log("User is guest.");
+        const notSignedMsg = document.getElementById("notsigned");
+        if(notSignedMsg) notSignedMsg.style.display = 'block';
+        
+        const recipesGrid = document.getElementById('recipes');
+        if(recipesGrid) recipesGrid.style.display = 'none';
     }
 });
 
-// --- SEARCH POPUP LOGIC ---
 
-// --- INTERACTION LOGIC (Search + Categories) ---
+// --- INTERACTION LOGIC ---
 
 document.addEventListener('DOMContentLoaded', () => {
 
-    // --- MEAL PLANNER: LOAD DISPLAY ---
-function loadMealPlan() {
-    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    days.forEach(day => {
-        const element = document.getElementById(`plan-${day}`);
-        if (element && plan[day]) {
-            element.innerText = plan[day];
-            element.parentElement.style.borderColor = "var(--secondary-color)"; // Highlight filled days
-        }
-    });
-}
-
-// Global Clear Function
-window.clearMealPlan = function() {
-    if(confirm("Clear entire week?")) {
-        localStorage.removeItem('mealPlan');
-        location.reload();
+    // MEAL PLANNER
+    function loadMealPlan() {
+        const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        
+        days.forEach(day => {
+            const element = document.getElementById(`plan-${day}`);
+            if (element && plan[day]) {
+                element.innerText = plan[day];
+                if(element.parentElement) element.parentElement.style.borderColor = "#10b981"; 
+            }
+        });
     }
-}
 
-// Run on load
-loadMealPlan();
+    window.clearMealPlan = function() {
+        if(confirm("Clear entire week?")) {
+            localStorage.removeItem('mealPlan');
+            location.reload();
+        }
+    }
+    loadMealPlan();
     
-    // PART A: SEARCH POPUP
+    // SEARCH POPUP
     const searchBtn = document.getElementById('header-search-btn');
     const closeBtn = document.getElementById('close-search');
     const overlay = document.getElementById('search-overlay');
     const searchForm = document.getElementById('search-form');
     const searchInput = document.getElementById('searchbar');
 
-    // 1. Open Search
     if (searchBtn && overlay) {
         searchBtn.addEventListener('click', () => {
             overlay.classList.add('show-search');
@@ -173,14 +222,12 @@ loadMealPlan();
         });
     }
 
-    // 2. Close Search
     if (closeBtn && overlay) {
         closeBtn.addEventListener('click', () => {
             overlay.classList.remove('show-search');
         });
     }
 
-    // 3. Close on Outside Click
     if (overlay) {
         window.addEventListener('click', (e) => {
             if (e.target === overlay) {
@@ -189,49 +236,32 @@ loadMealPlan();
         });
     }
 
-    // 4. Handle Search Submit
     if (searchForm) {
         searchForm.addEventListener('submit', (e) => {
             e.preventDefault(); 
             const query = searchInput.value.toLowerCase();
-            
             const results = filter(query);
             renderRecipes(results);
-            
             overlay.classList.remove('show-search');
         });
     }
 
-    // PART B: CATEGORY BUTTONS (With Toggle Logic)
+    // CATEGORY BUTTONS
     const categoryBtns = document.querySelectorAll('.folders button');
     
     if (categoryBtns) {
         categoryBtns.forEach(btn => {
             btn.addEventListener('click', (e) => {
-                const button = e.currentTarget; // The specific button clicked
-                
-                // 1. Check if this button is ALREADY active
+                const button = e.currentTarget; 
                 const isAlreadyActive = button.classList.contains('active-filter');
 
-                // 2. Reset ALL buttons (Turn them all back to Teal/Inactive)
                 categoryBtns.forEach(b => b.classList.remove('active-filter'));
 
                 if (isAlreadyActive) {
-                    // --- SCENARIO: TURNING OFF ---
-                    // If it was already active, we just clicked to turn it off.
-                    // Do NOT add the class back. 
-                    console.log("Clearing filters...");
-                    
-                    // Show ALL recipes (using the global variable)
                     renderRecipes(allRecipes); 
                 } else {
-                    // --- SCENARIO: TURNING ON ---
-                    // It was not active, so let's activate it.
                     button.classList.add('active-filter');
-                    
-                    // Filter the list
                     const category = button.innerText.toLowerCase();
-                    console.log("Filtering by:", category);
                     const results = filter(category);
                     renderRecipes(results);
                 }
@@ -239,3 +269,90 @@ loadMealPlan();
         });
     }
 });
+
+// --- GLOBAL FUNCTIONS (Called by HTML) ---
+
+// Toggle Heart
+window.toggleHeart = async function(event, recipeId) {
+    event.stopPropagation();
+
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in to save recipes!");
+
+    const btn = event.currentTarget;
+    const isCurrentlyFav = userFavorites.includes(recipeId);
+    const userRef = doc(db, "users", user.uid);
+
+    try {
+        if (isCurrentlyFav) {
+            await updateDoc(userRef, {
+                favorites: arrayRemove(recipeId)
+            });
+            userFavorites = userFavorites.filter(id => id !== recipeId);
+            btn.innerText = "🤍";
+        } else {
+            await updateDoc(userRef, {
+                favorites: arrayUnion(recipeId)
+            });
+            userFavorites.push(recipeId);
+            btn.innerText = "❤️";
+        }
+    } catch (error) {
+        console.error("Error toggling heart:", error);
+        alert("Could not save. Check console.");
+    }
+};
+
+// Save Note
+window.saveNote = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in to save notes!");
+
+    const noteText = document.getElementById('chefNotes').value;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData")); 
+    
+    if(!currentRecipe) return alert("Error finding recipe ID");
+    const recipeId = currentRecipe.id;
+
+    const statusLabel = document.getElementById('saveStatus');
+    statusLabel.innerText = "Saving...";
+
+    try {
+        const userRef = doc(db, "users", user.uid);
+        await setDoc(userRef, {
+            notes: {
+                [recipeId]: noteText 
+            }
+        }, { merge: true });
+
+        statusLabel.innerText = "✅ Saved to Cloud!";
+        setTimeout(() => statusLabel.innerText = "", 3000);
+
+    } catch (error) {
+        console.error("Error saving note:", error);
+        statusLabel.innerText = "❌ Error saving.";
+    }
+};
+
+// Load Note
+async function loadUserNote() {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    if (!currentRecipe) return;
+
+    try {
+        const userSnap = await getDoc(doc(db, "users", user.uid));
+        
+        if (userSnap.exists()) {
+            const userData = userSnap.data();
+            if (userData.notes && userData.notes[currentRecipe.id]) {
+                document.getElementById('chefNotes').value = userData.notes[currentRecipe.id];
+                console.log("Note loaded from cloud.");
+            }
+        }
+    } catch (error) {
+        console.error("Error loading note:", error);
+    }
+}
