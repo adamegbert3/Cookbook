@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Submit a Recipe</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/recipes.css">
+</head>
+<body class="login-page">
+
+    <div class="login-card" style="max-width: 700px; margin: 40px auto;">
+        
+        <div class="login-header">
+            <div class="logo-icon">🍳</div>
+            <h1>Contribute a Recipe</h1>
+            <p class="subtitle">Share your masterpiece! We will review it and add it to the cookbook.</p>
+        </div>
+
+        <form id="submitForm" class="login-form">
+            
+            <div class="input-group">
+                <label for="title">Recipe Title</label>
+                <input type="text" id="title" class="form-input" placeholder="e.g. Grandma's Famous Apple Pie" required>
+            </div>
+
+            <div class="input-group">
+                <label for="chef">Where is this recipe from?</label>
+                <input type="text" id="chef" class="form-input" placeholder="e.g. Aunt Sally" required>
+            </div>
+
+            <div class="input-group">
+                <label for="ingredients">Ingredients (Put each on a new line)</label>
+                <textarea id="ingredients" class="form-input" rows="6" placeholder="2 Cups Flour&#10;1 tsp Salt&#10;3 Apples" required></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="instructions">Instructions (Put each step on a new line)</label>
+                <textarea id="instructions" class="form-input" rows="6" placeholder="1. Preheat oven to 350°...&#10;2. Mix flour and salt..." required></textarea>
+            </div>
+
+            <div class="input-group">
+                <label for="notes">Any notes that would be helpful for this recipe?</label>
+                <textarea id="notes" class="form-input" rows="6" placeholder="Sometimes bake for 6 mins, depending on your oven..." required></textarea>
+            </div>
+            <div class="input-group">
+                <label for="category">Category (Folder)</label>
+                <select id="category" class="form-input">
+                    <option value="Main Dishes">Main Dishes</option>
+                    <option value="Side Dishes">Side Dishes</option>
+                    <option value="Appetizers & Snacks">Appetizers & Snacks</option>
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Desserts">Desserts</option>
+                    <option value="Drinks">Drinks</option>
+                </select>
+            </div>
+
+            <button type="submit" class="login-btn">Submit for Review</button>
+        </form>
+
+        <div class="signup-link">
+            <a href="index.html">← Cancel and Go Back</a>
+        </div>
+    </div>
+
+    <script type="module" src="scripts/submit.js"></script>
+
+</body>
+</html>

@@ -1,8 +1,9 @@
-// 1. Import from your API file
+// 1. Import Auth and Database
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "./firestoreapi.js";
-
-// We don't need the Firestore imports anymore!
-// import { collection... } from ...firebase-firestore.js"; <-- DELETE THIS
+// We need 'db' to save the user profile, so import it from your config
+import { db } from "./firebase-config.js"; 
+// We need these tools to write to the database
+import { doc, setDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 // --- HELPER FUNCTIONS ---
 
@@ -82,6 +83,8 @@ if (loginForm) {
 
 // --- SIGN UP LOGIC ---
 
+// --- SIGN UP LOGIC (UPDATED) ---
+
 const signUpForm = document.getElementById('signUpForm');
 
 if (signUpForm) {
@@ -92,12 +95,31 @@ if (signUpForm) {
         const password = document.getElementById('passwordSign').value;
 
         createUserWithEmailAndPassword(auth, email, password)
-            .then((userCredential) => {
-                // Account created! Go to homepage.
-                console.log("Account created!");
-                window.location.href = "homepage.html";
+            .then(async (userCredential) => {
+                // 1. The Account is created in Authentication...
+                const user = userCredential.user;
+                console.log("Account created for:", user.email);
+
+                // 2. NOW we create their folder in the Database
+                try {
+                    await setDoc(doc(db, "users", user.uid), {
+                        email: user.email,
+                        role: "user",      // You can manually change this to 'admin' in Console later
+                        favorites: [],     // Empty list ready for hearts!
+                        createdAt: new Date()
+                    });
+                    console.log("User profile saved to Firestore!");
+                    
+                    // 3. ONLY redirect after the profile is saved
+                    window.location.href = "homepage.html";
+                    
+                } catch (error) {
+                    console.error("Error saving profile:", error);
+                    alertPlaceholder("Account created, but profile failed. Check console.");
+                }
             })
             .catch((error) => {
+                // Handle errors like "Email already in use"
                 alertPlaceholder(error.message);
             });
     });

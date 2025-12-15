@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Chef's Admin Panel</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles/recipes.css">
+    <style>
+        .admin-container { max-width: 900px; margin: 40px auto; padding: 20px; }
+        .pending-card {
+            background: white; border: 1px solid #e5e7eb; border-radius: 12px;
+            padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .pending-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .pending-actions { display: flex; gap: 10px; margin-top: 15px; }
+        .btn-approve { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-reject { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .btn-reject:hover { background: #dc2626; } .btn-approve:hover { background: #059669; }
+        pre { background: #f3f4f6; padding: 10px; border-radius: 6px; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
+    </style>
+</head>
+<body class="login-page">
+
+    <div class="admin-container">
+        <h1>👨‍🍳 Recipe Approval Queue</h1>
+        <p>Review submissions from users before they go live.</p>
+        
+        <div id="loading">Loading pending recipes...</div>
+        <div id="pending-list"></div>
+
+        <div style="margin-top: 40px;">
+            <a href="index.html">← Back to Cookbook</a>
+        </div>
+    </div>
+    HTML
+<div class="admin-container" style="margin-top: 50px;">
+    <h1>📊 Recipe Analytics</h1>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        
+        <div class="pending-card">
+            <div class="pending-header">
+                <h2>🏆 Most Popular</h2>
+            </div>
+            <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
+                <thead>
+                    <tr style="text-align: left; border-bottom: 2px solid #eee;">
+                        <th style="padding: 8px;">Recipe</th>
+                        <th style="padding: 8px;">Total Views</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboard-list">
+                    <tr><td colspan="2">Calculating...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pending-card">
+            <div class="pending-header">
+                <h2>🕵️‍♀️ Recent Activity</h2>
+            </div>
+            <div id="activity-list" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                </div>
+        </div>
+
+    </div>
+</div>
+
+    <script type="module" src="scripts/admin.js"></script>
+</body>
+</html>
