@@ -81,6 +81,66 @@
     </div>
     <button onclick="clearMealPlan()" style="margin-top:10px; font-size:0.8rem;">Clear Plan</button>
 </div>
+<button onclick="openReviewModal()" class="info-pill-btn">
+    ℹ️ What does "Reviewed" mean?
+</button>
+
+<div id="reviewInfoModal" class="modal hidden">
+    <div class="modal-content">
+        <h3>About Our Recipes</h3>
+        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
+            This cookbook was created with the help of <strong>Artificial Intelligence</strong>. 
+            While AI is amazing, it can sometimes make mistakes!
+        </p>
+        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
+            When you see the <strong>"Reviewed: ✅"</strong> badge, it means a human chef has personally 
+            tested and double-checked the recipe to ensure it is accurate and delicious. 
+            If you would like a recipe to be reviewed, please contact us using our contact page!
+        </p>
+        <button onclick="closeReviewModal()" class="modal-btn">Got it!</button>
+    </div>
+</div>
+<script>
+    function openReviewModal() {
+        document.getElementById('reviewInfoModal').classList.remove('hidden');
+        document.getElementById('reviewInfoModal').style.display = 'flex'; // Ensures flex centering works
+    }
+
+    function closeReviewModal() {
+        document.getElementById('reviewInfoModal').classList.add('hidden');
+        document.getElementById('reviewInfoModal').style.display = 'none';
+    }
+</script>
+<button onclick="openReviewModal()" class="info-pill-btn">
+    ℹ️ What are some hidden ideas?
+</button>
+
+<div id="reviewInfoModal" class="modal hidden">
+    <div class="modal-content">
+        <h3>About Our Recipes</h3>
+        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
+            This cookbook was created with the help of <strong>Artificial Intelligence</strong>. 
+            While AI is amazing, it can sometimes make mistakes!
+        </p>
+        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
+            When you see the <strong>"Reviewed: ✅"</strong> badge, it means a human chef has personally 
+            tested and double-checked the recipe to ensure it is accurate and delicious. 
+            If you would like a recipe to be reviewed, please contact us using our contact page!
+        </p>
+        <button onclick="closeReviewModal()" class="modal-btn">Got it!</button>
+    </div>
+</div>
+<script>
+    function openReviewModal() {
+        document.getElementById('reviewInfoModal').classList.remove('hidden');
+        document.getElementById('reviewInfoModal').style.display = 'flex'; // Ensures flex centering works
+    }
+
+    function closeReviewModal() {
+        document.getElementById('reviewInfoModal').classList.add('hidden');
+        document.getElementById('reviewInfoModal').style.display = 'none';
+    }
+</script>
 <div id="search-overlay" class="hidden-overlay">
     <div class="search-box-content">
         <button id="close-search">✕</button>
