@@ -882,3 +882,40 @@ a[href="homepage.html"] button:hover {
     background-color: #059669 !important; /* Darker Green */
     transform: translateY(-2px);          /* Little pop up */
 }
+/* =========================================
+   "WHAT DOES REVIEWED MEAN" BUTTON
+   ========================================= */
+
+.info-pill-btn {
+    /* Green Style (Matching your theme) */
+    background-color: #10b981 !important;
+    color: white !important;
+    
+    /* Pill Shape */
+    border-radius: 50px !important;
+    padding: 8px 20px !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    font-family: 'Inter', sans-serif !important;
+    border: none !important;
+    cursor: pointer !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+    
+    /* Centering */
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px; /* Space between icon and text */
+    transition: transform 0.2s, background-color 0.2s !important;
+    margin: 10px auto !important;
+}
+
+.info-pill-btn:hover {
+    background-color: #059669 !important;
+    transform: translateY(-2px);
+}
+
+/* Ensure the modal text is readable */
+.modal-content h3 {
+    color: #111827; /* Dark text for header */
+    margin-top: 0;
+}
