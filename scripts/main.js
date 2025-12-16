@@ -18,11 +18,20 @@ console.log("✅ MAIN.JS LOADED - v5.0 (Personalized Icon)");
 // ==========================================
 // 2. AUTHENTICATION & STARTUP
 // ==========================================
+// REPLACE THIS WITH YOUR REAL ADMIN ID (The same one from admin.js)
+const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
+
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         console.log("Logged in as:", user.email);
         
-        // UI Updates
+        // --- 🕵️‍♂️ SECRET BUTTON LOGIC ---
+        if (user.uid === MY_ADMIN_ID) {
+            const adminBtn = document.getElementById('admin-btn');
+            if(adminBtn) adminBtn.style.display = "block"; // Show the button!
+        }
+
+        // ... existing UI updates (notsigned, recipesGrid, etc.) ...
         const notSignedMsg = document.getElementById("notsigned");
         if(notSignedMsg) notSignedMsg.style.display = 'none';
         
@@ -32,7 +41,7 @@ onAuthStateChanged(auth, async (user) => {
         // 1. Load User Info & Favorites
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
-            let userName = user.displayName || user.email.split('@')[0]; // Fallback
+            let userName = user.displayName || user.email.split('@')[0];
 
             if (userSnap.exists()) {
                 const data = userSnap.data();
@@ -40,56 +49,31 @@ onAuthStateChanged(auth, async (user) => {
                 if (data.Name) { userName = data.Name; }
             }
             
-            // --- NEW: Update Profile Icon with Initials ---
             updateProfileIcon(userName);
 
         } catch (err) { console.error("Error loading profile:", err); }
 
         // 2. Load Content
-        if (recipesGrid) loadAllRecipes(); // Homepage
-        if (document.getElementById('chefNotes')) loadUserNote(); // Recipe Page
-        if (document.getElementById('commentsList')) loadComments(); // Recipe Page
-        if (document.getElementById('plan-Mon')) loadMealPlan(); // Homepage
+        if (recipesGrid) loadAllRecipes();
+        if (document.getElementById('chefNotes')) loadUserNote();
+        if (document.getElementById('commentsList')) loadComments();
+        if (document.getElementById('plan-Mon')) loadMealPlan();
 
     } else {
+        // ... Guest logic ...
+        const adminBtn = document.getElementById('admin-btn');
+        if(adminBtn) adminBtn.style.display = "none"; // Hide it if logged out
+
         console.log("User is guest/logged out.");
-        // UI Updates
         const notSignedMsg = document.getElementById("notsigned");
         if(notSignedMsg) notSignedMsg.style.display = 'block';
         
         const recipesGrid = document.getElementById('recipes');
         if(recipesGrid) recipesGrid.style.display = 'none';
 
-        // --- NEW: Reset Profile Icon to Default ---
         resetProfileIcon();
     }
 });
-
-// --- NEW HELPER FUNCTIONS FOR PROFILE ICON ---
-function updateProfileIcon(name) {
-    const iconEl = document.getElementById('header-profile-icon');
-    if (!iconEl) return;
-
-    // Create Initials (e.g., "Sue Egbert" -> "SE")
-    const initials = name.split(' ')
-        .map(part => part.charAt(0))
-        .join('')
-        .toUpperCase()
-        .substring(0, 2);
-
-    // Use UI Avatars API to generate the image
-    // We use your app's blue color (#0a4d74) for the background
-    const avatarUrl = `https://ui-avatars.com/api/?name=${initials}&background=0a4d74&color=fff&size=100&font-size=0.5&rounded=true`;
-    iconEl.src = avatarUrl;
-}
-
-function resetProfileIcon() {
-    const iconEl = document.getElementById('header-profile-icon');
-    if (iconEl) {
-        // Set back to your generic placeholder image
-        iconEl.src = "images/profile-icon.png"; 
-    }
-}
 
 
 // ==========================================
@@ -109,6 +93,12 @@ async function loadAllRecipes() {
             const data = doc.data();
             allRecipes.push({ id: doc.id, ...data });
         });
+
+        // --- NEW: THE FILTER ---
+            // If it is hidden, SKIP IT (don't add to list)
+            if (data.isHidden === true) {
+                return; 
+            }
 
         // Sort A-Z
         allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));

@@ -29,6 +29,7 @@ onAuthStateChanged(auth, (user) => {
             loadReports();            // 3. User Reports
             loadDeepStats();          // 4. Total Cooks + Category Breakdown
             loadUnreviewedRecipes();  // 5. "Needs Review" List
+            loadRecipeManager();
 
         } else {
             alert("Nice try! You are not the Admin.");
@@ -463,4 +464,84 @@ window.renderStats = function(mode) {
     }
     html += '</table>';
     list.innerHTML = html;
+};
+// ==========================================
+// 6. LIVE RECIPE MANAGER (Hide/Show)
+// ==========================================
+
+let managerRecipes = []; // Store list locally for fast searching
+
+async function loadRecipeManager() {
+    const list = document.getElementById('manager-list');
+    if(!list) return;
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "recipes"));
+        managerRecipes = [];
+
+        querySnapshot.forEach((doc) => {
+            managerRecipes.push({ id: doc.id, ...doc.data() });
+        });
+
+        // Sort Alphabetically
+        managerRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+
+        renderManagerList(managerRecipes);
+
+    } catch (error) {
+        console.error("Error loading manager:", error);
+        list.innerHTML = "Error loading list.";
+    }
+}
+
+function renderManagerList(recipes) {
+    const list = document.getElementById('manager-list');
+    let html = "";
+
+    recipes.forEach(r => {
+        // Check if Hidden
+        const isHidden = r.isHidden === true;
+        const opacity = isHidden ? "0.6" : "1";
+        const bg = isHidden ? "#f3f4f6" : "white";
+        const btnText = isHidden ? "❌ Hidden" : "👁️ Live";
+        const btnColor = isHidden ? "#ef4444" : "#10b981"; // Red vs Green
+
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: ${bg}; border: 1px solid #eee; border-radius: 6px; opacity: ${opacity};">
+                <span style="font-size: 13px; font-weight: bold; color: #333;">${r.name || "Untitled"}</span>
+                <button onclick="toggleVisibility('${r.id}', ${isHidden})" style="background: ${btnColor}; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; min-width: 70px;">
+                    ${btnText}
+                </button>
+            </div>
+        `;
+    });
+
+    list.innerHTML = html || "<p>No recipes found.</p>";
+}
+
+// SEARCH FILTER (For finding recipes quickly)
+window.filterManagerList = function() {
+    const query = document.getElementById('manager-search').value.toLowerCase();
+    const filtered = managerRecipes.filter(r => (r.name || "").toLowerCase().includes(query));
+    renderManagerList(filtered);
+};
+
+// THE TOGGLE ACTION
+window.toggleVisibility = async function(id, currentStatus) {
+    const newStatus = !currentStatus; // Flip it (True -> False)
+    const action = newStatus ? "HIDE" : "PUBLISH";
+    
+    if(!confirm(`${action} this recipe?`)) return;
+
+    try {
+        const recipeRef = doc(db, "recipes", id);
+        await updateDoc(recipeRef, { isHidden: newStatus });
+        
+        // Refresh the list to show change
+        loadRecipeManager(); 
+        
+    } catch (error) {
+        console.error("Error updating:", error);
+        alert("Could not update.");
+    }
 };

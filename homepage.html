@@ -15,19 +15,34 @@
 </head>
 <body>
     <div id="header">
-    <header class="header-container">
-    <img src="images/logo.jpg" alt="recipe book image" id="recipe-book-img">
-
-    <h1 class="header-title">Welcome to the Cookbook!</h1>
+    <div class="header-container">
     
-    <div class="spacer"></div>
+    <div class="logo">
+        <img src="images/logo.png" alt="Logo" class="logo-img">
+    </div>
 
-    <button id="header-search-btn" aria-label="Search">🔍</button>
+    <div class="header-title">
+        <h1 style="margin: 0; font-family: 'Amatic SC', cursive; font-size: 2rem; color: #0a4d74;">
+            Welcome to the Cookbook!
+        </h1>
+    </div>
 
-    <a href="profile.html" class="profile-link" aria-label="My Profile">
-        <img id="header-profile-icon" src="images/profile-icon.png" alt="Profile" style="border-radius: 50%; width: 40px; height: 40px; object-fit: cover;">
-    </a>
-</header>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        
+        <a id="admin-btn" href="admin.html" style="display: none; background: #0f172a; color: #fbbf24; padding: 5px 12px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold; border: 1px solid #fbbf24; white-space: nowrap;">
+            👑 Admin
+        </a>
+
+        <button id="header-search-btn" class="icon-btn" aria-label="Search">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </button>
+
+        <a href="profile.html" class="profile-link" aria-label="My Profile">
+            <img id="header-profile-icon" src="images/profile-icon.png" alt="Profile" style="border-radius: 50%; width: 40px; height: 40px; object-fit: cover; border: 2px solid #0a4d74;">
+        </a>
+
+    </div>
+</div>
 
     <h3>Please search for a recipe or click on a category below.</h3>
     <main>

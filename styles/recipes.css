@@ -1037,3 +1037,20 @@ button.add-recipe-btn {
         width: 100% !important;
     }
 }
+/* FORCE HEADER TO STAY ON ONE LINE */
+.header-container {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important; /* Prevents the 'double row' glitch */
+    padding: 10px 20px;
+    background: white;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+/* Hide the big text on mobile so buttons fit */
+@media (max-width: 600px) {
+    .header-title h1 {
+        display: none; 
+    }
+}
