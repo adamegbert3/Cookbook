@@ -59,6 +59,8 @@ onAuthStateChanged(auth, async (user) => {
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('plan-Mon')) loadMealPlan();
 
+        trackRecipeView();
+
     } else {
         // ... Guest logic ...
         const adminBtn = document.getElementById('admin-btn');
@@ -382,3 +384,27 @@ window.recordCook = async function(btnElement) {
         await addDoc(collection(db, "global_cooks"), { recipe: recipeTitle, timestamp: serverTimestamp() });
     } catch (error) { console.error("Error recording cook:", error); }
 };
+// ==========================================
+// 7. RECIPE TRACKING
+// ==========================================
+async function trackRecipeView() {
+    // Only run this if we are actually on a recipe page
+    if (!document.getElementById('chefNotes')) return;
+
+    const user = auth.currentUser;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    
+    if (!currentRecipe) return;
+
+    try {
+        await addDoc(collection(db, "recipe_views"), {
+            recipeId: currentRecipe.id,
+            recipeTitle: currentRecipe.name || "Unknown Recipe",
+            viewer: user ? (user.displayName || user.email) : "Guest",
+            timestamp: serverTimestamp()
+        });
+        console.log("👀 View tracked:", currentRecipe.name);
+    } catch (error) {
+        console.error("Error tracking view:", error);
+    }
+}
