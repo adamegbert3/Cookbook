@@ -1,68 +1,53 @@
-/* =========================================
-   1. IMPORTS & VARIABLES
-   ========================================= */
+/* ==========================================================================
+   1. VARIABLES & GLOBAL SETUP
+   ========================================================================== */
 @import url("https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 :root {
-    /* --- Original App Colors --- */
+    /* Brand Colors */
     --primary-color: #0a4d74;
     --secondary-color: #59c3c3;
-    --text-dark: #333;
-    --text-light: #ebebeb;
-    --primary-font: 'Arial', Helvetica, sans-serif;
-    --secondary-font: 'Amatic SC', cursive;
-
-    /* --- New Login Theme Colors (From Tailwind Config) --- */
+    
+    /* Tailwind-style Palette */
     --emerald-500: #10B981;
     --emerald-600: #059669;
     --amber-500: #F59E0B;
+    --blue-500: #3b82f6;
+    --orange-500: #f97316;
+    --teal-500: #0d9488;
+    --slate-500: #64748b;
+    --red-500: #ef4444;
+    --purple-500: #8b5cf6;
+
+    /* Neutrals */
+    --text-dark: #333;
+    --text-light: #ebebeb;
     --gray-100: #F3F4F6;
     --gray-300: #D1D5DB;
     --gray-500: #6B7280;
     --gray-700: #374151;
     --gray-800: #1F2937;
+
+    /* Fonts */
+    --primary-font: 'Inter', Helvetica, sans-serif;
+    --secondary-font: 'Amatic SC', cursive;
 }
 
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
-/* =========================================
-   2. GLOBAL & MAIN APP STYLES
-   ========================================= */
 body {
     font-family: var(--primary-font);
     background-color: var(--text-light);
     color: var(--text-dark);
     margin: 0;
     overflow-x: hidden;
-    word-wrap: break-word;
     width: 100%;
-    max-width: 100vw;
-    padding: 0;
 }
 
-/* Print Styles */
-@media print {
-  nav, footer, button, .search-bar { display: none; }
-  body { background-color: white; color: black; font-size: 12pt; }
-  .recipe-container { width: 100%; margin: 0; }
-}
-
-/* =========================================
-   3. RECIPE DASHBOARD STYLES (Your Original Code)
-   ========================================= */
-
-#recipes {
-    display: none; /* Often manipulated by JS */
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    gap: 40px;
-    padding-bottom: 50px;
-}
-
-/* Header Container */
+/* ==========================================================================
+   2. HEADER & NAVIGATION (Desktop Defaults)
+   ========================================================================== */
 .header-container {
     position: relative;
     display: flex;
@@ -73,15 +58,11 @@ body {
     padding-left: 2rem; 
     padding-right: 2rem; 
     border-radius: 3rem; 
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     background-color: rgba(255, 255, 255, 0.95);
     border: 1px solid #f3f4f6; 
-    transition: all 0.3s ease;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     backdrop-filter: blur(10px); 
-}
-
-.header-container:hover {
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.08); 
+    z-index: 100;
 }
 
 .header-title {
@@ -90,860 +71,969 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem; 
+    font-size: 1.8rem; 
     font-weight: 700; 
     color: var(--primary-color);
     font-family: var(--secondary-font);
     letter-spacing: -0.025em;
     user-select: none;
+    pointer-events: none; /* Lets clicks pass through to buttons below if they overlap */
 }
 
-/* Icons & Logos */
-.spacer { flex-grow: 1; }
-.icon { width: 2.5rem; height: 2.5rem; transition: color 0.15s ease; }
+/* Header Icons */
 .logo, .profile-link {
-    display: block; padding: 0.5rem; 
-    transition: transform 0.15s ease;
-    flex-shrink: 0; position: relative; z-index: 10; 
-}
-.logo:hover, .profile-link:hover { transform: scale(1.05); }
-.icon-cookbook { color: var(--secondary-color); }
-.icon-profile { color: var(--primary-color); }
-.profile-link:hover .icon-profile { color: var(--secondary-color); }
-
-/* Auth Status Indicator */
-.auth-status-container {
-    position: absolute; top: 100%; right: 0;
-    padding: 8px 15px; margin-top: 5px;
-    background-color: var(--text-dark); color: var(--text-light);
-    border-radius: 0.75rem; font-size: 0.8rem; font-weight: 400;
-    z-index: 5; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    white-space: nowrap;
-}
-.auth-status-container span { font-weight: 700; word-break: break-all; }
-.auth-loading {
-    display: inline-block; width: 15px; height: 15px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
-    border-radius: 50%; border-top-color: var(--secondary-color);
-    animation: spin 1s ease-in-out infinite; margin-right: 8px;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Forms & Inputs */
-form {
-    display: flex; margin: 20px auto;
-    border-radius: 3%; width: 95%;
-    border: 1px solid black; max-width: 500px;
-}
-#searchbar {
-    width: 100%; height: 35px; border: none;
-    padding: 0 10px; outline: none;
-}
-#buttonimg { width: 20px; height: 100%; border: none; }
-img { max-width: 100%; }
-
-/* Recipe Cards */
-.recipe-card {
-    width: 90%; max-width: 600px; margin: 0 auto;
-    background: white; padding: 20px;
-    border: 3px solid #333; border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    transition: transform 0.3s ease;
-    position: relative;
-    padding-bottom: 40px;
-}
-.recipe-card:hover { transform: scale(1.02); }
-#recipes img { margin: 10px auto; width: 55%; max-height: 320px; display: grid; height: 100%; }
-
-/* Tags */
-#tags {
-    display: flex; justify-content: center;
-    flex-wrap: wrap; gap: 10px; width: 100%;
-}
-#tags p {
-    border: 2px solid grey; padding: 5px 15px; margin: 0;
-    border-radius: 15px; font-size: 16px; background-color: #f9f9f9;
-}
-
-/* Typography & Layout Details */
-h2 {
-    color: var(--primary-color); margin-left: 15px; margin-bottom: 0;
-    font-family: var(--secondary-font); font-size: 30px;
-}
-.social { margin-left: 35%; }
-.social img { width: 300px; }
-#bottom-link { text-align: center; }
-#desc p { display: block; }
-#author { font-style: italic; text-align: center; margin-bottom: 10px; }
-.recipe { width: 90%; max-width: 400px; margin: auto; }
-.recipes-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
-
-/* =========================================
-   ROBUST FIX: GREEN BUTTONS EVERYWHERE
-   ========================================= */
-
-/* 1. Fix the Container Layout */
-/* We force the containers to center their content and remove the grid */
-.tool-bar, .homepagebtn {
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 10px !important;
-    grid-template-columns: none !important; /* Removes the 3-column split */
-    width: 100% !important;
-}
-
-/* 2. Target EVERYTHING inside the homepage/toolbar that could be a button */
-.tool-bar button,
-.homepagebtn button,        /* Standard Buttons */
-.homepagebtn a,             /* Links */
-.homepagebtn input,         /* Submit Inputs */
-#save-offline-btn {         /* Specific IDs */
-    
-    /* 1. Force the Color */
-    background-color: #10b981 !important; /* Emerald Green */
-    color: white !important;
-    
-    /* 2. Force the Shape */
-    border-radius: 20px !important;
-    padding: 8px 16px !important;
-    border: none !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-    
-    /* 3. Force the Size/Text */
-    width: auto !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    font-family: 'Inter', sans-serif !important;
-    text-decoration: none !important;
-    
-    /* 4. Fix Behavior */
-    display: inline-flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    cursor: pointer !important;
-    transition: transform 0.2s, background-color 0.2s !important;
-    margin: 0 !important; /* Remove any default margins */
-}
-
-/* 3. Hover Effects */
-.tool-bar button:hover,
-.homepagebtn button:hover,
-.homepagebtn a:hover,
-.homepagebtn input:hover,
-#save-offline-btn:hover {
-    background-color: #059669 !important; /* Darker Green */
-    transform: translateY(-2px);
-    text-decoration: none !important;
-}
-#recipe { padding: 40px; }
-.material-symbols-outlined { font-size: 300px; }
-
-/* Standard Buttons */
-button {
-    cursor: pointer; font-size: 16px; border-radius: 8px;
-    padding: 10px 15px; background-color: var(--secondary-color);
-    color: white; border: none; transition: background-color 0.3s ease;
-}
-
-/* Folder/Filter Buttons */
-.folders {
-    display: flex; justify-content: center; flex-wrap: wrap;
-    gap: 12px; margin: 20px auto; width: 95%; max-width: 900px;
-}
-.folders button {
-    padding: 12px 20px; font-size: 1rem; border: none;
-    border-radius: 12px; background-color: var(--secondary-color);
-    color: white; cursor: pointer; transition: transform 0.2s, opacity 0.2s;
-    display: flex; align-items: center; justify-content: center;
-}
-.folders button:hover { transform: scale(1.05); opacity: 0.9; }
-.folders button.active-filter {
-    background-color: var(--primary-color); color: white;
-    box-shadow: inset 0 3px 5px rgba(0,0,0,0.2);
-    transform: scale(1.05); font-weight: bold; border: 2px solid var(--primary-color);
-}
-.folders button.active-filter::before { content: "✓ "; margin-right: 5px; }
-
-/* Lists & Confetti */
-main button { background-color: none; color: none; text-decoration: none; margin: none; }
-.checked { text-decoration: line-through; color: #888; opacity: 0.6; }
-li { cursor: pointer; user-select: none; }
-.confetti-piece {
-  position: fixed; width: 10px; height: 10px; background-color: #f00;
-  top: 50%; left: 50%; z-index: 9999; pointer-events: none;
-  opacity: 1; border-radius: 2px;
-}
-
-/* Chef Notes */
-#chef-notes-area {
-    width: 95%; min-height: 200px; padding: 15px; font-size: 1.1rem;
-    border: 2px solid #aaa; border-radius: 10px; margin-top: 10px;
-    resize: vertical; font-family: inherit;
-}
-#chef-notes-area:focus { border-color: var(--secondary-color); outline: none; }
-
-/* Centering Utilities */
-main { display: flex; flex-direction: column; align-items: center; width: 100%; }
-form#search-form { margin: 20px auto; justify-content: center; }
-#info { text-align: center; }
-
-/* History List */
-#history-list { list-style: none; padding: 0; text-align: center; margin-bottom: 0; }
-#history-list li { margin-bottom: 5px; }
-
-/* Recent Recipes Box */
-#recent-recipes-box {
-    text-align: center; background-color: #f9fafb; border: 1px solid #e5e7eb;
-    border-radius: 20px; padding: 25px; width: 90%; max-width: 500px;
-    margin: 30px auto; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-}
-#recent-recipes-box h3 {
-    margin-top: 0; margin-bottom: 15px; color: var(--primary-color);
-    font-size: 1.1rem; text-transform: uppercase; letter-spacing: 1px;
-}
-
-/* Last Recipe Link */
-.last-recipe-link {
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: 10px; padding: 12px 30px; background: var(--primary-color);
-    color: white; text-decoration: none; font-family: var(--secondary-font);
-    font-size: 1.4rem; font-weight: bold; border-radius: 50px;
-    transition: all 0.3s ease; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-.last-recipe-link:hover {
-    transform: translateY(-3px); box-shadow: 0 10px 15px rgba(0,0,0,0.15);
-    background-color: var(--secondary-color);
-}
-
-/* Search Popup */
-#header-search-btn {
-    background: none; border: none; cursor: pointer; padding: 8px;
-    margin-right: 5px; color: var(--primary-color); transition: transform 0.2s;
-}
-#header-search-btn:hover { transform: scale(1.1); color: var(--secondary-color); }
-
-.hidden-overlay {
-    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px);
-    z-index: 1000; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;
-}
-.search-box-content {
-    background: white; padding: 40px; border-radius: 20px; text-align: center;
-    width: 90%; max-width: 500px; position: relative;
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-.search-box-content #searchbar {
-    width: 70%; padding: 15px; font-size: 1.2rem; border: 2px solid #eee;
-    border-radius: 10px 0 0 10px; outline: none;
-}
-.search-box-content #searchbar:focus { border-color: var(--secondary-color); }
-#search-submit {
-    width: 20%; padding: 15px; font-size: 1.2rem;
-    background-color: var(--secondary-color); color: white;
-    border: 2px solid var(--secondary-color); border-radius: 0 10px 10px 0; cursor: pointer;
-}
-#close-search {
-    position: absolute; top: 10px; right: 15px; background: none;
-    border: none; font-size: 1.5rem; color: #999; cursor: pointer;
-}
-.show-search { display: flex !important; }
-
-/* Tutorial & Modals */
-.tutorial-box {
-    background: white; padding: 30px; border-radius: 20px; text-align: center;
-    max-width: 400px; width: 85%; box-shadow: 0 20px 25px rgba(0,0,0,0.2);
-    border-top: 5px solid var(--secondary-color);
-    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-.demo-ingredient {
-    margin: 20px auto; padding: 12px; border: 2px dashed #ccc;
-    border-radius: 8px; cursor: pointer; font-size: 1.1rem;
-    font-weight: bold; color: var(--primary-color); transition: all 0.2s;
-}
-.demo-ingredient.checked {
-    text-decoration: line-through; color: #999;
-    background-color: #f3f3f3; border-color: #eee;
-}
-#close-tutorial {
-    background-color: var(--primary-color); color: white; padding: 12px 30px;
-    border: none; border-radius: 50px; font-size: 1rem; cursor: pointer;
-    font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-#close-tutorial:hover { transform: scale(1.05); }
-
-/* Meal Plan */
-#meal-plan-box {
-    background: var(--card-bg); padding: 20px; border-radius: 20px;
-    margin: 20px auto; width: 90%; max-width: 800px; text-align: center;
-    box-shadow: 0 4px 10px var(--shadow-color);
-}
-.week-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 10px; margin-top: 15px;
-}
-.day-card {
-    background: var(--bg-color); padding: 10px; border-radius: 10px;
-    border: 1px solid #ddd; display: flex; flex-direction: column; font-size: 0.9rem;
-}
-.day-card span {
-    color: var(--primary-color); font-weight: bold; margin-top: 5px;
-    overflow: hidden; text-overflow: ellipsis;
-}
-
-/* Animations */
-@keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes fall-down {
-  0% { transform: translate(0, 0) rotate(0deg); opacity: 1; }
-  100% { transform: translate(var(--x-end), 100vh) rotate(720deg); opacity: 0; }
-}
-
-/* Media Queries */
-@media screen and (min-width: 600px) {
-    .recipe-card { flex-direction: column; padding: 40px; }
-}
-@media (min-width: 640px) {
-    .header-title { font-size: 2.5rem; }
-}
-@media screen and (min-width: 960px) {
-    body { max-width: 960px; margin: 0 auto; }
-}
-@media (max-width: 639px) {
-    .header-container { width: 95%; max-width: 100%; margin: 20px auto; border-radius: 20px; padding: 0 1rem; height: auto; min-height: 64px; }
-    .header-title { font-size: 1.5rem; position: relative; }
-}
-@media (max-width: 640px) {
-    
-    /* 1. KEEP THE ICON SIZES (User Approved) */
-    .header-container svg, 
-    .header-container img,
-    .icon {
-        width: 40px !important;
-        height: 40px !important;
-    }
-
-    /* 2. LOGO SPACING */
-    .logo {
-        padding: 5px !important;
-        margin-right: 5px !important; /* Push text away slightly */
-        position: relative;
-        z-index: 20; /* Ensures logo sits ON TOP of text if they ever touch */
-    }
-
-    /* 3. FIX THE "SQUASHED" TEXT */
-    .header-title {
-        display: flex !important;
-        align-items: center;
-        
-        /* Font Sizing */
-        font-size: 25.5px !important; /* Readable but small enough to fit */
-        line-height: 1.1;
-        text-align: center;         /* Tries to center text inside its box */
-        
-        /* THE CRITICAL PART: Safe Zones */
-        /* We force the text box to start AFTER the logo and end BEFORE the buttons */
-        left: 60px !important;   /* Clear the 40px logo + padding */
-        right: 100px !important; /* Clear the 2 icons on the right (40px + 40px + gaps) */
-        
-        /* Safety for very small screens */
-        white-space: nowrap;      /* Keeps it on one line */
-        overflow: hidden;         /* Hides overflow */
-        text-overflow: ellipsis;  /* Adds "..." if it's still too long */
-        justify-content: center;
-    }
-}
-
-/* =========================================
-   4. FIXED LOGIN PAGE STYLES
-   ========================================= */
-
-/* 1. Page Background & Font Reset */
-/* 1. Page Background & Centering (UPDATED) */
-body.login-page {
-    background-color: #f3f4f6 !important;
-    font-family: 'Inter', sans-serif !important;
-    
-    /* Flexbox Centering */
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    
-    /* Full Screen Dimensions */
-    min-height: 100vh !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    
-    /* --- THE FIX IS HERE --- */
-    /* This overrides the 'max-width: 960px' from your main app styles */
-    max-width: 100vw !important; 
-    width: 100% !important;
-}
-
-/* 2. The Card Container */
-.login-card {
-    background-color: #ffffff;
-    width: 100%;
-    max-width: 400px;
-    padding: 40px 32px;
-    border-radius: 16px; /* Softer rounded corners */
-    /* Beautiful, deep shadow for the "float" effect */
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 
-                0 4px 6px -2px rgba(0, 0, 0, 0.05),
-                0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    text-align: center;
-    position: relative;
-    z-index: 10;
-}
-
-/* 3. Header Typography */
-.logo-icon {
-    font-size: 48px;
-    margin-bottom: 12px;
-    line-height: 1;
-}
-
-.login-header h1 {
-    color: #111827 !important;
-    font-family: 'Inter', sans-serif !important;
-    font-size: 28px !important;
-    font-weight: 800 !important;
-    line-height: 1.2 !important;
-    margin: 0 0 12px 0 !important;
-    text-transform: none !important; /* Overrides any global caps */
-}
-
-.subtitle {
-    color: #6b7280 !important;
-    font-family: 'Inter', sans-serif !important;
-    font-size: 15px !important;
-    margin-bottom: 32px !important;
-}
-
-/* 4. FIXING THE FORM CONFLICTS */
-/* We specifically unset the global form borders and margins */
-form.login-form {
-    border: none !important;
-    box-shadow: none !important;
-    background: transparent !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    display: block !important; /* Resets flex issues */
-}
-
-.input-group {
-    text-align: left;
-    margin-bottom: 20px;
-}
-
-.input-group label {
-    display: block;
-    font-family: 'Inter', sans-serif !important;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 8px;
-}
-
-/* 5. Modern Inputs */
-.form-input {
-    width: 100%;
-    padding: 12px 16px !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 8px !important;
-    font-size: 16px !important;
-    color: #111827;
-    font-family: 'Inter', sans-serif !important;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    outline: none;
-    transition: all 0.2s ease;
-    box-sizing: border-box;
-}
-
-.form-input:focus {
-    border-color: #10b981 !important; /* Green border */
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important; /* Green glow */
-}
-
-/* 6. Links and Buttons */
-.forgot-link {
-    text-align: right;
-    margin-bottom: 24px;
-}
-
-.forgot-link a {
-    color: #10b981 !important; /* Green */
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-    font-family: 'Inter', sans-serif !important;
-}
-
-.login-btn {
-    width: 100%;
-    background-color: #10b981 !important; /* Green Button */
-    color: white !important;
-    border: none !important;
-    padding: 14px !important;
-    font-size: 16px !important;
-    font-weight: 700 !important;
-    border-radius: 8px !important;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    margin-top: 0 !important;
-}
-
-.login-btn:hover {
-    background-color: #059669 !important;
-}
-
-.signup-link {
-    margin-top: 24px;
-    font-size: 14px;
-    color: #4b5563;
-    font-family: 'Inter', sans-serif !important;
-}
-
-.signup-link a {
-    color: #d97706 !important; /* The correct ORANGE color */
-    font-weight: 600;
-    text-decoration: none;
-}
-
-.signup-link a:hover {
-    text-decoration: underline;
-}
-
-.logo-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
-    line-height: 1;
-}
-
-.login-header h1 {
-    color: #1f2937; /* Dark Slate */
-    font-size: 28px;
-    font-weight: 800;
-    line-height: 1.2;
-    margin: 0 0 12px 0;
-    font-family: 'Inter', sans-serif;
-}
-
-.subtitle {
-    color: #6b7280; /* Cool Gray */
-    font-size: 15px;
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-}
-
-/* 4. Form Inputs */
-.input-group {
-    text-align: left;
-    margin-bottom: 20px;
-}
-
-.input-group label {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: #374151;
-    margin-bottom: 8px;
-    font-family: 'Inter', sans-serif;
-}
-
-.form-input {
-    width: 100%;
-    padding: 12px 16px; /* Larger padding like screenshot */
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 16px;
-    color: #111827;
-    outline: none;
-    background: #fff;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    font-family: 'Inter', sans-serif;
-    box-sizing: border-box; /* Ensures padding doesn't break width */
-}
-
-.form-input::placeholder {
-    color: #9ca3af;
-}
-
-.form-input:focus {
-    border-color: #10b981;
-    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-}
-
-/* 5. Links & Buttons */
-.forgot-password {
-    text-align: right;
-    margin-bottom: 24px;
-}
-
-.forgot-password a {
-    color: #10b981; /* Green */
-    text-decoration: none;
-    font-size: 14px;
-    font-weight: 500;
-    font-family: 'Inter', sans-serif;
-}
-
-.login-btn {
-    width: 100%;
-    background-color: #10b981;
-    color: white;
-    border: none;
-    padding: 14px;
-    font-size: 16px;
-    font-weight: 700;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    font-family: 'Inter', sans-serif;
-}
-
-.login-btn:hover {
-    background-color: #059669;
-}
-
-.signup-prompt {
-    margin-top: 24px;
-    font-size: 14px;
-    color: #4b5563;
-    font-family: 'Inter', sans-serif;
-}
-
-.signup-prompt a {
-    color: #d97706; /* Orange */
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.signup-prompt a:hover {
-    text-decoration: underline;
-}
-
-/* 6. Modal Overrides (Ensures modals still work on this page) */
-.modal {
-    z-index: 1000;
-}
-.modal-content {
-    font-family: 'Inter', sans-serif;
-}
-
-/* >>> REPLACE THE OLD .logo-icon WITH THIS <<< */
-.logo-icon {
-    font-size: 2.5rem;     /* Reduced from 3.75rem so it's not huge */
-    margin-bottom: 0.5rem; /* Adjusted spacing below it */
-    margin-top: 0;         /* Ensures it stays at the top of the container */
-    line-height: 1;        /* Keeps the emoji from creating extra vertical space */
-    display: inline-block; /* Helps it sit stably */
-}
-/* >>> END REPLACEMENT <<< */
-.header-container svg {
-    width: 60px;
-    height: 60px;
-    max-width: 100%;
-}
-
-/* Just in case it's an <img> tag and not an <svg> tag */
-.header-container img {
-    width: 60px;
-    height: 60px;
-    object-fit: contain; 
-}
-.logo {
-    /* Existing styles you had */
-    display: block;
+    display: block; 
     padding: 0.5rem; 
     transition: transform 0.15s ease;
     flex-shrink: 0; 
     position: relative; 
     z-index: 10; 
-    
-    /* --- THE MISSING INGREDIENT --- */
-    /* This creates a constraint so the image inside cannot expand */
-    width: 80px;  
-    height: 80px;
 }
 
-/* This ensures whatever image/svg is inside fills the box nicely */
-.logo img, 
-.logo svg {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+#recipe-book-img { width: 50px; height: 50px; object-fit: contain; }
+.icon-profile { width: 2.5rem; height: 2.5rem; color: var(--primary-color); }
+.logo:hover, .profile-link:hover { transform: scale(1.05); }
+
+/* Search Icon in Header */
+#header-search-btn {
+    background: none; border: none; cursor: pointer; padding: 8px;
+    margin-right: 5px; font-size: 24px; color: var(--primary-color); 
+    transition: transform 0.2s; z-index: 20;
+}
+#header-search-btn:hover { transform: scale(1.1); color: var(--secondary-color); }
+.spacer { flex-grow: 1; }
+
+
+/* ==========================================================================
+   3. BUTTONS & INTERACTIVE ELEMENTS
+   ========================================================================== */
+
+/* Base Button Reset */
+button {
+    cursor: pointer; font-size: 16px; border-radius: 8px;
+    padding: 10px 15px; border: none; transition: all 0.2s ease;
+    font-family: var(--primary-font);
 }
 
-.login-header h1 {
-    font-size: 1.875rem;
-    font-weight: bold;
-    color: var(--gray-800);
-    margin: 0;
+/* --- New Pill Button System (The colorful ones) --- */
+.pill-btn {
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: none;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center; justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    transition: transform 0.2s, background-color 0.2s;
+    margin: 5px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-.status-badge {
-    position: absolute;
-    bottom: 10px;  /* Changed from 'top' to 'bottom' */
-    right: 10px;   /* Keep it on the right */
-    
-    /* Styling (same as before) */
-    background-color: #ffffff; 
-    border: 1px solid #ccc;
-    border-radius: 20px;
-    padding: 4px 10px;
-    
-    font-size: 0.75rem;
-    font-weight: bold;
-    color: #333;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.15); 
-    z-index: 100;
-    pointer-events: none; 
+.pill-btn:hover { transform: scale(1.05); }
+
+/* Color Variants */
+.btn-teal   { background-color: var(--teal-500); }
+.btn-teal:hover { background-color: #0f766e; }
+
+.btn-orange { background-color: var(--orange-500); }
+.btn-orange:hover { background-color: #ea580c; }
+
+.btn-blue   { background-color: var(--blue-500); }
+.btn-blue:hover { background-color: #2563eb; }
+
+.btn-slate  { background-color: var(--slate-500); }
+.btn-slate:hover { background-color: #475569; }
+
+.btn-purple { background-color: var(--purple-500); }
+.btn-purple:hover { background-color: #7c3aed; }
+
+.btn-red    { background-color: var(--red-500); }
+.btn-red:hover { background-color: #dc2626; }
+
+/* "Active" state for Cook Mode */
+#cookModeBtn.active {
+    background-color: var(--emerald-500) !important;
+    box-shadow: 0 0 15px var(--emerald-500);
 }
 
-/* Login Form Elements */
-.login-form { display: flex; flex-direction: column; gap: 1.5rem; }
-.input-group label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--gray-700); margin-bottom: 0.25rem; }
-.form-input {
-    width: 100%; padding: 0.5rem 1rem; border: 1px solid var(--gray-300);
-    border-radius: 0.5rem; transition: all 0.3s ease; box-sizing: border-box;
-}
-.form-input:focus { outline: none; border-color: var(--emerald-500); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.4); }
-
-/* Login Buttons & Links */
-.forgot-password { display: flex; justify-content: flex-end; font-size: 0.875rem; }
-.forgot-password a, .signup-prompt a { color: var(--emerald-500); text-decoration: none; font-weight: 500; transition: color 0.2s; }
-.forgot-password a:hover, .signup-prompt a:hover { color: var(--amber-500); }
-
+/* --- Standard Login/Action Button (Green Default) --- */
 .login-btn, .modal-btn {
     width: 100%; display: flex; justify-content: center; padding: 0.75rem 1rem;
     border: none; border-radius: 0.5rem; background-color: var(--emerald-500);
     color: white; font-weight: 600; font-size: 0.875rem; cursor: pointer;
-    transition: background-color 0.3s, transform 0.1s; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    transition: background-color 0.3s;
 }
 .login-btn:hover, .modal-btn:hover { background-color: var(--emerald-600); }
-.login-btn:active { transform: scale(0.95); }
 
-.cancel-btn {
-    width: 100%; margin-top: 10px; padding: 10px; background: transparent;
-    border: 1px solid var(--gray-300); border-radius: 0.5rem; cursor: pointer; color: var(--gray-500);
+/* --- Special Back to Homepage Button Fix --- */
+a[href="homepage.html"] button {
+    background-color: var(--emerald-500);
+    color: white;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 600;
 }
-.cancel-btn:hover { background-color: var(--gray-100); }
-.signup-prompt { margin-top: 2rem; text-align: center; font-size: 0.875rem; color: var(--gray-500); }
 
-/* Modals */
-.hidden { display: none !important; }
+/* --- Hearts --- */
+.heart-btn {
+    background: transparent; border: none; font-size: 24px;
+    cursor: pointer; transition: transform 0.2s ease; z-index: 50; padding: 5px;
+}
+.heart-btn:hover { transform: scale(1.2); }
+.card-heart { position: absolute; top: 10px; right: 10px; }
+
+
+/* ==========================================================================
+   4. RECIPE CARDS & LISTS (GRID RESTORED)
+   ========================================================================== */
+
+/* The Container - Holds all the cards */
+#recipes {
+    display: flex;
+    flex-wrap: wrap;           /* ALLOWS GRID! Cards can sit next to each other */
+    justify-content: center;   /* Centers them on the screen */
+    width: 100%;
+    gap: 30px;                 /* Space between cards */
+    padding-bottom: 50px;
+    max-width: 1200px;         /* Prevents them from spreading too far on huge screens */
+    margin: 0 auto;            /* Centers the whole grid */
+}
+
+/* The Individual Card */
+.recipe-card {
+    /* Dimensions */
+    width: 300px;              /* Fixed width so they are all the same size */
+    min-height: 400px;         /* Minimum height for uniformity */
+    
+    /* Look & Feel */
+    background: white;
+    padding: 20px;
+    border: 2px solid #333;    /* Your classic thick border */
+    border-radius: 15px;
+    box-shadow: 5px 5px 0px rgba(0,0,0,0.1); /* "Pop" shadow effect */
+    
+    /* Layout inside the card */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* Pushes content apart nicely */
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover Effect */
+.recipe-card:hover {
+    transform: translateY(-5px); /* Moves up slightly */
+    box-shadow: 8px 8px 0px rgba(0,0,0,0.15);
+}
+
+/* Images inside cards */
+#recipes img {
+    width: 100%;
+    height: 180px;            /* Fixed height for tidiness */
+    object-fit: cover;        /* Crops image nicely without squishing */
+    border-radius: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #eee;
+}
+
+/* Typography inside cards */
+.recipe-card h2 {
+    font-size: 1.5rem;
+    margin: 10px 0;
+    color: var(--primary-color);
+    font-family: var(--secondary-font);
+    line-height: 1.1;
+}
+
+.recipe-card p {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Status Badge inside card */
+.status-badge {
+    display: inline-block;
+    font-size: 12px;
+    background: #f3f4f6;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+/* Heart Button Position */
+.card-heart {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: white;
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 📱 MOBILE FIX: Make cards full width on phones */
+@media (max-width: 600px) {
+    .recipe-card {
+        width: 90%;       /* Nearly full screen width */
+        max-width: 400px; 
+    }
+}
+
+
+/* ==========================================================================
+   5. LOGIN PAGE STYLES
+   ========================================================================== */
+body.login-page {
+    background-color: var(--gray-100);
+    font-family: var(--primary-font);
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100vh;
+}
+
+.login-card {
+    background-color: white;
+    width: 100%; max-width: 400px;
+    padding: 40px 32px;
+    border-radius: 16px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    text-align: center;
+}
+
+.logo-icon { font-size: 48px; margin-bottom: 12px; line-height: 1; }
+.login-header h1 { font-size: 28px; font-weight: 800; color: var(--gray-800); margin: 0 0 12px 0; }
+.subtitle { color: var(--gray-500); font-size: 15px; margin-bottom: 32px; }
+
+.input-group { text-align: left; margin-bottom: 20px; }
+.input-group label { display: block; font-size: 14px; font-weight: 600; color: var(--gray-700); margin-bottom: 8px; }
+.form-input {
+    width: 100%; padding: 12px 16px;
+    border: 1px solid var(--gray-300); border-radius: 8px;
+    font-size: 16px; outline: none; transition: all 0.2s;
+}
+.form-input:focus { border-color: var(--emerald-500); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2); }
+
+.forgot-link { text-align: right; margin-bottom: 24px; }
+.forgot-link a, .signup-link a { color: var(--emerald-500); text-decoration: none; font-weight: 600; }
+
+
+/* ==========================================================================
+   6. ADMIN PANEL
+   ========================================================================== */
+.admin-container {
+    width: 95%; max-width: 1200px; margin: 40px auto;
+    padding: 20px;
+}
+
+/* Layout Wrapper */
+.admin-layout {
+    display: grid;
+    grid-template-columns: 3fr 2fr; /* Left side bigger than right */
+    gap: 30px;
+    align-items: start;
+}
+
+/* Pending Recipe Card */
+.pending-card {
+    background: white; border: 1px solid #e5e7eb; border-radius: 12px;
+    padding: 20px; margin-bottom: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    display: flex; flex-direction: column; gap: 10px;
+}
+.pending-header { border-bottom: 1px solid #eee; padding-bottom: 10px; }
+
+.pending-actions { display: flex; gap: 10px; margin-top: 15px; }
+.btn-approve { background: var(--emerald-500); color: white; width: 100%; padding: 10px; border-radius: 6px; border:none; }
+.btn-reject { background: var(--red-500); color: white; width: 100%; padding: 10px; border-radius: 6px; border:none; }
+
+/* Widgets */
+.dashboard-widgets {
+    display: flex; flex-direction: column; gap: 20px;
+}
+.widget-card { height: fit-content; }
+
+
+/* ==========================================================================
+   7. MODALS & OVERLAYS (FIXED)
+   ========================================================================== */
+
+/* 1. Standard Modal (Used on Recipe Page) */
 .modal {
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background-color: rgba(31, 41, 55, 0.5); display: flex;
-    align-items: center; justify-content: center; padding: 1rem; z-index: 50; backdrop-filter: blur(2px);
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex; /* Flex is the default state for these */
+    align-items: center; justify-content: center;
+    z-index: 1000; backdrop-filter: blur(3px);
 }
-.modal-content {
-    background: white; padding: 1.5rem; border-radius: 0.75rem;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); max-width: 24rem; width: 100%; text-align: center;
-}
-.modal-content h3 { margin-top: 0; color: var(--gray-800); margin-bottom: 1rem; }
-/* =========================================
-   FIX FOR "BACK TO HOMEPAGE" BUTTON
-   ========================================= */
+/* This class hides it */
+.modal.hidden { display: none !important; }
 
-/* 1. Target the Link Wrapper */
-/* We identify it by where it points (homepage.html) */
-a[href="homepage.html"] {
-    text-decoration: none !important; /* No blue underline */
-    display: inline-block !important; /* Allows centering */
-    margin: 10px !important;          /* Adds breathing room */
-}
 
-/* 2. Target the Button INSIDE that Link */
-a[href="homepage.html"] button {
-    /* The Green Style */
-    background-color: #10b981 !important;
-    color: white !important;
+/* 2. Search Overlay (Used on Homepage) */
+.hidden-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.6); 
+    backdrop-filter: blur(5px);
+    z-index: 1000; 
+    align-items: center; justify-content: center;
     
-    /* The Small "Pill" Shape */
+    /* CRITICAL FIX: It must start HIDDEN */
+    display: none; 
+}
+/* This class shows it */
+.show-search { display: flex !important; }
+
+
+/* 3. Content Boxes */
+.modal-content, .search-box-content {
+    background: white; padding: 25px; border-radius: 16px;
+    max-width: 500px; width: 90%; text-align: center;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    position: relative;
+}
+
+/* Celebration Confetti */
+.confetti-piece {
+    position: fixed; width: 10px; height: 10px;
+    z-index: 9999; pointer-events: none;
+}
+@keyframes fall-down {
+    to { transform: translateY(100vh) translateX(var(--x-end)) rotate(720deg); opacity: 0; }
+}
+
+
+/* ==========================================================================
+   8. MEDIA QUERIES (RESPONSIVENESS)
+   *** THESE MUST BE AT THE BOTTOM TO OVERRIDE EVERYTHING ELSE ***
+   ========================================================================== */
+
+/* --- A. Tablet Fixes --- */
+@media (max-width: 900px) {
+    /* Stack Admin Panel */
+    .admin-layout {
+        grid-template-columns: 1fr;
+        display: flex; flex-direction: column;
+        gap: 30px;
+    }
+}
+
+/* --- B. Phone Fixes (The Magnet Layout) --- */
+@media (max-width: 600px) {
+    
+    /* 1. Reset Header Container */
+    .header-container {
+        display: flex;
+        flex-wrap: wrap;       /* Allow wrapping */
+        align-items: center;
+        justify-content: flex-start; /* Pack items tightly left */
+        padding: 10px 15px;
+        height: auto;          /* Allow growing tall */
+        min-height: 70px;
+    }
+
+    /* 2. LOGO: Stays Left & Pushes others Right */
+    #recipe-book-img {
+        height: 35px; width: 35px;
+        order: 1;
+        margin-right: auto; /* MAGNET: Pushes everything else to the right wall */
+    }
+
+    /* 3. SEARCH ICON: Sits next to Profile */
+    #header-search-btn {
+        order: 2;
+        margin-right: 15px; /* Gap between Search and Profile */
+        font-size: 24px;
+        position: static;   /* Reset positioning */
+    }
+
+    /* 4. PROFILE ICON: Far Right */
+    .profile-link {
+        order: 3;
+    }
+    .icon-profile {
+        width: 28px; height: 28px;
+    }
+
+    /* 5. TITLE: Bottom Row */
+    .header-title {
+        position: static; /* No longer absolute centering */
+        order: 4;
+        width: 100%;        /* Force new line */
+        text-align: center;
+        margin-top: 5px;
+        font-size: 1.5rem;
+        line-height: 1.2;
+    }
+
+    /* 6. Admin Panel Mobile */
+    .pending-actions { flex-direction: column; }
+    .btn-approve, .btn-reject { width: 100%; padding: 15px; font-size: 16px; }
+
+    /* Hide spacing helpers */
+    .spacer { display: none; }
+}
+
+/* Print Styles */
+@media print {
+    nav, footer, button, .search-bar, .tool-bar { display: none !important; }
+    body { background-color: white; color: black; font-size: 12pt; }
+    .recipe-card { border: none; box-shadow: none; width: 100%; }
+}
+/* ==========================================================================
+   9. HOMEPAGE RESTORATION PATCH (Paste at bottom of file)
+   ========================================================================== */
+
+/* 1. RESTORE THE GREEN HOMEPAGE BUTTONS */
+/* This forces all buttons inside the 'homepagebtn' container to look correct again */
+.homepagebtn {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.homepagebtn button, 
+.homepagebtn a {
+    background-color: var(--emerald-500) !important; /* Force Green */
+    color: white !important;
     border-radius: 20px !important;
-    padding: 8px 16px !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
-    font-family: 'Inter', sans-serif !important;
-    
-    /* Clean up default button borders */
+    padding: 10px 20px !important;
     border: none !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-    cursor: pointer !important;
-    transition: transform 0.2s, background-color 0.2s !important;
-}
-
-/* 3. Hover Effect */
-a[href="homepage.html"] button:hover {
-    background-color: #059669 !important; /* Darker Green */
-    transform: translateY(-2px);          /* Little pop up */
-}
-/* =========================================
-   "WHAT DOES REVIEWED MEAN" BUTTON
-   ========================================= */
-
-.info-pill-btn {
-    /* Green Style (Matching your theme) */
-    background-color: #10b981 !important;
-    color: white !important;
-    
-    /* Pill Shape */
-    border-radius: 50px !important;
-    padding: 8px 20px !important;
-    font-size: 14px !important;
     font-weight: 600 !important;
-    font-family: 'Inter', sans-serif !important;
-    border: none !important;
-    cursor: pointer !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-    
-    /* Centering */
-    display: inline-flex !important;
-    align-items: center !important;
-    gap: 8px; /* Space between icon and text */
-    transition: transform 0.2s, background-color 0.2s !important;
-    margin: 10px auto !important;
+    text-decoration: none !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+    cursor: pointer;
+    transition: transform 0.2s;
+    font-size: 16px;
 }
 
-.info-pill-btn:hover {
-    background-color: #059669 !important;
+.homepagebtn button:hover, 
+.homepagebtn a:hover {
+    background-color: var(--emerald-600) !important;
     transform: translateY(-2px);
 }
 
-/* Ensure the modal text is readable */
-.modal-content h3 {
-    color: #111827; /* Dark text for header */
-    margin-top: 0;
+/* 2. FIX THE "WEEKLY MENU" BOX */
+#meal-plan-box {
+    background: white;
+    padding: 25px;
+    border-radius: 20px;
+    margin: 30px auto;
+    width: 90%;
+    max-width: 800px;
+    text-align: center;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
 }
-/* =========================================
-   HEART / FAVORITE BUTTON
-   ========================================= */
-.heart-btn {
-    background: transparent;
+
+.week-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); /* Auto-fit columns */
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.day-card {
+    background: var(--gray-100);
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    display: flex;
+    flex-direction: column;
+    font-size: 0.9rem;
+    min-height: 80px; /* Ensure they have height even if empty */
+}
+
+.day-card strong {
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    display: block;
+}
+
+/* 3. FIX THE "PICK UP WHERE YOU LEFT OFF" BOX */
+#recent-recipes-box {
+    text-align: center;
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 25px;
+    width: 90%;
+    max-width: 500px;
+    margin: 30px auto;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* The Big Blue Button inside the box */
+.last-recipe-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 12px 30px;
+    background: var(--primary-color);
+    color: white !important;
+    text-decoration: none;
+    font-family: var(--secondary-font);
+    font-size: 1.5rem;
+    font-weight: bold;
+    border-radius: 50px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    margin-top: 15px;
+}
+
+.last-recipe-link:hover {
+    transform: translateY(-3px);
+    background-color: var(--secondary-color);
+    box-shadow: 0 10px 15px rgba(0,0,0,0.15);
+}
+
+/* 4. FIX THE "WHAT DOES REVIEWED MEAN" BUTTONS */
+.info-pill-btn {
+    background-color: var(--slate-500); /* Slate Gray */
+    color: white;
+    border-radius: 50px;
+    padding: 8px 16px;
+    font-size: 13px;
     border: none;
-    font-size: 24px; /* Big emoji */
     cursor: pointer;
-    transition: transform 0.2s ease;
-    z-index: 50; /* Ensures it sits on top of the card */
-    padding: 5px;
+    margin: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+.info-pill-btn:hover {
+    background-color: var(--gray-700);
+}
+/* ==========================================================================
+   🚨 EMERGENCY FIX: RESTORE GRID & COLORS
+   (Paste this at the very bottom of your CSS file)
+   ========================================================================== */
+
+/* 1. FORCE THE RECIPE GRID (Fixes "Huge Cards") */
+#recipes {
+    display: flex !important;
+    flex-wrap: wrap !important;      /* Allows multiple rows */
+    flex-direction: row !important;  /* Side-by-side, NOT stacked */
+    justify-content: center !important;
+    gap: 30px !important;
+    width: 100% !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
 }
 
-.heart-btn:hover {
-    transform: scale(1.2); /* Pop effect */
-}
-
-/* Optional: Position it on the card */
-/* If you want it in the top-right corner of the recipe card: */
 .recipe-card {
-    position: relative; /* Needed for absolute positioning inside */
+    width: 300px !important;         /* Forces standard card size */
+    max-width: 300px !important;     /* Prevents stretching */
+    margin: 0 !important;            /* Removes weird spacing */
+    flex: none !important;           /* Stops flexbox from squishing them */
 }
 
+/* 2. RESTORE HOMEPAGE COLORS */
+
+/* Category Buttons (Appetizers, Desserts, etc.) */
+.folders button {
+    background-color: #59c3c3 !important; /* Your signature Teal */
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 12px 20px !important;
+    border: none !important;
+    font-size: 1rem !important;
+    margin: 5px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+.folders button:hover {
+    transform: scale(1.05);
+    background-color: #0a4d74 !important; /* Dark Blue on hover */
+}
+
+/* "Add Your Own Recipe" Button */
+/* We target the dark button specifically */
+a[href="submit.html"] button,
+button.add-recipe-btn {
+    background-color: #1f2937 !important; /* Keep it dark charcoal */
+    color: white !important;
+    border-radius: 8px !important;
+    padding: 12px 24px !important;
+    font-weight: bold !important;
+}
+
+/* 3. RESTORE THE WEEKLY MENU & RECENT BOX */
+#meal-plan-box, 
+#recent-recipes-box {
+    background: white !important;
+    border-radius: 20px !important;
+    padding: 25px !important;
+    margin: 30px auto !important;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1) !important;
+    border: 1px solid #e5e7eb !important;
+    width: 90% !important;
+    max-width: 600px !important;
+}
+
+/* Day Cards in Weekly Menu */
+.day-card {
+    background: #f3f4f6 !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 8px !important;
+    padding: 10px !important;
+    min-height: 80px !important;
+}
+
+/* "Pick Up Where You Left Off" Button */
+.last-recipe-link {
+    background-color: #0a4d74 !important; /* Primary Blue */
+    color: white !important;
+    border-radius: 50px !important;
+    padding: 12px 30px !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin-top: 15px !important;
+}
+
+/* 4. RESTORE INFO BUTTONS (What does reviewed mean?) */
+.info-pill-btn {
+    background-color: #64748b !important; /* Slate Gray */
+    color: white !important;
+    border-radius: 50px !important;
+    padding: 8px 16px !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-size: 13px !important;
+}
+
+/* 📱 MOBILE OVERRIDE: Cards go full width only on phones */
+@media (max-width: 600px) {
+    .recipe-card {
+        width: 100% !important;
+        max-width: 400px !important;
+    }
+}
+/* ==========================================================================
+   🚨 FINAL CARD FIX: THICK BORDERS & VISIBLE IMAGES
+   ========================================================================== */
+
+/* 1. THE CARD ITSELF */
+.recipe-card {
+    /* Size */
+    width: 320px !important;
+    min-height: 420px !important; /* Force them to be tall enough */
+    
+    /* The "Sketchy" Look */
+    background: white !important;
+    border: 3px solid #333 !important; /* Thick dark border is back! */
+    border-radius: 15px !important;
+    box-shadow: 5px 5px 0px rgba(0,0,0,0.1) !important; /* Pop shadow */
+    
+    /* Layout */
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: space-between !important;
+    padding: 15px !important;
+    margin: 15px !important;
+}
+
+/* 2. THE IMAGES (Fixing the "Empty White Space") */
+#recipes img {
+    width: 100% !important;
+    height: 200px !important;      /* Force a standard height */
+    object-fit: cover !important;  /* Crop the image nicely to fit */
+    border-radius: 10px !important;
+    margin: 10px 0 !important;
+    display: block !important;
+    background-color: #eee;        /* Light gray placeholder if image loads slow */
+}
+
+/* 3. THE TEXT */
+.recipe-card h2 {
+    font-family: 'Amatic SC', cursive !important; /* Your fun font */
+    font-weight: 700 !important;
+    font-size: 1.8rem !important;
+    color: #0a4d74 !important;    /* Blue title */
+    margin: 5px 0 !important;
+    text-align: center !important;
+    line-height: 1.1 !important;
+}
+
+.recipe-card p {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.9rem !important;
+    color: #555 !important;
+    margin: 2px 0 !important;
+}
+
+/* 4. THE HEART BUTTON */
 .card-heart {
-    position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 15px !important;
+    right: 15px !important;
+}
+/* ==========================================================================
+   FINAL CARD POLISH: COMPACT SIZE & BADGE POSITION
+   (Paste at the very bottom of styles/recipes.css)
+   ========================================================================== */
+
+/* 1. SHRINK THE CARD HEIGHT */
+.recipe-card {
+    min-height: auto !important; /* Stop forcing them to be huge */
+    height: auto !important;     /* Let them fit the content naturally */
+    padding-bottom: 20px !important;
+}
+
+/* 2. MOVE "REVIEWED" BADGE TO TOP-RIGHT */
+.status-badge {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    
+    /* Make it look neat */
+    background: #f3f4f6 !important;
+    border: 1px solid #ddd !important;
+    border-radius: 20px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    z-index: 20 !important;
+    margin: 0 !important;
+}
+
+/* 3. MOVE HEART TO TOP-LEFT (So they don't crash) */
+.card-heart {
+    top: 5px !important;
+    left: 5px !important; /* Move heart to the left side */
+    right: auto !important; /* Unset the right side rule */
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* 4. TIGHTEN UP THE TEXT SPACING */
+.recipe-card h2 {
+    margin-top: 25px !important; /* Make room for the badge/heart */
+    margin-bottom: 5px !important;
+}
+
+#recipes img {
+    height: 160px !important; /* Slightly shorter image for compact look */
+}
+/* ==========================================================================
+   FINAL CARD ADJUSTMENT: ICONS & HEIGHT
+   (Paste at the very bottom of styles/recipes.css)
+   ========================================================================== */
+
+/* 1. RESTORE CARD HEIGHT (So they aren't squished) */
+.recipe-card {
+    min-height: 350px !important; /* Tall enough to look good, not huge */
+    padding-bottom: 40px !important; /* Make room for the bottom badge */
+    justify-content: flex-start !important; /* Align text to top */
+    position: relative !important;
+}
+
+/* 2. HEART ICON -> TOP RIGHT */
+.card-heart {
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important; /* Turn off the left positioning */
+    background: white !important; /* Add white circle background */
+    border-radius: 50% !important;
+    width: 35px !important;
+    height: 35px !important;
+    display: flex !important;
+    align-items: center; 
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+/* 3. REVIEWED BADGE -> BOTTOM RIGHT */
+.status-badge {
+    top: auto !important;     /* Stop sticking to top */
+    bottom: 10px !important;  /* Stick to bottom */
+    right: 10px !important;   /* Stick to right */
+    left: auto !important;
+    
+    background-color: #f0fdf4 !important; /* Light Green bg */
+    border: 1px solid #10b981 !important; /* Green border */
+    color: #047857 !important; /* Dark Green text */
+}
+
+/* 4. TEXT SPACING */
+.recipe-card h2 {
+    margin-top: 40px !important; /* Push text down so it doesn't hit the heart */
+    font-size: 1.6rem !important;
+}
+
+.recipe-card p {
+    margin-bottom: 5px !important;
+}
+/* ==========================================================================
+   FINAL POLISH: HEIGHT, BADGE COLORS, & CATEGORIES
+   ========================================================================== */
+
+/* 1. SHRINK HEIGHT (Auto-fit content) */
+.recipe-card {
+    height: auto !important;      /* Shrink to fit text */
+    min-height: 0 !important;     /* Remove forced minimums */
+    padding-bottom: 50px !important; /* Keep space for the badge at bottom */
+}
+
+/* 2. CATEGORY TAGS (Background Contrast) */
+/* This targets the <p> inside the #tags div */
+#tags p {
+    background-color: #f3f4f6 !important; /* Light Gray Background */
+    color: #1f2937 !important;           /* Dark Text */
+    border: 1px solid #d1d5db !important; /* Subtle Border */
+    border-radius: 20px !important;      /* Pill Shape */
+    padding: 4px 12px !important;        /* Breathing room */
+    font-size: 0.85rem !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    margin-bottom: 5px !important;
+}
+
+/* 3. BADGE COLORS (Controlled by JS) */
+.status-badge {
+    /* Base Badge Styles */
+    position: absolute !important;
+    bottom: 10px !important;
+    right: 10px !important;
+    top: auto !important;
+    border-radius: 20px !important;
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    font-weight: bold !important;
+}
+
+/* The Green One */
+.badge-green {
+    background-color: #f0fdf4 !important; 
+    border: 1px solid #10b981 !important; 
+    color: #047857 !important; 
+}
+
+/* The Red One */
+.badge-red {
+    background-color: #fef2f2 !important; 
+    border: 1px solid #ef4444 !important; 
+    color: #991b1b !important; 
+}
+/* ==========================================================================
+   FINAL MOBILE & CARD TWEAKS
+   (Paste at bottom of CSS)
+   ========================================================================== */
+
+/* 1. FIX THE MOBILE SEARCH BAR */
+@media (max-width: 600px) {
+    /* Force the header to be a flex container that wraps */
+    .header-container {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: space-between !important; /* Spread items out */
+        padding: 10px 15px !important;
+    }
+
+    /* Logo stays on the Left */
+    #recipe-book-img {
+        order: 1 !important;
+        margin-right: auto !important; /* Pushes everything else right */
+    }
+
+    /* Search Button - FORCE VISIBLE */
+    #header-search-btn {
+        display: block !important;
+        order: 2 !important;
+        font-size: 24px !important;
+        margin-right: 15px !important; /* Space before profile */
+        color: var(--primary-color) !important;
+    }
+
+    /* Profile - Far Right */
+    .profile-link {
+        order: 3 !important;
+    }
+
+    /* Title - Bottom Row */
+    .header-title {
+        order: 4 !important;
+        width: 100% !important;
+        text-align: center !important;
+        margin-top: 5px !important;
+    }
+}
+
+/* 2. CARD LAYOUT (Center Content & Remove Vertical Gap) */
+.recipe-card {
+    display: flex !important;
+    flex-direction: column !important;
+    
+    /* CHANGE THIS: 'flex-start' instead of 'space-between' removes the giant gap */
+    justify-content: flex-start !important; 
+    align-items: center !important; /* Centers text/tags horizontally */
+    
+    gap: 15px !important; /* Consistent spacing between items */
+    padding-bottom: 50px !important; /* Keeps room for the badge */
+}
+
+/* 3. CENTER THE TEXT & TAGS */
+.recipe-card h2 {
+    text-align: center !important;
+    margin-top: 20px !important;
+    width: 100% !important;
+}
+
+#tags {
+    display: flex !important;
+    justify-content: center !important; /* Centers the gray bubble */
+    width: 100% !important;
+}
+
+#author {
+    width: 100% !important;
+    text-align: center !important; /* Centers "From: Sue E." */
+    margin-top: 0 !important;
+    margin-bottom: 10px !important;
+}
+
+/* Ensure images cover the width but stay centered */
+#recipes img {
+    width: 100% !important;
+    align-self: center !important;
+}
+/* ==========================================================================
+   FINAL ADMIN LAYOUT FIXES
+   ========================================================================== */
+
+/* 1. Force Vertical Stacking for Widgets */
+.dashboard-widgets {
+    display: flex !important;
+    flex-direction: column !important; /* Forces top-to-bottom stack */
+    gap: 20px !important;
+    width: 100% !important;
+}
+
+/* 2. Admin Layout Grid (Desktop) */
+.admin-layout {
+    display: grid;
+    grid-template-columns: 3fr 2fr; /* Queue on Left, Stats on Right */
+    gap: 30px;
+    align-items: start;
+}
+
+/* 3. Mobile Override (Phone) */
+@media (max-width: 900px) {
+    .admin-layout {
+        display: flex !important;
+        flex-direction: column !important; /* Stack Queue on top of Stats */
+        gap: 40px !important;
+    }
+    
+    .dashboard-widgets {
+        width: 100% !important;
+    }
 }

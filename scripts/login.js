@@ -1,9 +1,10 @@
 // 1. Import Auth and Database
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "./firestoreapi.js";
+import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "./firestoreapi.js";
 // We need 'db' to save the user profile, so import it from your config
 import { db } from "./firebase-config.js"; 
 // We need these tools to write to the database
 import { doc, setDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { updateProfile } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 // --- HELPER FUNCTIONS ---
 
@@ -89,37 +90,40 @@ const signUpForm = document.getElementById('signUpForm');
 
 if (signUpForm) {
     signUpForm.addEventListener('submit', function(event) {
-        event.preventDefault(); // Stop refresh
+        event.preventDefault();
 
+        const name = document.getElementById('fullName').value; // <--- GRAB NAME
         const email = document.getElementById('emailSign').value;
         const password = document.getElementById('passwordSign').value;
 
         createUserWithEmailAndPassword(auth, email, password)
             .then(async (userCredential) => {
-                // 1. The Account is created in Authentication...
                 const user = userCredential.user;
-                console.log("Account created for:", user.email);
+                
+                // 1. UPDATE AUTH PROFILE (This fixes the Comment Section name)
+                await updateProfile(user, {
+                    displayName: name
+                });
 
-                // 2. NOW we create their folder in the Database
+                // 2. SAVE TO DATABASE (This fixes the Admin Panel view)
                 try {
                     await setDoc(doc(db, "users", user.uid), {
+                        Name: name, // <--- SAVED HERE
                         email: user.email,
-                        role: "user",      // You can manually change this to 'admin' in Console later
-                        favorites: [],     // Empty list ready for hearts!
+                        role: "user",
+                        favorites: [],
                         createdAt: new Date()
                     });
-                    console.log("User profile saved to Firestore!");
                     
-                    // 3. ONLY redirect after the profile is saved
+                    console.log("Profile created for " + name);
                     window.location.href = "homepage.html";
                     
                 } catch (error) {
-                    console.error("Error saving profile:", error);
-                    alertPlaceholder("Account created, but profile failed. Check console.");
+                    console.error(error);
+                    alertPlaceholder("Account created, but database failed.");
                 }
             })
             .catch((error) => {
-                // Handle errors like "Email already in use"
                 alertPlaceholder(error.message);
             });
     });
