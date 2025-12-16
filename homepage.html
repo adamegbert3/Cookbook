@@ -16,17 +16,13 @@
 <body>
     <div id="header">
     <header class="header-container">
-    <img src="images/recipe-book.png" alt="recipe book image" id="recipe-book-img">
+    <img src="images/logo.jpg" alt="recipe book image" id="recipe-book-img">
 
-    <h1 class="header-title">Welcome to the Cookbook</h1>
+    <h1 class="header-title">Welcome to the Cookbook!</h1>
     
     <div class="spacer"></div>
 
-    <button id="header-search-btn" aria-label="Open Search">
-        <svg xmlns="http://www.w3.org/2000/svg" class="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-        </svg>
-    </button>
+    <button id="header-search-btn" aria-label="Search">🔍</button>
 
     <a href="index.html" class="profile-link" aria-label="Profile">
         <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-profile" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -61,6 +57,7 @@
             <button>
                 Soups & Salads
             </button>
+            <button>Dutch Oven</button>
         </div>
         <div style="text-align: center; margin: 20px 0;">
     <a href="submit.html" style="text-decoration: none;">
@@ -86,12 +83,40 @@
         <div class="day-card" data-day="Fri"><strong>Fri</strong><span id="plan-Fri">-</span></div>
         <div class="day-card" data-day="Sat"><strong>Sat</strong><span id="plan-Sat">-</span></div>
     </div>
-    <button onclick="clearMealPlan()" style="margin-top:10px; font-size:0.8rem;">Clear Plan</button>
+    <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
+    
+    <button onclick="clearMealPlan()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
+        🗑️ Clear Plan
+    </button>
+    
+    <button onclick="openShoppingModal()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;">
+        🛒 Shopping List
+    </button>
 </div>
-<button onclick="openReviewModal()" class="info-pill-btn">
-    ℹ️ What does "Reviewed" mean?
-</button>
+</div>
+<div id="shoppingModal" class="modal hidden">
+    <div class="modal-content" style="max-width: 500px; text-align: left; height: 80vh; display: flex; flex-direction: column;">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
+            <h2 style="margin: 0; color: #0a4d74;">🛒 Your List</h2>
+            <button onclick="closeShoppingModal()" style="background:none; border:none; font-size: 24px; cursor: pointer;">&times;</button>
+        </div>
+        
+        <p id="shopping-status" style="text-align: center; color: #666; font-size: 14px; margin-top: 20px;">Loading...</p>
 
+        <div id="shopping-list-container" style="flex-grow: 1; overflow-y: auto; display: none;">
+            <ul id="shopping-ul" style="list-style: none; padding: 0;"></ul>
+        </div>
+
+        <div style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+            <button onclick="generateFromPlan()" style="flex: 1; background: #3b82f6; color: white; border:none; padding: 10px; border-radius: 8px; font-size: 13px;">
+                🔄 Resync with Menu
+            </button>
+            <button onclick="copyShoppingList()" style="background: #64748b; color: white; border:none; padding: 10px; border-radius: 8px;">📋 Copy</button>
+            <button onclick="clearShoppingList()" style="background: #ef4444; color: white; border:none; padding: 10px; border-radius: 8px;">🗑️</button>
+        </div>
+    </div>
+</div>
 <div id="reviewInfoModal" class="modal hidden">
     <div class="modal-content">
         <h3>About Our Recipes</h3>
@@ -119,7 +144,7 @@
     }
 </script>
 <button onclick="openReviewModal()" class="info-pill-btn">
-    ℹ️ What are some hidden ideas?
+    ℹ️ What are some hidden features?
 </button>
 
 <div id="reviewInfoModal" class="modal hidden">

@@ -1,32 +1,109 @@
+// ==========================================
+// 1. IMPORTS & SETUP
+// ==========================================
 import { db, auth } from './firebase-config.js'; 
-
-// COMBINED IMPORT
 import { 
-    collection, 
-    getDocs, 
-    doc, 
-    getDoc,       
-    setDoc,
-    updateDoc,    
-    arrayUnion,   
-    arrayRemove   
+    collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc,
+    serverTimestamp, arrayUnion, arrayRemove, query, where, orderBy, limit 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
-
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-// 2. GLOBAL VARIABLES
+// Global Variables
 let allRecipes = []; 
 let userFavorites = []; 
+window.currentShoppingList = []; // For the shopping list
 
-// --- HELPER FUNCTIONS ---
+console.log("✅ MAIN.JS VERSION 3.0 LOADED"); // Check your console for this!
+
+// ==========================================
+// 2. AUTHENTICATION & STARTUP
+// ==========================================
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        console.log("Logged in as:", user.email);
+        
+        // 1. Load User Favorites
+        try {
+            const userSnap = await getDoc(doc(db, "users", user.uid));
+            if (userSnap.exists()) {
+                userFavorites = userSnap.data().favorites || [];
+            }
+        } catch (err) { console.error("Error loading profile:", err); }
+
+        // 2. Load Content
+        const recipesGrid = document.getElementById('recipes');
+        if (recipesGrid) loadAllRecipes(); // Homepage
+        
+        // 3. Load Page Specifics
+        if (document.getElementById('chefNotes')) loadUserNote(); // Recipe Page
+        if (document.getElementById('commentsList')) loadComments(); // Recipe Page
+        if (document.getElementById('plan-Mon')) loadMealPlan(); // Homepage
+
+    } else {
+        console.log("User is guest.");
+        // Guest handling logic here if needed
+    }
+});
+
+// ==========================================
+// 3. RECIPE DISPLAY LOGIC
+// ==========================================
+async function loadAllRecipes() {
+    const container = document.getElementById('recipes');
+    if (!container) return;
+
+    container.innerHTML = "<p>Loading recipes...</p>";
+
+    try {
+        const querySnapshot = await getDocs(collection(db, "recipes"));
+        allRecipes = [];
+
+        querySnapshot.forEach((doc) => {
+            const data = doc.data();
+            allRecipes.push({ id: doc.id, ...data });
+        });
+
+        // Sort A-Z
+        allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+        renderRecipes(allRecipes);
+
+    } catch (error) {
+        console.error("Error loading recipes:", error);
+        container.innerHTML = "<p>Error loading recipes.</p>";
+    }
+}
+
+function renderRecipes(list) {
+    const container = document.getElementById('recipes');
+    if(!container) return;
+    
+    let html = '';
+    list.forEach(recipe => html += RecipeTemplate(recipe));
+    container.innerHTML = html;
+
+    // Add Click Listeners
+    document.querySelectorAll(".recipe-card").forEach(card => {
+        card.addEventListener("click", (e) => {
+            // Don't click if they hit the heart button
+            if(e.target.closest('.heart-btn')) return;
+
+            const name = card.getAttribute("data-name");
+            const selectedRecipe = allRecipes.find(r => r.name === name);
+            
+            // Save data and go
+            localStorage.setItem("currentRecipeData", JSON.stringify(selectedRecipe));
+            const slug = selectedRecipe.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+            window.location.href = `recipe.html?id=${slug}`;
+        });
+    });
+}
 
 function RecipeTemplate(recipe) {
     const tags = recipe.tags || []; 
     const author = recipe.author || "The Egbert Family";
-    const statusIcon = recipe.reviewed ? "✅" : "❌";
-    const statusText = `Reviewed: ${statusIcon}`;
-
-    // Check favorites
+    const isReviewed = recipe.reviewed === true;
+    const statusIcon = isReviewed ? "✅" : "❌";
+    const badgeColorClass = isReviewed ? "badge-green" : "badge-red";
     const isFav = userFavorites.includes(recipe.id);
     const heartIcon = isFav ? "❤️" : "🤍";
 
@@ -35,324 +112,217 @@ function RecipeTemplate(recipe) {
         <button class="heart-btn card-heart" onclick="toggleHeart(event, '${recipe.id}')">
             ${heartIcon}
         </button>
-        <div class="status-badge">${statusText}</div>
+        <div class="status-badge ${badgeColorClass}">Reviewed: ${statusIcon}</div>
         <div id="info">
-            <div id="tags">
-                ${tagsTemplate(tags)}
-            </div>
+            <div id="tags">${tags.map(t => `<p>${t}</p>`).join('')}</div>
             <h2>${recipe.name}</h2>
         </div>
-        <div id="author">
-            <p>From: ${author}</p>
-        </div>
+        <div id="author"><p>From: ${author}</p></div>
     </div>`;
 }
 
-function tagsTemplate(tags){
-    let html = '';
-    if(Array.isArray(tags)) {
-        tags.forEach(tag => {
-            html += '<p>' + tag + '</p>';
-        });
+// ==========================================
+// 4. SHOPPING LIST (THE FIX)
+// ==========================================
+
+window.openShoppingModal = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in to use the Shopping List.");
+
+    const modal = document.getElementById('shoppingModal');
+    if(modal) {
+        modal.classList.remove('hidden');
+        modal.style.display = 'flex';
     }
-    return html;
-}
+    document.getElementById('shopping-status').style.display = 'block';
+    document.getElementById('shopping-list-container').style.display = 'none';
+    document.getElementById('shopping-status').innerText = "Syncing with cloud...";
 
-function renderRecipes(recipeList) {
-    const container = document.getElementById('recipes');
-    if (!container) return;
+    try {
+        const listRef = doc(db, "shopping_lists", user.uid);
+        const docSnap = await getDoc(listRef);
 
-    let html = '';
-    recipeList.forEach(recipe => {
-        html += RecipeTemplate(recipe);
-    });
-    container.innerHTML = html;
+        if (docSnap.exists() && docSnap.data().items.length > 0) {
+            renderShoppingList(docSnap.data().items);
+        } else {
+            await generateFromPlan();
+        }
+    } catch (error) {
+        console.error("Error loading list:", error);
+    }
+};
 
-    // Click handler
-    document.querySelectorAll(".recipe-card").forEach(card => {
-        card.addEventListener("click", () => {
-            const name = card.getAttribute("data-name");
-            const selectedRecipe = allRecipes.find(r => r.name === name);
+window.generateFromPlan = async function() {
+    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    const recipes = Object.values(plan); 
+
+    if (recipes.length === 0) {
+        document.getElementById('shopping-status').innerText = "Meal plan is empty.";
+        renderShoppingList([]); 
+        return;
+    }
+    
+    document.getElementById('shopping-status').innerText = "Finding ingredients...";
+    
+    try {
+        const snapshot = await getDocs(collection(db, "recipes"));
+        let newList = [];
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const rName = data.name || data.title || "Untitled";
             
-            // Save data for the next page
-            localStorage.setItem("currentRecipeData", JSON.stringify(selectedRecipe));
-            
-            // Generate slug
-            const recipeId = selectedRecipe.name.toLowerCase()
-                .replace(/ /g, '-')
-                .replace(/[^\w-]+/g, '');
+            if (recipes.includes(rName)) {
+                newList.push({ text: rName, type: 'header', checked: false });
+
+                // --- SMART INGREDIENT CHECKER ---
+                // We check recipeIngredient (from your recipePage.js) AND other variations
+                let raw = data.recipeIngredient || data.ingredients || data.Ingredients || data.recipeIngredients || [];
                 
-            window.location.href = `recipe.html?id=${recipeId}`;
-        });
-    });
-}
-
-// Global Filter Function
-function filter(query) {
-    if (!allRecipes) return [];
-    
-    return allRecipes.filter(recipe => {
-        const name = (recipe.name || "").toLowerCase();
-        const tags = Array.isArray(recipe.tags) ? recipe.tags : [];
-        const matchName = name.includes(query);
-        const matchTag = tags.some(tag => tag.toLowerCase().includes(query));
-        return matchName || matchTag;
-    }).sort((a,b) => (a.name || "").localeCompare(b.name || ""));
-}
-
-
-// --- MAIN LOGIC ---
-
-// Wait for Login Check
-onAuthStateChanged(auth, async (user) => {
-    
-    // 1. User is Logged In
-    if (user) {
-        console.log("Logged in as:", user.email);
-
-        // UI Updates
-        const notSignedMsg = document.getElementById("notsigned");
-        if(notSignedMsg) notSignedMsg.style.display = 'none';
-        
-        const recipesGrid = document.getElementById('recipes');
-        if(recipesGrid) {
-            recipesGrid.style.display = 'flex'; 
-            recipesGrid.innerHTML = "<p>Loading recipes from Firestore...</p>";
-        }
-
-        // --- A. LOAD FAVORITES ---
-        try {
-            const userSnap = await getDoc(doc(db, "users", user.uid));
-            
-            if (userSnap.exists()) {
-                userFavorites = userSnap.data().favorites || [];
-                console.log("Loaded favorites:", userFavorites.length);
-            } else {
-                userFavorites = [];
-            }
-        } catch (err) {
-            console.error("Error loading user profile:", err);
-            userFavorites = []; 
-        } // <--- THIS WAS THE MISSING BRACKET!
-
-        // --- B. LOAD NOTES (If on recipe page) ---
-        const noteBox = document.getElementById('chefNotes');
-        if (noteBox) {
-            console.log("On recipe page, loading notes...");
-            loadUserNote();
-        }
-
-        // --- C. LOAD RECIPES (If on homepage) ---
-        if(recipesGrid) {
-            try {
-                const recipesRef = collection(db, "recipes");
-                const querySnapshot = await getDocs(recipesRef);
-                
-                // Reset list
-                allRecipes = [];
-
-                querySnapshot.forEach((doc) => {
-                    const data = doc.data();
-                    // Combine ID with data
-                    allRecipes.push({ id: doc.id, ...data });
-                });
-
-                // Sort Alphabetically
-                allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-
-                console.log("Recipes loaded:", allRecipes.length);
-                renderRecipes(allRecipes);
-
-            } catch (error) {
-                console.error("Error getting recipes:", error);
-                if(recipesGrid) recipesGrid.innerHTML = `<p>Error loading recipes. Check console.</p>`;
-            }
-        }
-
-    } 
-    // 2. User is NOT Logged In
-    else {
-        console.log("User is guest.");
-        const notSignedMsg = document.getElementById("notsigned");
-        if(notSignedMsg) notSignedMsg.style.display = 'block';
-        
-        const recipesGrid = document.getElementById('recipes');
-        if(recipesGrid) recipesGrid.style.display = 'none';
-    }
-});
-
-
-// --- INTERACTION LOGIC ---
-
-document.addEventListener('DOMContentLoaded', () => {
-
-    // MEAL PLANNER
-    function loadMealPlan() {
-        const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        
-        days.forEach(day => {
-            const element = document.getElementById(`plan-${day}`);
-            if (element && plan[day]) {
-                element.innerText = plan[day];
-                if(element.parentElement) element.parentElement.style.borderColor = "#10b981"; 
-            }
-        });
-    }
-
-    window.clearMealPlan = function() {
-        if(confirm("Clear entire week?")) {
-            localStorage.removeItem('mealPlan');
-            location.reload();
-        }
-    }
-    loadMealPlan();
-    
-    // SEARCH POPUP
-    const searchBtn = document.getElementById('header-search-btn');
-    const closeBtn = document.getElementById('close-search');
-    const overlay = document.getElementById('search-overlay');
-    const searchForm = document.getElementById('search-form');
-    const searchInput = document.getElementById('searchbar');
-
-    if (searchBtn && overlay) {
-        searchBtn.addEventListener('click', () => {
-            overlay.classList.add('show-search');
-            if (searchInput) searchInput.focus();
-        });
-    }
-
-    if (closeBtn && overlay) {
-        closeBtn.addEventListener('click', () => {
-            overlay.classList.remove('show-search');
-        });
-    }
-
-    if (overlay) {
-        window.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                overlay.classList.remove('show-search');
-            }
-        });
-    }
-
-    if (searchForm) {
-        searchForm.addEventListener('submit', (e) => {
-            e.preventDefault(); 
-            const query = searchInput.value.toLowerCase();
-            const results = filter(query);
-            renderRecipes(results);
-            overlay.classList.remove('show-search');
-        });
-    }
-
-    // CATEGORY BUTTONS
-    const categoryBtns = document.querySelectorAll('.folders button');
-    
-    if (categoryBtns) {
-        categoryBtns.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const button = e.currentTarget; 
-                const isAlreadyActive = button.classList.contains('active-filter');
-
-                categoryBtns.forEach(b => b.classList.remove('active-filter'));
-
-                if (isAlreadyActive) {
-                    renderRecipes(allRecipes); 
-                } else {
-                    button.classList.add('active-filter');
-                    const category = button.innerText.toLowerCase();
-                    const results = filter(category);
-                    renderRecipes(results);
+                if (Array.isArray(raw)) {
+                    raw.forEach(i => newList.push({ text: i, type: 'item', checked: false }));
+                } 
+                else if (typeof raw === 'string') {
+                    let lines = raw.split(/\r?\n/);
+                    if(lines.length === 1 && raw.includes(',')) lines = raw.split(',');
+                    lines.forEach(line => {
+                        if(line.trim()) newList.push({ text: line.trim(), type: 'item', checked: false });
+                    });
+                } 
+                else {
+                    newList.push({ text: "⚠️ (No ingredients found - Check Database)", type: 'item', checked: false });
                 }
-            });
+            }
         });
+
+        await saveListToCloud(newList);
+        renderShoppingList(newList);
+
+    } catch (error) {
+        console.error(error);
+        document.getElementById('shopping-status').innerText = "Error reading recipes.";
     }
-});
+};
 
-// --- GLOBAL FUNCTIONS (Called by HTML) ---
+function renderShoppingList(items) {
+    const listEl = document.getElementById('shopping-ul');
+    const container = document.getElementById('shopping-list-container');
+    const status = document.getElementById('shopping-status');
+    
+    window.currentShoppingList = items;
+    if(listEl) listEl.innerHTML = "";
+    
+    if (items.length === 0) {
+        if(status) { status.innerText = "List is empty."; status.style.display = 'block'; }
+        if(container) container.style.display = 'none';
+        return;
+    }
 
-// Toggle Heart
+    items.forEach((item, index) => {
+        if (item.type === 'header') {
+            listEl.innerHTML += `
+                <li style="margin-top: 15px; font-weight: bold; color: #0a4d74; border-bottom: 2px solid #eee; padding-bottom: 5px;">
+                    ${item.text}
+                </li>`;
+        } else {
+            const isChecked = item.checked ? 'text-decoration: line-through; color: #ccc;' : 'color: #333;';
+            const boxColor = item.checked ? '#10b981' : 'transparent';
+            const border = item.checked ? '#10b981' : '#ddd';
+            const checkIcon = item.checked ? '✓' : '';
+
+            listEl.innerHTML += `
+                <li onclick="toggleItem(${index})" style="padding: 10px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 20px; height: 20px; border: 2px solid ${border}; background: ${boxColor}; border-radius: 4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">${checkIcon}</div>
+                    <span style="font-size: 15px; ${isChecked}">${item.text}</span>
+                </li>`;
+        }
+    });
+
+    if(status) status.style.display = 'none';
+    if(container) container.style.display = 'block';
+}
+
+window.toggleItem = async function(index) {
+    window.currentShoppingList[index].checked = !window.currentShoppingList[index].checked;
+    renderShoppingList(window.currentShoppingList);
+    await saveListToCloud(window.currentShoppingList);
+};
+
+async function saveListToCloud(items) {
+    const user = auth.currentUser;
+    if(!user) return;
+    try {
+        await setDoc(doc(db, "shopping_lists", user.uid), { items: items, updatedAt: serverTimestamp() });
+    } catch (e) { console.error("Save failed:", e); }
+}
+
+window.clearShoppingList = async function() {
+    if(!confirm("Clear list?")) return;
+    await saveListToCloud([]);
+    renderShoppingList([]);
+};
+
+window.copyShoppingList = function() {
+    let text = "🛒 Shopping List:\n\n";
+    window.currentShoppingList.forEach(i => {
+        if(i.type === 'item' && !i.checked) text += `- ${i.text}\n`;
+    });
+    navigator.clipboard.writeText(text).then(() => alert("Copied remaining items!"));
+};
+
+window.closeShoppingModal = function() {
+    document.getElementById('shoppingModal').style.display = 'none';
+};
+
+// ==========================================
+// 5. USER ACTIONS (Hearts, Notes, Etc.)
+// ==========================================
 window.toggleHeart = async function(event, recipeId) {
     event.stopPropagation();
-
     const user = auth.currentUser;
-    if (!user) return alert("Please log in to save recipes!");
+    if (!user) return alert("Please log in!");
 
     const btn = event.currentTarget;
-    const isCurrentlyFav = userFavorites.includes(recipeId);
+    const isFav = userFavorites.includes(recipeId);
     const userRef = doc(db, "users", user.uid);
 
     try {
-        if (isCurrentlyFav) {
-            await updateDoc(userRef, {
-                favorites: arrayRemove(recipeId)
-            });
+        if (isFav) {
+            await updateDoc(userRef, { favorites: arrayRemove(recipeId) });
             userFavorites = userFavorites.filter(id => id !== recipeId);
             btn.innerText = "🤍";
         } else {
-            await updateDoc(userRef, {
-                favorites: arrayUnion(recipeId)
-            });
+            await updateDoc(userRef, { favorites: arrayUnion(recipeId) });
             userFavorites.push(recipeId);
             btn.innerText = "❤️";
         }
-    } catch (error) {
-        console.error("Error toggling heart:", error);
-        alert("Could not save. Check console.");
-    }
+    } catch (error) { console.error(error); }
 };
 
-// Save Note
-window.saveNote = async function() {
-    const user = auth.currentUser;
-    if (!user) return alert("Please log in to save notes!");
-
-    const noteText = document.getElementById('chefNotes').value;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData")); 
+window.recordCook = async function(btnElement) {
+    if (typeof fireConfetti === "function") fireConfetti(btnElement);
+    const recipeTitle = document.title;
+    const recipeKey = 'cookCount-' + recipeTitle;
+    let count = parseInt(localStorage.getItem(recipeKey) || 0) + 1;
+    localStorage.setItem(recipeKey, count);
     
-    if(!currentRecipe) return alert("Error finding recipe ID");
-    const recipeId = currentRecipe.id;
-
-    const statusLabel = document.getElementById('saveStatus');
-    statusLabel.innerText = "Saving...";
+    const counterText = document.getElementById('cook-counter');
+    if(counterText) counterText.innerHTML = `You've cooked this <strong>${count} times</strong>!`;
 
     try {
-        const userRef = doc(db, "users", user.uid);
-        await setDoc(userRef, {
-            notes: {
-                [recipeId]: noteText 
-            }
-        }, { merge: true });
-
-        statusLabel.innerText = "✅ Saved to Cloud!";
-        setTimeout(() => statusLabel.innerText = "", 3000);
-
-    } catch (error) {
-        console.error("Error saving note:", error);
-        statusLabel.innerText = "❌ Error saving.";
-    }
+        await addDoc(collection(db, "global_cooks"), { recipe: recipeTitle, timestamp: serverTimestamp() });
+    } catch (error) { console.error("Error recording cook:", error); }
 };
 
-// Load Note
-async function loadUserNote() {
-    const user = auth.currentUser;
-    if (!user) return;
-
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    if (!currentRecipe) return;
-
-    try {
-        const userSnap = await getDoc(doc(db, "users", user.uid));
-        
-        if (userSnap.exists()) {
-            const userData = userSnap.data();
-            if (userData.notes && userData.notes[currentRecipe.id]) {
-                document.getElementById('chefNotes').value = userData.notes[currentRecipe.id];
-                console.log("Note loaded from cloud.");
-            }
+// MEAL PLANNER LOADER
+function loadMealPlan() {
+    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    days.forEach(day => {
+        const element = document.getElementById(`plan-${day}`);
+        if (element && plan[day]) {
+            element.innerText = plan[day];
+            if(element.parentElement) element.parentElement.style.borderColor = "#10b981"; 
         }
-    } catch (error) {
-        console.error("Error loading note:", error);
-    }
+    });
 }

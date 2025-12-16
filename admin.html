@@ -20,53 +20,113 @@
         pre { background: #f3f4f6; padding: 10px; border-radius: 6px; white-space: pre-wrap; font-family: monospace; font-size: 13px; }
     </style>
 </head>
+<body>
 <body class="login-page">
 
-    <div class="admin-container">
-        <h1>👨‍🍳 Recipe Approval Queue</h1>
-        <p>Review submissions from users before they go live.</p>
-        
-        <div id="loading">Loading pending recipes...</div>
-        <div id="pending-list"></div>
-
-        <div style="margin-top: 40px;">
-            <a href="index.html">← Back to Cookbook</a>
-        </div>
-    </div>
-    HTML
-<div class="admin-container" style="margin-top: 50px;">
-    <h1>📊 Recipe Analytics</h1>
+<div class="admin-container">
+    <h1>👨‍🍳 Chef's Admin Panel</h1>
+    <p>Review submissions and track stats.</p>
     
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        
-        <div class="pending-card">
-            <div class="pending-header">
-                <h2>🏆 Most Popular</h2>
-            </div>
-            <table style="width: 100%; margin-top: 15px; border-collapse: collapse;">
-                <thead>
-                    <tr style="text-align: left; border-bottom: 2px solid #eee;">
-                        <th style="padding: 8px;">Recipe</th>
-                        <th style="padding: 8px;">Total Views</th>
-                    </tr>
-                </thead>
-                <tbody id="leaderboard-list">
-                    <tr><td colspan="2">Calculating...</td></tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="admin-layout">
 
-        <div class="pending-card">
-            <div class="pending-header">
-                <h2>🕵️‍♀️ Recent Activity</h2>
-            </div>
-            <div id="activity-list" style="max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <div class="queue-section">
+            <h2 style="margin-bottom: 15px;">🛡️ Recipe Approval Queue</h2>
+            <div id="loading">Loading pending recipes...</div>
+            <div id="pending-list">
                 </div>
         </div>
 
+        <div class="analytics-section">
+            <h2 style="margin-bottom: 15px;">📊 Recipe Analytics</h2>
+            
+            <div class="dashboard-widgets">
+                
+                <div class="pending-card widget-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+                    <h3 style="margin-top:0; color: white; opacity: 0.9;">🔥 Total Meals Cooked</h3>
+                    <div style="text-align: center; padding: 10px;">
+                        <span id="total-cooks-count" style="font-size: 3.5rem; font-weight: 800; line-height: 1;">...</span>
+                        <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Family dishes served</p>
+                    </div>
+                </div>
+
+                <div class="pending-card widget-card">
+                    <h3 style="margin-top:0; color: #b45309;">🏆 Most Popular</h3>
+                    <table style="width: 100%; margin-top: 10px;">
+                        <tbody id="leaderboard-list">
+                            <tr><td>Loading...</td></tr>
+                        </tbody>
+                    </table>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <button onclick="openStatsModal()" class="pill-btn btn-blue" style="width: 100%; justify-content: center;">
+                            📊 View Full Report
+                        </button>
+                    </div>
+                </div>
+
+                <div class="pending-card widget-card">
+                    <h3 style="margin-top:0; color: #555;">🍰 Recipe Breakdown</h3>
+                    <div id="category-stats-list" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+                        <p>Calculating...</p>
+                    </div>
+                </div>
+
+                <div class="pending-card widget-card">
+                    <h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3>
+                    <div id="activity-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+                        </div>
+                    <div style="margin-top: 10px; display: flex; gap: 5px;">
+                        <button onclick="loadMoreActivity()" style="flex: 1; padding:5px; font-size: 11px; cursor: pointer;">👇 Load More</button>
+                        <button onclick="resetStats()" style="flex: 1; background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; padding:5px; font-size: 11px; cursor: pointer;">⚠️ Reset Stats</button>
+                    </div>
+                </div>
+
+                <div class="pending-card widget-card" style="border-left: 5px solid #9ca3af;">
+                    <h3 style="margin-top:0; color: #4b5563;">🕸️ Undiscovered</h3>
+                    <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Recipes with 0 views:</p>
+                    <div id="dusty-list" style="max-height: 200px; overflow-y: auto;">
+                        <p>Calculating...</p>
+                    </div>
+                </div>
+
+                <div class="pending-card widget-card" style="border-left: 5px solid #ef4444;">
+                    <h3 style="margin-top:0; color: #b91c1c;">🚩 Reports</h3>
+                    <div id="issues-list" style="margin-top: 15px;">
+                        <p>Loading reports...</p>
+                    </div>
+                </div>
+
+            </div> </div> </div> <div style="margin-top: 40px;">
+        <a href="index.html">← Back to Cookbook</a>
+    </div>
+    <div class="pending-card widget-card" style="border-left: 5px solid #f59e0b;">
+        <h3 style="margin-top:0; color: #b45309;">⚠️ Needs Review</h3>
+        <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Live recipes that aren't verified:</p>
+        
+        <div id="unreviewed-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <p>Scanning cookbook...</p>
     </div>
 </div>
 
-    <script type="module" src="scripts/admin.js"></script>
+    <div id="statsModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; color: #0a4d74;">📈 Full Recipe Report</h2>
+                <button onclick="closeStatsModal()" style="background:none; border:none; font-size: 20px; cursor: pointer;">✖️</button>
+            </div>
+            <div style="display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <button onclick="renderStats('views')" id="tab-views" style="background: #e0f2fe; color: #0369a1; padding: 5px 10px; border-radius: 5px; border:none; font-weight: bold; cursor: pointer;">Most Viewed</button>
+                <button onclick="renderStats('chefs')" id="tab-chefs" style="background: white; color: #666; padding: 5px 10px; border-radius: 5px; border:none; cursor: pointer;">Top Chefs</button>
+            </div>
+            <div id="full-stats-list" style="max-height: 400px; overflow-y: auto;">
+                <p>Crunching the numbers...</p>
+            </div>
+            <div style="text-align: right; margin-top: 20px;">
+                 <button onclick="closeStatsModal()" class="login-btn" style="width: auto; padding: 8px 20px;">Close</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script type="module" src="scripts/admin.js"></script>
 </body>
 </html>
