@@ -29,64 +29,68 @@ console.log("✅ MAIN.JS LOADED - v7.1 (Imports Fixed)");
 const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
 
 onAuthStateChanged(auth, async (user) => {
+    // --- 1. IF USER IS LOGGED IN (FAMILY MEMBER) ---
     if (user) {
         console.log("Logged in as:", user.email);
 
-        // --- FIX: HIDE THE 'NOT SIGNED' TEXT IMMEDIATELY ---
+        // UI Updates
         const notSignedMsg = document.getElementById("notsigned");
         if (notSignedMsg) notSignedMsg.style.display = 'none';
         
-        // Show the recipes grid
         const recipesGrid = document.getElementById('recipes');
         if (recipesGrid) recipesGrid.style.display = 'flex';
 
-        // 1. ADMIN BUTTON CHECK
         if (user.uid === MY_ADMIN_ID) {
             const adminBtn = document.getElementById('admin-btn');
             if(adminBtn) adminBtn.style.display = "block"; 
         }
 
-        // 2. LOAD USER INFO
+        // Load Profile
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
             let userName = user.displayName || user.email.split('@')[0];
-
-            if (userSnap.exists()) {
-                const data = userSnap.data();
-                userFavorites = data.favorites || [];
-                if (data.Name) { userName = data.Name; }
-            }
-            
-            // Draw the profile icon
+            if (userSnap.exists() && userSnap.data().Name) { userName = userSnap.data().Name; }
             updateProfileIcon(userName); 
-
         } catch (err) { console.error("Error loading profile:", err); }
 
-        // 3. LOAD PAGE CONTENT
+        // Load Page Content
         if (recipesGrid) loadAllRecipes();
+        
+        // --- RECIPE PAGE SPECIFIC ---
         if (document.getElementById('chefNotes')) {
             loadUserNote();
-            trackRecipeView();
+            
+            // ✅ TRACK VIEW (Only runs for logged-in members!)
+            trackRecipeView(); 
         }
+        
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('plan-Mon')) loadMealPlan();
         if (document.getElementById('family-feed')) loadFamilyFeed();
 
-    } else {
-        // --- GUEST MODE ---
+    } 
+    // --- 2. IF USER IS A GUEST (STRANGER) ---
+    else {
         console.log("User is guest.");
-        
-        // Show the 'Not Signed In' text
+
+        // ⛔️ THE BOUNCER: PROTECT RECIPE PAGE
+        // If we are on the recipe page ('chefNotes' exists) but not logged in...
+        if (document.getElementById('chefNotes')) {
+            alert("This recipe is for family only! Please sign in.");
+            window.location.href = "homepage.html"; // Kick them out
+            return; // Stop running code
+        }
+
+        // Guest UI for Homepage
         const notSignedMsg = document.getElementById("notsigned");
         if (notSignedMsg) notSignedMsg.style.display = 'block';
         
-        // Hide the recipes
         const recipesGrid = document.getElementById('recipes');
         if (recipesGrid) recipesGrid.style.display = 'none';
 
         const adminBtn = document.getElementById('admin-btn');
         if(adminBtn) adminBtn.style.display = "none";
-
+        
         resetProfileIcon();
     }
 });
@@ -513,36 +517,53 @@ function resetProfileIcon() {
     if (iconEl) iconEl.src = "images/profile-icon.png"; 
 }
 
-// RECIPE TRACKING
+// ==========================================
+// 🛠️ DEBUG VERSION: TRACK RECIPE VIEW
+// ==========================================
 async function trackRecipeView() {
-    // 1. Double check we have the recipe data
+    console.log("-------------------------------");
+    console.log("🕵️‍♂️ STARTING VIEW TRACKER...");
+
+    // 1. CHECK LOCAL STORAGE
     const currentRecipeString = localStorage.getItem("currentRecipeData");
+    
     if (!currentRecipeString) {
-        console.warn("No recipe data found in storage. Can't track view.");
+        console.error("❌ ERROR: No 'currentRecipeData' found in LocalStorage.");
+        console.warn("Did you click a recipe card? Or did you just refresh the page?");
         return;
     }
-    
+
     const currentRecipe = JSON.parse(currentRecipeString);
+    console.log("✅ Recipe Found:", currentRecipe.name, "(ID:", currentRecipe.id, ")");
+
+    // 2. CHECK USER AUTH
     const user = auth.currentUser;
-    const viewerName = user ? (user.displayName || user.email) : "Guest";
+    if (!user) {
+        console.error("❌ ERROR: User is not logged in. View will NOT be tracked.");
+        return;
+    }
+    const viewerName = user.displayName || user.email;
+    console.log("✅ Viewer Identified:", viewerName);
 
-    console.log(`Tracking view for: ${currentRecipe.name} by ${viewerName}`);
-
+    // 3. ATTEMPT TO SAVE TO FIRESTORE
     try {
+        console.log("⏳ Sending to Firestore (Collection: 'recipe_views')...");
+        
         await addDoc(collection(db, "recipe_views"), {
             recipeId: currentRecipe.id,
-            recipeTitle: currentRecipe.name || "Unknown",
+            recipeTitle: currentRecipe.name || "Untitled Recipe",
             viewer: viewerName,
             timestamp: serverTimestamp()
         });
-        console.log("View tracked successfully.");
+
+        console.log("🎉 SUCCESS! View recorded in database.");
+        // alert("View Tracked Successfully! Check Firebase now."); 
+
     } catch (e) { 
-        console.error("Tracking failed:", e);
-        // If this fails, it is 99% a Firestore Permission Rule issue
-        if(e.code === 'permission-denied') {
-            console.warn("Check your Firestore Rules! Guests might not be allowed to write to 'recipe_views'.");
-        }
+        console.error("🔥 FIRESTORE WRITE FAILED:", e);
+        alert("Tracker Error: " + e.message); // This will pop up if permissions are wrong
     }
+    console.log("-------------------------------");
 }
 
 window.toggleHeart = async function(event, recipeId) {
@@ -564,4 +585,60 @@ window.toggleHeart = async function(event, recipeId) {
             btn.innerText = "❤️";
         }
     } catch (e) { console.error(e); }
+};
+// ==========================================
+// 7. MISSING FUNCTIONS (Chef Notes)
+// ==========================================
+
+async function loadUserNote() {
+    const noteBox = document.getElementById('chefNotes');
+    // If we aren't on a recipe page, stop.
+    if (!noteBox) return;
+
+    const user = auth.currentUser;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    
+    // Safety check: User must be logged in & recipe data must exist
+    if (!user || !currentRecipe) return;
+
+    try {
+        // Path: users -> {userId} -> private_notes -> {recipeId}
+        const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
+        const docSnap = await getDoc(noteRef);
+
+        if (docSnap.exists()) {
+            noteBox.value = docSnap.data().text || "";
+            console.log("📝 Note loaded.");
+        }
+    } catch (e) {
+        console.error("Error loading note:", e);
+    }
+}
+
+window.saveNote = async function() {
+    const noteBox = document.getElementById('chefNotes');
+    const statusSpan = document.getElementById('saveStatus');
+    const user = auth.currentUser;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+
+    if (!user || !noteBox || !currentRecipe) return alert("Error: Missing data.");
+
+    try {
+        const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
+        
+        await setDoc(noteRef, {
+            text: noteBox.value,
+            updatedAt: serverTimestamp(),
+            recipeName: currentRecipe.name || "Unknown"
+        });
+
+        // Show "Saved!" message
+        if (statusSpan) {
+            statusSpan.innerText = "Saved! ✅";
+            setTimeout(() => statusSpan.innerText = "", 2000);
+        }
+    } catch (e) {
+        console.error("Error saving note:", e);
+        alert("Could not save note.");
+    }
 };

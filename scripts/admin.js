@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js'; 
 import { 
-    collection, getDocs, doc, getDoc, addDoc, deleteDoc,
-    query, orderBy, limit, where
+    collection, getDocs, doc, getDoc, addDoc, deleteDoc, updateDoc, // Added updateDoc
+    query, orderBy, limit, where, serverTimestamp // Added serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
