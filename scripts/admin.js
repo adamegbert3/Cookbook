@@ -564,22 +564,29 @@ window.toggleVisibility = async function(id, currentStatus) {
 
 window.postAnnouncement = async function() {
     const input = document.getElementById('announce-input');
+    
+    // Safety check: Does the element exist?
+    if (!input) return alert("Error: Could not find the input box (id='announce-input').");
+
     const message = input.value.trim();
-    if (!message) return;
+    if (!message) return alert("Please type a message first.");
 
     if(!confirm("Post this to the homepage?")) return;
 
     try {
+        // Ensure user is logged in
+        if (!auth.currentUser) return alert("You must be logged in to post.");
+
         await addDoc(collection(db, "announcements"), {
             message: message,
-            type: "alert", // Manual alerts are red
+            type: "alert", 
             timestamp: serverTimestamp()
         });
         
         alert("Posted!");
-        input.value = ""; // Clear box
+        input.value = ""; 
     } catch (error) {
-        console.error(error);
-        alert("Error posting.");
+        console.error("Announcement Error:", error);
+        alert("Error posting: " + error.message); // This will tell us the EXACT reason now
     }
 };

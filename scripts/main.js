@@ -2,43 +2,51 @@
 // 1. IMPORTS & SETUP
 // ==========================================
 import { db, auth } from './firebase-config.js'; 
+
+// Firestore Imports (Database)
 import { 
     collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc,
-    serverTimestamp, arrayUnion, arrayRemove, query, where, orderBy, limit 
+    serverTimestamp, arrayUnion, arrayRemove, query, where, orderBy, limit, 
+    onSnapshot 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+// Authentication Imports (User Login) <-- THIS WAS MISSING
+import { 
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 // Global Variables
 let allRecipes = []; 
 let userFavorites = []; 
 window.currentShoppingList = []; 
 
-console.log("✅ MAIN.JS LOADED - v6.0 (All Features)");
+console.log("✅ MAIN.JS LOADED - v7.1 (Imports Fixed)");
 
 // ==========================================
 // 2. AUTHENTICATION & STARTUP
 // ==========================================
-// ⚠️ REPLACE THIS WITH YOUR REAL ADMIN ID ⚠️
+// ⚠️ PASTE YOUR ADMIN ID HERE ⚠️
 const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         console.log("Logged in as:", user.email);
 
-        // --- 1. ADMIN BUTTON CHECK ---
+        // --- FIX: HIDE THE 'NOT SIGNED' TEXT IMMEDIATELY ---
+        const notSignedMsg = document.getElementById("notsigned");
+        if (notSignedMsg) notSignedMsg.style.display = 'none';
+        
+        // Show the recipes grid
+        const recipesGrid = document.getElementById('recipes');
+        if (recipesGrid) recipesGrid.style.display = 'flex';
+
+        // 1. ADMIN BUTTON CHECK
         if (user.uid === MY_ADMIN_ID) {
             const adminBtn = document.getElementById('admin-btn');
             if(adminBtn) adminBtn.style.display = "block"; 
         }
 
-        // --- 2. UI UPDATES ---
-        const notSignedMsg = document.getElementById("notsigned");
-        if(notSignedMsg) notSignedMsg.style.display = 'none';
-        
-        const recipesGrid = document.getElementById('recipes');
-        if(recipesGrid) recipesGrid.style.display = 'flex';
-
-        // --- 3. LOAD USER INFO ---
+        // 2. LOAD USER INFO
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
             let userName = user.displayName || user.email.split('@')[0];
@@ -49,32 +57,35 @@ onAuthStateChanged(auth, async (user) => {
                 if (data.Name) { userName = data.Name; }
             }
             
-            // Fixes "Can't find variable: updateProfileIcon"
+            // Draw the profile icon
             updateProfileIcon(userName); 
 
         } catch (err) { console.error("Error loading profile:", err); }
 
-        // --- 4. LOAD CONTENT ---
+        // 3. LOAD PAGE CONTENT
         if (recipesGrid) loadAllRecipes();
         if (document.getElementById('chefNotes')) {
             loadUserNote();
-            trackRecipeView(); // Fixes "Not tracking"
+            trackRecipeView();
         }
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('plan-Mon')) loadMealPlan();
         if (document.getElementById('family-feed')) loadFamilyFeed();
 
     } else {
-        // Guest Logic
+        // --- GUEST MODE ---
+        console.log("User is guest.");
+        
+        // Show the 'Not Signed In' text
+        const notSignedMsg = document.getElementById("notsigned");
+        if (notSignedMsg) notSignedMsg.style.display = 'block';
+        
+        // Hide the recipes
+        const recipesGrid = document.getElementById('recipes');
+        if (recipesGrid) recipesGrid.style.display = 'none';
+
         const adminBtn = document.getElementById('admin-btn');
         if(adminBtn) adminBtn.style.display = "none";
-
-        console.log("User is guest/logged out.");
-        const notSignedMsg = document.getElementById("notsigned");
-        if(notSignedMsg) notSignedMsg.style.display = 'block';
-        
-        const recipesGrid = document.getElementById('recipes');
-        if(recipesGrid) recipesGrid.style.display = 'none';
 
         resetProfileIcon();
     }
@@ -94,12 +105,10 @@ async function loadAllRecipes() {
         allRecipes = [];
 
         querySnapshot.forEach((doc) => {
-            const data = doc.data(); // <--- THIS LINE WAS MISSING BEFORE!
+            const data = doc.data(); // <--- FIXED: Defined 'data' here
             
             // Filter Hidden Recipes
-            if (data.isHidden === true) {
-                return; // Skip this one
-            }
+            if (data.isHidden === true) return; 
             
             allRecipes.push({ id: doc.id, ...data });
         });
@@ -233,7 +242,6 @@ window.generateFromPlan = async function() {
                 newList.push({ text: rName, type: 'header', checked: false });
 
                 let raw = data.recipeIngredient || data.ingredients || data.Ingredients || [];
-                
                 if (Array.isArray(raw)) {
                     raw.forEach(i => newList.push({ text: i, type: 'item', checked: false }));
                 } else if (typeof raw === 'string') {
@@ -250,7 +258,6 @@ window.generateFromPlan = async function() {
 
         await saveListToCloud(newList);
         renderShoppingList(newList);
-
     } catch (error) { console.error(error); }
 };
 
@@ -274,7 +281,6 @@ function renderShoppingList(items) {
             const checkIcon = item.checked ? '✓' : '';
             const border = item.checked ? '#10b981' : '#ddd';
             const bg = item.checked ? '#10b981' : 'transparent';
-
             listEl.innerHTML += `
                 <li onclick="toggleItem(${index})" style="padding: 10px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 12px;">
                     <div style="width: 20px; height: 20px; border: 2px solid ${border}; background: ${bg}; border-radius: 4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">${checkIcon}</div>
@@ -317,24 +323,26 @@ window.copyShoppingList = function() {
 // 5. COMMENTS, FAVORITES & UTILS
 // ==========================================
 
-// COMMENTS
-async function loadComments() {
+// ==========================================
+// REPLACED LOAD COMMENTS (Real-time & Better UI)
+// ==========================================
+function loadComments() {
     const list = document.getElementById('commentsList');
     if (!list) return;
 
-    // USE YOUR SAME ADMIN ID HERE
-    const ADMIN_ID = MY_ADMIN_ID; 
-
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
     if (!currentRecipe) return;
-    const user = auth.currentUser;
 
-    try {
-        const q = query(collection(db, "recipes", currentRecipe.id, "comments"), orderBy("timestamp", "asc"));
-        const snapshot = await getDocs(q);
-        
+    const user = auth.currentUser;
+    const ADMIN_ID = MY_ADMIN_ID; 
+
+    // Listen for updates in real-time
+    const q = query(collection(db, "recipes", currentRecipe.id, "comments"), orderBy("timestamp", "asc"));
+    
+    // onSnapshot runs every time the database changes!
+    onSnapshot(q, (snapshot) => {
         if (snapshot.empty) {
-            list.innerHTML = '<p style="color: #999;">No comments yet.</p>';
+            list.innerHTML = '<div style="text-align:center; padding: 20px; color: #999; background: #f9f9f9; border-radius: 10px;">👋 No comments yet. Start the conversation!</div>';
             return;
         }
 
@@ -342,35 +350,56 @@ async function loadComments() {
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
             const cid = docSnap.id;
-            const time = data.timestamp ? data.timestamp.toDate().toLocaleDateString() : "Just now";
+            
+            // Format Time
+            const dateObj = data.timestamp ? data.timestamp.toDate() : new Date();
+            const timeStr = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
             const isMe = user && data.uid === user.uid;
             const isAdmin = user && user.uid === ADMIN_ID;
-            const canManage = isMe || isAdmin;
+            
+            // Get Initials for Avatar
+            const initials = (data.author || "Guest").substring(0,2).toUpperCase();
 
-            const bg = isMe ? "#d1fae5" : "#f3f4f6"; 
-            const align = isMe ? "margin-left: auto;" : ""; 
+            // CHAT BUBBLE STYLING
+            const wrapperStyle = isMe 
+                ? "display: flex; justify-content: flex-end; margin-bottom: 15px;" 
+                : "display: flex; justify-content: flex-start; margin-bottom: 15px;";
+            
+            const bubbleStyle = isMe
+                ? "background: #0a4d74; color: white; padding: 12px 16px; border-radius: 15px 15px 0 15px; max-width: 80%; box-shadow: 0 2px 5px rgba(0,0,0,0.1);"
+                : "background: #f3f4f6; color: #1f2937; padding: 12px 16px; border-radius: 15px 15px 15px 0; max-width: 80%; border: 1px solid #e5e7eb;";
 
-            let menuHtml = "";
-            if (canManage) {
-                menuHtml = `
-                <div style="float: right;">
-                    <button onclick="toggleCommentMenu('${cid}')" style="background:none; border:none; cursor:pointer;">⋮</button>
-                    <div id="menu-${cid}" class="comment-menu hidden" style="position: absolute; right: 0; background: white; border: 1px solid #ddd; padding: 5px;">
-                        <button onclick="deleteComment('${cid}')" style="color:red; background:none; border:none; cursor:pointer;">Delete</button>
-                    </div>
-                </div>`;
+            const metaStyle = isMe
+                ? "text-align: right; font-size: 10px; color: #cbd5e1; margin-top: 5px;"
+                : "font-size: 10px; color: #6b7280; margin-top: 5px;";
+
+            // Delete button (Only show if allowed)
+            let deleteBtn = "";
+            if (isMe || isAdmin) {
+                deleteBtn = `<button onclick="deleteComment('${cid}')" style="font-size: 10px; color: ${isMe ? '#93c5fd' : 'red'}; background: none; border: none; cursor: pointer; text-decoration: underline; margin-left: 5px;">Delete</button>`;
             }
 
             html += `
-                <div style="background: ${bg}; padding: 10px; border-radius: 8px; max-width: 85%; margin-bottom: 10px; ${align}">
-                    ${menuHtml}
-                    <div style="font-weight: bold; font-size: 11px; color: #555;">${data.author} • ${time}</div>
-                    <div>${data.text}</div>
+                <div style="${wrapperStyle}">
+                    ${!isMe ? `<div style="width: 35px; height: 35px; background: #ddd; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; margin-right: 10px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">${initials}</div>` : ''}
+                    
+                    <div style="display: flex; flex-direction: column; ${isMe ? 'align-items: flex-end;' : 'align-items: flex-start;'}">
+                        <div style="${bubbleStyle}">
+                            <div style="font-weight: bold; font-size: 12px; margin-bottom: 2px; ${isMe ? 'color: #93c5fd;' : 'color: #0a4d74;'}">${data.author}</div>
+                            <div style="line-height: 1.4;">${data.text}</div>
+                        </div>
+                        <div style="${metaStyle}">
+                            ${timeStr} ${deleteBtn}
+                        </div>
+                    </div>
                 </div>`;
         });
         list.innerHTML = html;
-    } catch (error) { console.error(error); }
+        
+        // Auto-scroll to bottom
+        list.scrollTop = list.scrollHeight;
+    });
 }
 
 window.toggleCommentMenu = function(id) {
@@ -445,12 +474,38 @@ async function loadFamilyFeed() {
     } catch (e) { console.error(e); }
 }
 
-// PROFILE ICONS (The Missing Helper Functions!)
+// ==========================================
+// 6. IN-HOUSE PROFILE ICONS (NO EXTERNAL LINKS!)
+// ==========================================
+
 function updateProfileIcon(name) {
     const iconEl = document.getElementById('header-profile-icon');
+    
+    // Safety Check: If we are on the Login page, this element doesn't exist.
+    // So we just stop here to prevent the error.
     if (!iconEl) return;
-    const initials = name.split(' ').map(p => p.charAt(0)).join('').toUpperCase().substring(0, 2);
-    iconEl.src = `https://ui-avatars.com/api/?name=${initials}&background=0a4d74&color=fff&size=100&rounded=true`;
+
+    // 1. Get Initials (e.g., "Sue Egbert" -> "SE")
+    const initials = name.split(' ')
+        .map(p => p.charAt(0))
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+
+    // 2. Draw the Icon Locally (using SVG)
+    // This creates the image "in-house" without asking another website
+    const svgString = `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+            <rect width="100%" height="100%" fill="#0a4d74"/>
+            <text x="50%" y="50%" dy=".35em" font-family="Arial" font-weight="bold" font-size="40" fill="white" text-anchor="middle">
+                ${initials}
+            </text>
+        </svg>
+    `;
+
+    // 3. Convert code to an Image
+    const dataUrl = 'data:image/svg+xml;base64,' + btoa(svgString);
+    iconEl.src = dataUrl;
 }
 
 function resetProfileIcon() {
@@ -460,18 +515,34 @@ function resetProfileIcon() {
 
 // RECIPE TRACKING
 async function trackRecipeView() {
+    // 1. Double check we have the recipe data
+    const currentRecipeString = localStorage.getItem("currentRecipeData");
+    if (!currentRecipeString) {
+        console.warn("No recipe data found in storage. Can't track view.");
+        return;
+    }
+    
+    const currentRecipe = JSON.parse(currentRecipeString);
     const user = auth.currentUser;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    if (!currentRecipe) return;
+    const viewerName = user ? (user.displayName || user.email) : "Guest";
+
+    console.log(`Tracking view for: ${currentRecipe.name} by ${viewerName}`);
 
     try {
         await addDoc(collection(db, "recipe_views"), {
             recipeId: currentRecipe.id,
             recipeTitle: currentRecipe.name || "Unknown",
-            viewer: user ? (user.displayName || user.email) : "Guest",
+            viewer: viewerName,
             timestamp: serverTimestamp()
         });
-    } catch (e) { console.error(e); }
+        console.log("View tracked successfully.");
+    } catch (e) { 
+        console.error("Tracking failed:", e);
+        // If this fails, it is 99% a Firestore Permission Rule issue
+        if(e.code === 'permission-denied') {
+            console.warn("Check your Firestore Rules! Guests might not be allowed to write to 'recipe_views'.");
+        }
+    }
 }
 
 window.toggleHeart = async function(event, recipeId) {

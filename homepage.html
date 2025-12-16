@@ -18,8 +18,8 @@
     <div class="header-container">
     
     <div class="logo">
-        <img src="images/logo.png" alt="Logo" class="logo-img">
-    </div>
+    <img src="images/logo.jpg" alt="Logo" class="logo-img" style="height: 60px; width: auto;">
+</div>
 
     <div class="header-title">
         <h1 style="margin: 0; font-family: 'Amatic SC', cursive; font-size: 2rem; color: #0a4d74;">
@@ -170,33 +170,6 @@
 <button onclick="openReviewModal()" class="info-pill-btn">
     ℹ️ What are some hidden features?
 </button>
-
-<div id="reviewInfoModal" class="modal hidden">
-    <div class="modal-content">
-        <h3>About Our Recipes</h3>
-        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
-            This cookbook was created with the help of <strong>Artificial Intelligence</strong>. 
-            While AI is amazing, it can sometimes make mistakes!
-        </p>
-        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
-            When you see the <strong>"Reviewed: ✅"</strong> badge, it means a human chef has personally 
-            tested and double-checked the recipe to ensure it is accurate and delicious. 
-            If you would like a recipe to be reviewed, please contact us using our contact page!
-        </p>
-        <button onclick="closeReviewModal()" class="modal-btn">Got it!</button>
-    </div>
-</div>
-<script>
-    function openReviewModal() {
-        document.getElementById('reviewInfoModal').classList.remove('hidden');
-        document.getElementById('reviewInfoModal').style.display = 'flex'; // Ensures flex centering works
-    }
-
-    function closeReviewModal() {
-        document.getElementById('reviewInfoModal').classList.add('hidden');
-        document.getElementById('reviewInfoModal').style.display = 'none';
-    }
-</script>
 <div id="search-overlay" class="hidden-overlay">
     <div class="search-box-content">
         <button id="close-search">✕</button>
