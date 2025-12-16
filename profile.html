@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | Family Cookbook</title>
+    
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body style="background-color: #f3f4f6;">
+
+    <div class="header-container" style="justify-content: space-between;">
+        <a href="homepage.html" style="text-decoration: none; font-size: 24px;">🏡 Back</a>
+        <h1 style="margin:0; font-family: 'Amatic SC', cursive; font-size: 2.5rem;">My Kitchen</h1>
+        <button onclick="logout()" style="background: #ef4444; color: white; border: none; padding: 5px 15px; border-radius: 20px; cursor: pointer;">Log Out</button>
+    </div>
+
+    <div style="max-width: 800px; margin: 30px auto; text-align: center;">
+        <div style="background: white; padding: 40px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <img id="profile-avatar" src="" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid #0a4d74; margin-bottom: 15px;">
+            
+            <h2 id="profile-name" style="margin: 0; color: #1f2937; font-size: 2rem;">Loading...</h2>
+            <p id="profile-email" style="color: #666; margin-top: 5px;">...</p>
+            <p id="profile-joined" style="font-size: 12px; color: #9ca3af; margin-top: 15px;">Member since...</p>
+        </div>
+    </div>
+
+    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+        <h3 style="text-align: center; color: #0a4d74; font-family: 'Amatic SC'; font-size: 2.5rem; margin-bottom: 20px;">❤️ My Favorite Recipes</h3>
+        
+        <div id="favorites-grid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px;">
+            <p>Loading your favorites...</p>
+        </div>
+    </div>
+
+    <script type="module" src="scripts/profile.js"></script>
+
+    <script type="module">
+        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        const auth = getAuth();
+        window.logout = function() {
+            if(confirm("Log out?")) {
+                signOut(auth).then(() => window.location.href = "index.html");
+            }
+        }
+    </script>
+</body>
+</html>

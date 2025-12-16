@@ -123,27 +123,53 @@ window.celebrateInHouse = function(btnElement) {
 // Start the engine
 loadRecipe();
 
-// --- MEAL PLANNER: ADD RECIPE ---
-const planBtn = document.getElementById('plan-meal-btn');
+// ==========================================
+// MEAL PLANNER: ADD RECIPE (DROPDOWN VERSION)
+// ==========================================
 
-if (planBtn) {
+const planBtn = document.getElementById('plan-meal-btn');
+const plannerModal = document.getElementById('plannerModal');
+
+// 1. OPEN THE POPUP
+if (planBtn && plannerModal) {
     planBtn.addEventListener('click', () => {
-        // Simple prompt (Professional apps might use a custom modal, but this is fast)
-        const day = prompt("Which day? (Mon, Tue, Wed, Thu, Fri, Sat, Sun)");
-        
-        if (day) {
-            const shortDay = day.substring(0, 3); // Ensure "Monday" becomes "Mon"
-            const recipeName = document.title;
-            
-            // Save to memory
-            const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-            plan[shortDay] = recipeName;
-            localStorage.setItem('mealPlan', JSON.stringify(plan));
-            
-            if(typeof showToast === "function") showToast(`Added to ${shortDay}!`);
-        }
+        plannerModal.style.display = 'flex'; // Show the box
     });
 }
+
+// 2. CLOSE THE POPUP
+window.closePlannerModal = function() {
+    if (plannerModal) {
+        plannerModal.style.display = 'none'; // Hide the box
+    }
+};
+
+// 3. SAVE THE SELECTION (The "Welcome" Bug Fix)
+window.confirmAddToPlan = function() {
+    const selectBox = document.getElementById('daySelect');
+    const selectedDay = selectBox.value; 
+    
+    // 1. Get the REAL data from memory (Bypasses the HTML header)
+    const currentData = JSON.parse(localStorage.getItem("currentRecipeData"));
+    
+    // 2. Use the real name
+    const recipeName = currentData ? currentData.name : "Unknown Recipe";
+
+    // 3. Save to the Local Sticky Note (Meal Plan)
+    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    plan[selectedDay] = recipeName;
+    localStorage.setItem('mealPlan', JSON.stringify(plan));
+
+    alert(`✅ Added ${recipeName} to ${selectedDay}!`);
+    closePlannerModal();
+};
+
+// Close if clicking outside the white box
+window.addEventListener('click', (e) => {
+    if (e.target === plannerModal) {
+        closePlannerModal();
+    }
+});
 
 // --- TUTORIAL LOGIC ---
 
