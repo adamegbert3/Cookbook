@@ -13,32 +13,32 @@ let allRecipes = [];
 let userFavorites = []; 
 window.currentShoppingList = []; 
 
-console.log("✅ MAIN.JS LOADED - v5.0 (Personalized Icon)");
+console.log("✅ MAIN.JS LOADED - v6.0 (All Features)");
 
 // ==========================================
 // 2. AUTHENTICATION & STARTUP
 // ==========================================
-// REPLACE THIS WITH YOUR REAL ADMIN ID (The same one from admin.js)
+// ⚠️ REPLACE THIS WITH YOUR REAL ADMIN ID ⚠️
 const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         console.log("Logged in as:", user.email);
-        
-        // --- 🕵️‍♂️ SECRET BUTTON LOGIC ---
+
+        // --- 1. ADMIN BUTTON CHECK ---
         if (user.uid === MY_ADMIN_ID) {
             const adminBtn = document.getElementById('admin-btn');
-            if(adminBtn) adminBtn.style.display = "block"; // Show the button!
+            if(adminBtn) adminBtn.style.display = "block"; 
         }
 
-        // ... existing UI updates (notsigned, recipesGrid, etc.) ...
+        // --- 2. UI UPDATES ---
         const notSignedMsg = document.getElementById("notsigned");
         if(notSignedMsg) notSignedMsg.style.display = 'none';
         
         const recipesGrid = document.getElementById('recipes');
         if(recipesGrid) recipesGrid.style.display = 'flex';
 
-        // 1. Load User Info & Favorites
+        // --- 3. LOAD USER INFO ---
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
             let userName = user.displayName || user.email.split('@')[0];
@@ -49,22 +49,25 @@ onAuthStateChanged(auth, async (user) => {
                 if (data.Name) { userName = data.Name; }
             }
             
-            updateProfileIcon(userName);
+            // Fixes "Can't find variable: updateProfileIcon"
+            updateProfileIcon(userName); 
 
         } catch (err) { console.error("Error loading profile:", err); }
 
-        // 2. Load Content
+        // --- 4. LOAD CONTENT ---
         if (recipesGrid) loadAllRecipes();
-        if (document.getElementById('chefNotes')) loadUserNote();
+        if (document.getElementById('chefNotes')) {
+            loadUserNote();
+            trackRecipeView(); // Fixes "Not tracking"
+        }
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('plan-Mon')) loadMealPlan();
-
-        trackRecipeView();
+        if (document.getElementById('family-feed')) loadFamilyFeed();
 
     } else {
-        // ... Guest logic ...
+        // Guest Logic
         const adminBtn = document.getElementById('admin-btn');
-        if(adminBtn) adminBtn.style.display = "none"; // Hide it if logged out
+        if(adminBtn) adminBtn.style.display = "none";
 
         console.log("User is guest/logged out.");
         const notSignedMsg = document.getElementById("notsigned");
@@ -76,7 +79,6 @@ onAuthStateChanged(auth, async (user) => {
         resetProfileIcon();
     }
 });
-
 
 // ==========================================
 // 3. RECIPE DISPLAY LOGIC
@@ -92,15 +94,15 @@ async function loadAllRecipes() {
         allRecipes = [];
 
         querySnapshot.forEach((doc) => {
-            const data = doc.data();
+            const data = doc.data(); // <--- THIS LINE WAS MISSING BEFORE!
+            
+            // Filter Hidden Recipes
+            if (data.isHidden === true) {
+                return; // Skip this one
+            }
+            
             allRecipes.push({ id: doc.id, ...data });
         });
-
-        // --- NEW: THE FILTER ---
-            // If it is hidden, SKIP IT (don't add to list)
-            if (data.isHidden === true) {
-                return; 
-            }
 
         // Sort A-Z
         allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
@@ -120,16 +122,14 @@ function renderRecipes(list) {
     list.forEach(recipe => html += RecipeTemplate(recipe));
     container.innerHTML = html;
 
-    // Add Click Listeners
+    // Click Listeners
     document.querySelectorAll(".recipe-card").forEach(card => {
         card.addEventListener("click", (e) => {
-            // Don't click if they hit the heart button
             if(e.target.closest('.heart-btn')) return;
 
             const name = card.getAttribute("data-name");
             const selectedRecipe = allRecipes.find(r => r.name === name);
             
-            // Save data and go
             localStorage.setItem("currentRecipeData", JSON.stringify(selectedRecipe));
             const slug = selectedRecipe.name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
             window.location.href = `recipe.html?id=${slug}`;
@@ -161,18 +161,15 @@ function RecipeTemplate(recipe) {
 }
 
 // ==========================================
-// 4. MEAL PLANNER (CLEAR & LOAD)
+// 4. MEAL PLANNER & SHOPPING
 // ==========================================
-
-// 1. Clear the Weekly Menu
 window.clearMealPlan = function() {
-    if (confirm("Are you sure you want to clear the entire Weekly Menu?")) {
+    if (confirm("Clear Weekly Menu?")) {
         localStorage.removeItem('mealPlan');
         window.location.reload();
     }
 };
 
-// 2. Load the Menu
 function loadMealPlan() {
     const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -189,24 +186,16 @@ function loadMealPlan() {
     });
 }
 
-// ==========================================
-// 5. SHOPPING LIST
-// ==========================================
-
 window.openShoppingModal = async function() {
     const user = auth.currentUser;
-    if (!user) return alert("Please log in to use the Shopping List.");
+    if (!user) return alert("Please log in.");
 
     const modal = document.getElementById('shoppingModal');
-    if(modal) {
-        modal.classList.remove('hidden');
-        modal.style.display = 'flex';
-    }
-    const status = document.getElementById('shopping-status');
-    const container = document.getElementById('shopping-list-container');
+    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
     
-    if(status) { status.style.display = 'block'; status.innerText = "Syncing with cloud..."; }
-    if(container) container.style.display = 'none';
+    const status = document.getElementById('shopping-status');
+    if(status) { status.style.display = 'block'; status.innerText = "Syncing..."; }
+    document.getElementById('shopping-list-container').style.display = 'none';
 
     try {
         const listRef = doc(db, "shopping_lists", user.uid);
@@ -217,9 +206,7 @@ window.openShoppingModal = async function() {
         } else {
             await generateFromPlan();
         }
-    } catch (error) {
-        console.error("Error loading list:", error);
-    }
+    } catch (error) { console.error(error); }
 };
 
 window.generateFromPlan = async function() {
@@ -227,14 +214,12 @@ window.generateFromPlan = async function() {
     const recipes = Object.values(plan); 
 
     if (recipes.length === 0) {
-        const status = document.getElementById('shopping-status');
-        if(status) status.innerText = "Meal plan is empty.";
+        document.getElementById('shopping-status').innerText = "Meal plan is empty.";
         renderShoppingList([]); 
         return;
     }
     
-    const status = document.getElementById('shopping-status');
-    if(status) status.innerText = "Finding ingredients...";
+    document.getElementById('shopping-status').innerText = "Finding ingredients...";
     
     try {
         const snapshot = await getDocs(collection(db, "recipes"));
@@ -247,21 +232,18 @@ window.generateFromPlan = async function() {
             if (recipes.includes(rName)) {
                 newList.push({ text: rName, type: 'header', checked: false });
 
-                // SMART INGREDIENT CHECKER
-                let raw = data.recipeIngredient || data.ingredients || data.Ingredients || data.recipeIngredients || [];
+                let raw = data.recipeIngredient || data.ingredients || data.Ingredients || [];
                 
                 if (Array.isArray(raw)) {
                     raw.forEach(i => newList.push({ text: i, type: 'item', checked: false }));
-                } 
-                else if (typeof raw === 'string') {
+                } else if (typeof raw === 'string') {
                     let lines = raw.split(/\r?\n/);
                     if(lines.length === 1 && raw.includes(',')) lines = raw.split(',');
                     lines.forEach(line => {
                         if(line.trim()) newList.push({ text: line.trim(), type: 'item', checked: false });
                     });
-                } 
-                else {
-                    newList.push({ text: "⚠️ (No ingredients found - Check Database)", type: 'item', checked: false });
+                } else {
+                    newList.push({ text: "⚠️ Check Database", type: 'item', checked: false });
                 }
             }
         });
@@ -269,48 +251,40 @@ window.generateFromPlan = async function() {
         await saveListToCloud(newList);
         renderShoppingList(newList);
 
-    } catch (error) {
-        console.error(error);
-        if(status) status.innerText = "Error reading recipes.";
-    }
+    } catch (error) { console.error(error); }
 };
 
 function renderShoppingList(items) {
     const listEl = document.getElementById('shopping-ul');
-    const container = document.getElementById('shopping-list-container');
-    const status = document.getElementById('shopping-status');
-    
     window.currentShoppingList = items;
-    if(listEl) listEl.innerHTML = "";
+    listEl.innerHTML = "";
     
     if (items.length === 0) {
-        if(status) { status.innerText = "List is empty."; status.style.display = 'block'; }
-        if(container) container.style.display = 'none';
+        document.getElementById('shopping-status').innerText = "List is empty.";
+        document.getElementById('shopping-status').style.display = 'block';
+        document.getElementById('shopping-list-container').style.display = 'none';
         return;
     }
 
     items.forEach((item, index) => {
         if (item.type === 'header') {
-            listEl.innerHTML += `
-                <li style="margin-top: 15px; font-weight: bold; color: #0a4d74; border-bottom: 2px solid #eee; padding-bottom: 5px;">
-                    ${item.text}
-                </li>`;
+            listEl.innerHTML += `<li style="margin-top: 15px; font-weight: bold; color: #0a4d74; border-bottom: 2px solid #eee;">${item.text}</li>`;
         } else {
             const isChecked = item.checked ? 'text-decoration: line-through; color: #ccc;' : 'color: #333;';
-            const boxColor = item.checked ? '#10b981' : 'transparent';
-            const border = item.checked ? '#10b981' : '#ddd';
             const checkIcon = item.checked ? '✓' : '';
+            const border = item.checked ? '#10b981' : '#ddd';
+            const bg = item.checked ? '#10b981' : 'transparent';
 
             listEl.innerHTML += `
                 <li onclick="toggleItem(${index})" style="padding: 10px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 20px; height: 20px; border: 2px solid ${border}; background: ${boxColor}; border-radius: 4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">${checkIcon}</div>
+                    <div style="width: 20px; height: 20px; border: 2px solid ${border}; background: ${bg}; border-radius: 4px; display:flex; align-items:center; justify-content:center; color:white; font-size:12px;">${checkIcon}</div>
                     <span style="font-size: 15px; ${isChecked}">${item.text}</span>
                 </li>`;
         }
     });
 
-    if(status) status.style.display = 'none';
-    if(container) container.style.display = 'block';
+    document.getElementById('shopping-status').style.display = 'none';
+    document.getElementById('shopping-list-container').style.display = 'block';
 }
 
 window.toggleItem = async function(index) {
@@ -327,10 +301,8 @@ async function saveListToCloud(items) {
     } catch (e) { console.error("Save failed:", e); }
 }
 
-window.clearShoppingList = async function() {
-    if(!confirm("Clear list?")) return;
-    await saveListToCloud([]);
-    renderShoppingList([]);
+window.closeShoppingModal = function() {
+    document.getElementById('shoppingModal').style.display = 'none';
 };
 
 window.copyShoppingList = function() {
@@ -338,21 +310,174 @@ window.copyShoppingList = function() {
     window.currentShoppingList.forEach(i => {
         if(i.type === 'item' && !i.checked) text += `- ${i.text}\n`;
     });
-    navigator.clipboard.writeText(text).then(() => alert("Copied remaining items!"));
-};
-
-window.closeShoppingModal = function() {
-    document.getElementById('shoppingModal').style.display = 'none';
+    navigator.clipboard.writeText(text).then(() => alert("Copied!"));
 };
 
 // ==========================================
-// 6. USER ACTIONS (Hearts, Notes, Etc.)
+// 5. COMMENTS, FAVORITES & UTILS
 // ==========================================
+
+// COMMENTS
+async function loadComments() {
+    const list = document.getElementById('commentsList');
+    if (!list) return;
+
+    // USE YOUR SAME ADMIN ID HERE
+    const ADMIN_ID = MY_ADMIN_ID; 
+
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    if (!currentRecipe) return;
+    const user = auth.currentUser;
+
+    try {
+        const q = query(collection(db, "recipes", currentRecipe.id, "comments"), orderBy("timestamp", "asc"));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
+            list.innerHTML = '<p style="color: #999;">No comments yet.</p>';
+            return;
+        }
+
+        let html = '';
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            const cid = docSnap.id;
+            const time = data.timestamp ? data.timestamp.toDate().toLocaleDateString() : "Just now";
+            
+            const isMe = user && data.uid === user.uid;
+            const isAdmin = user && user.uid === ADMIN_ID;
+            const canManage = isMe || isAdmin;
+
+            const bg = isMe ? "#d1fae5" : "#f3f4f6"; 
+            const align = isMe ? "margin-left: auto;" : ""; 
+
+            let menuHtml = "";
+            if (canManage) {
+                menuHtml = `
+                <div style="float: right;">
+                    <button onclick="toggleCommentMenu('${cid}')" style="background:none; border:none; cursor:pointer;">⋮</button>
+                    <div id="menu-${cid}" class="comment-menu hidden" style="position: absolute; right: 0; background: white; border: 1px solid #ddd; padding: 5px;">
+                        <button onclick="deleteComment('${cid}')" style="color:red; background:none; border:none; cursor:pointer;">Delete</button>
+                    </div>
+                </div>`;
+            }
+
+            html += `
+                <div style="background: ${bg}; padding: 10px; border-radius: 8px; max-width: 85%; margin-bottom: 10px; ${align}">
+                    ${menuHtml}
+                    <div style="font-weight: bold; font-size: 11px; color: #555;">${data.author} • ${time}</div>
+                    <div>${data.text}</div>
+                </div>`;
+        });
+        list.innerHTML = html;
+    } catch (error) { console.error(error); }
+}
+
+window.toggleCommentMenu = function(id) {
+    const menu = document.getElementById(`menu-${id}`);
+    if(menu) menu.classList.toggle('hidden');
+};
+
+window.deleteComment = async function(cid) {
+    if(!confirm("Delete?")) return;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    try {
+        await deleteDoc(doc(db, "recipes", currentRecipe.id, "comments", cid));
+        loadComments();
+    } catch (e) { alert("Error deleting"); }
+};
+
+window.postComment = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in!");
+    const input = document.getElementById('commentInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    
+    try {
+        let authorName = user.displayName;
+        if (!authorName) {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            authorName = userDoc.exists() && userDoc.data().Name ? userDoc.data().Name : user.email.split('@')[0];
+        }
+
+        await addDoc(collection(db, "recipes", currentRecipe.id, "comments"), {
+            text: text, author: authorName, uid: user.uid, timestamp: serverTimestamp()
+        });
+        input.value = ""; 
+        loadComments();
+    } catch (e) { alert("Error posting"); }
+};
+
+// FAMILY FEED
+async function loadFamilyFeed() {
+    const feedList = document.getElementById('family-feed');
+    if (!feedList) return;
+
+    try {
+        const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"), limit(10));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            feedList.innerHTML = "<p style='color:#999;'>No news yet...</p>";
+            return;
+        }
+
+        let html = "";
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const time = data.timestamp ? data.timestamp.toDate().toLocaleDateString() : "Just now";
+            const icon = data.type === "new_recipe" ? "🍳" : "📢";
+            const color = data.type === "new_recipe" ? "#ecfdf5" : "#f3f4f6";
+
+            html += `
+                <div style="background: ${color}; padding: 10px; border-radius: 8px; display: flex; gap: 10px; align-items: center;">
+                    <div style="font-size: 20px;">${icon}</div>
+                    <div>
+                        <div style="font-size: 14px;">${data.message}</div>
+                        <div style="font-size: 11px; color: #888;">${time}</div>
+                    </div>
+                </div>`;
+        });
+        feedList.innerHTML = html;
+    } catch (e) { console.error(e); }
+}
+
+// PROFILE ICONS (The Missing Helper Functions!)
+function updateProfileIcon(name) {
+    const iconEl = document.getElementById('header-profile-icon');
+    if (!iconEl) return;
+    const initials = name.split(' ').map(p => p.charAt(0)).join('').toUpperCase().substring(0, 2);
+    iconEl.src = `https://ui-avatars.com/api/?name=${initials}&background=0a4d74&color=fff&size=100&rounded=true`;
+}
+
+function resetProfileIcon() {
+    const iconEl = document.getElementById('header-profile-icon');
+    if (iconEl) iconEl.src = "images/profile-icon.png"; 
+}
+
+// RECIPE TRACKING
+async function trackRecipeView() {
+    const user = auth.currentUser;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    if (!currentRecipe) return;
+
+    try {
+        await addDoc(collection(db, "recipe_views"), {
+            recipeId: currentRecipe.id,
+            recipeTitle: currentRecipe.name || "Unknown",
+            viewer: user ? (user.displayName || user.email) : "Guest",
+            timestamp: serverTimestamp()
+        });
+    } catch (e) { console.error(e); }
+}
+
 window.toggleHeart = async function(event, recipeId) {
     event.stopPropagation();
     const user = auth.currentUser;
-    if (!user) return alert("Please log in!");
-
+    if (!user) return alert("Log in to favorite!");
     const btn = event.currentTarget;
     const isFav = userFavorites.includes(recipeId);
     const userRef = doc(db, "users", user.uid);
@@ -367,44 +492,5 @@ window.toggleHeart = async function(event, recipeId) {
             userFavorites.push(recipeId);
             btn.innerText = "❤️";
         }
-    } catch (error) { console.error(error); }
+    } catch (e) { console.error(e); }
 };
-
-window.recordCook = async function(btnElement) {
-    if (typeof fireConfetti === "function") fireConfetti(btnElement);
-    const recipeTitle = document.title;
-    const recipeKey = 'cookCount-' + recipeTitle;
-    let count = parseInt(localStorage.getItem(recipeKey) || 0) + 1;
-    localStorage.setItem(recipeKey, count);
-    
-    const counterText = document.getElementById('cook-counter');
-    if(counterText) counterText.innerHTML = `You've cooked this <strong>${count} times</strong>!`;
-
-    try {
-        await addDoc(collection(db, "global_cooks"), { recipe: recipeTitle, timestamp: serverTimestamp() });
-    } catch (error) { console.error("Error recording cook:", error); }
-};
-// ==========================================
-// 7. RECIPE TRACKING
-// ==========================================
-async function trackRecipeView() {
-    // Only run this if we are actually on a recipe page
-    if (!document.getElementById('chefNotes')) return;
-
-    const user = auth.currentUser;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    
-    if (!currentRecipe) return;
-
-    try {
-        await addDoc(collection(db, "recipe_views"), {
-            recipeId: currentRecipe.id,
-            recipeTitle: currentRecipe.name || "Unknown Recipe",
-            viewer: user ? (user.displayName || user.email) : "Guest",
-            timestamp: serverTimestamp()
-        });
-        console.log("👀 View tracked:", currentRecipe.name);
-    } catch (error) {
-        console.error("Error tracking view:", error);
-    }
-}

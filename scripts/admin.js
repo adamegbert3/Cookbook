@@ -343,9 +343,22 @@ window.approveRecipe = async function(pendingId) {
         const pendingRef = doc(db, "pending_recipes", pendingId);
         const snapshot = await getDoc(pendingRef);
         const data = snapshot.data();
+        
+        // 1. Create the Recipe
         await addDoc(collection(db, "recipes"), { ...data, reviewed: true, createdAt: new Date() });
+        
+        // 2. >>> NEW: AUTOMATIC ANNOUNCEMENT <<<
+        const chefName = data.author || "A Family Member";
+        await addDoc(collection(db, "announcements"), {
+            message: `<strong>New Recipe!</strong> ${chefName} just added <em>${data.name}</em>. Check it out!`,
+            type: "new_recipe", // Recipe alerts are green
+            timestamp: serverTimestamp()
+        });
+
+        // 3. Delete from Queue
         await deleteDoc(pendingRef);
         document.getElementById(`card-${pendingId}`).remove();
+        
     } catch (error) { console.error(error); alert(error.message); }
 };
 
@@ -543,5 +556,30 @@ window.toggleVisibility = async function(id, currentStatus) {
     } catch (error) {
         console.error("Error updating:", error);
         alert("Could not update.");
+    }
+};
+// ==========================================
+// 8. ANNOUNCEMENTS
+// ==========================================
+
+window.postAnnouncement = async function() {
+    const input = document.getElementById('announce-input');
+    const message = input.value.trim();
+    if (!message) return;
+
+    if(!confirm("Post this to the homepage?")) return;
+
+    try {
+        await addDoc(collection(db, "announcements"), {
+            message: message,
+            type: "alert", // Manual alerts are red
+            timestamp: serverTimestamp()
+        });
+        
+        alert("Posted!");
+        input.value = ""; // Clear box
+    } catch (error) {
+        console.error(error);
+        alert("Error posting.");
     }
 };

@@ -40,6 +40,14 @@
             <div id="pending-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;">
                 </div>
         </div>
+        <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">
+            <h3 style="margin-top:0; color: #0369a1;">📢 Post Announcement</h3>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <input type="text" id="announce-input" placeholder="e.g., Thanksgiving is at 5pm!" 
+                    style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <button onclick="postAnnouncement()" style="background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">Post</button>
+            </div>
+        </div>
 
         <div class="pending-card widget-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
             <h3 style="margin-top:0; color: white; opacity: 0.9;">🔥 Total Meals Cooked</h3>
