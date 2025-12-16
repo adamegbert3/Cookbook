@@ -1,10 +1,24 @@
-// 1. Import Auth and Database
-import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "./firestoreapi.js";
-// We need 'db' to save the user profile, so import it from your config
-import { db } from "./firebase-config.js"; 
-// We need these tools to write to the database
-import { doc, setDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
-import { updateProfile } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+// ==========================================
+// LOGIN.JS (FINAL CLEAN VERSION)
+// ==========================================
+
+// 1. IMPORTS
+// We import 'auth' and 'db' from your config file
+import { auth, db } from './firebase-config.js'; 
+
+// We import Auth tools (Login, Create User, Update Name)
+import { 
+    signInWithEmailAndPassword, 
+    createUserWithEmailAndPassword, 
+    updateProfile, 
+    sendPasswordResetEmail
+} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+// We import Database tools (Save User Data)
+import { 
+    doc, 
+    setDoc 
+} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 // --- HELPER FUNCTIONS ---
 
@@ -16,34 +30,49 @@ function alertPlaceholder(message) {
         msgBox.classList.remove('hidden');
         msgBox.classList.add('flex');
     } else {
-        alert(message); // Fallback if HTML elements are missing
+        alert(message);
     }
 }
 
 function showSignUp() {
-    document.getElementById("signUp").classList.remove('hidden');
-    document.getElementById('signUp').classList.add('flex');
+    const signUp = document.getElementById("signUp");
+    if(signUp) {
+        signUp.classList.remove('hidden');
+        signUp.classList.add('flex');
+    }
 }
 
 function hideMessageBox() {
-    document.getElementById('messageBox').classList.add('hidden');
-    document.getElementById('messageBox').classList.remove('flex');
+    const box = document.getElementById('messageBox');
+    if(box) {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+    }
 }
 
 function hideSignUpBox() {
-    document.getElementById('signUp').classList.add('hidden');
-    document.getElementById('signUp').classList.remove('flex');
+    const box = document.getElementById('signUp');
+    if(box) {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+    }
 }
 
 function sendReset() {
-    document.getElementById('reset').classList.remove('hidden');
-    document.getElementById('reset').classList.add('flex');
+    const box = document.getElementById('reset');
+    if(box) {
+        box.classList.remove('hidden');
+        box.classList.add('flex');
+    }
 }
 
 function submitReset() {
     const email = document.getElementById('emailReset').value;
-    document.getElementById('reset').classList.add('hidden');
-    document.getElementById('reset').classList.remove('flex');
+    const box = document.getElementById('reset');
+    if(box) {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+    }
     
     sendPasswordResetEmail(auth, email).then(() => {
         alertPlaceholder("Password Reset sent");
@@ -54,22 +83,17 @@ function submitReset() {
 
 // --- MAIN LOGIN LOGIC ---
 
-// 1. Check if the form exists before attaching listener to prevent errors
 const loginForm = document.getElementById('loginForm');
 
 if (loginForm) {
     loginForm.addEventListener('submit', function(event) {
-        // THIS IS THE MOST IMPORTANT LINE:
-        event.preventDefault(); // Stop the page from refreshing
+        event.preventDefault(); // Stop refresh
         
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
         
         signInWithEmailAndPassword(auth, email, password)
             .then((userCredential) => {
-                // Success! Redirect immediately.
-                // We removed the code that looked for "user_prof" in Firestore
-                // because it was crashing the script.
                 console.log("Logged in!");
                 window.location.href = "homepage.html";
             })
@@ -78,13 +102,9 @@ if (loginForm) {
                 alertPlaceholder(error.message);
             });
     });
-} else {
-    console.error("Could not find element with id 'loginForm'");
 }
 
 // --- SIGN UP LOGIC ---
-
-// --- SIGN UP LOGIC (UPDATED) ---
 
 const signUpForm = document.getElementById('signUpForm');
 
@@ -92,7 +112,7 @@ if (signUpForm) {
     signUpForm.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        const name = document.getElementById('fullName').value; // <--- GRAB NAME
+        const name = document.getElementById('fullName').value;
         const email = document.getElementById('emailSign').value;
         const password = document.getElementById('passwordSign').value;
 
@@ -100,15 +120,17 @@ if (signUpForm) {
             .then(async (userCredential) => {
                 const user = userCredential.user;
                 
-                // 1. UPDATE AUTH PROFILE (This fixes the Comment Section name)
+                // 1. UPDATE AUTH PROFILE
+                // This ensures "updateProfile" is only used once here
                 await updateProfile(user, {
                     displayName: name
                 });
 
-                // 2. SAVE TO DATABASE (This fixes the Admin Panel view)
+                // 2. SAVE TO DATABASE
                 try {
+                    // We can use setDoc because we imported it at the top
                     await setDoc(doc(db, "users", user.uid), {
-                        Name: name, // <--- SAVED HERE
+                        Name: name,
                         email: user.email,
                         role: "user",
                         favorites: [],
@@ -119,8 +141,9 @@ if (signUpForm) {
                     window.location.href = "homepage.html";
                     
                 } catch (error) {
-                    console.error(error);
-                    alertPlaceholder("Account created, but database failed.");
+                    console.error("Database Error:", error);
+                    // Even if database fails, the account exists, so let them in
+                    window.location.href = "homepage.html";
                 }
             })
             .catch((error) => {
@@ -129,7 +152,7 @@ if (signUpForm) {
     });
 }
 
-// Attach functions to window so HTML onclick="..." works
+// Attach functions to window so HTML buttons work
 window.hideSignUpBox = hideSignUpBox;
 window.hideMessageBox = hideMessageBox;
 window.showSignUp = showSignUp;

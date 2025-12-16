@@ -11,9 +11,9 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/fir
 // Global Variables
 let allRecipes = []; 
 let userFavorites = []; 
-window.currentShoppingList = []; // For the shopping list
+window.currentShoppingList = []; 
 
-console.log("✅ MAIN.JS VERSION 3.0 LOADED"); // Check your console for this!
+console.log("✅ MAIN.JS LOADED - v5.0 (Personalized Icon)");
 
 // ==========================================
 // 2. AUTHENTICATION & STARTUP
@@ -22,28 +22,75 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
         console.log("Logged in as:", user.email);
         
-        // 1. Load User Favorites
+        // UI Updates
+        const notSignedMsg = document.getElementById("notsigned");
+        if(notSignedMsg) notSignedMsg.style.display = 'none';
+        
+        const recipesGrid = document.getElementById('recipes');
+        if(recipesGrid) recipesGrid.style.display = 'flex';
+
+        // 1. Load User Info & Favorites
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
+            let userName = user.displayName || user.email.split('@')[0]; // Fallback
+
             if (userSnap.exists()) {
-                userFavorites = userSnap.data().favorites || [];
+                const data = userSnap.data();
+                userFavorites = data.favorites || [];
+                if (data.Name) { userName = data.Name; }
             }
+            
+            // --- NEW: Update Profile Icon with Initials ---
+            updateProfileIcon(userName);
+
         } catch (err) { console.error("Error loading profile:", err); }
 
         // 2. Load Content
-        const recipesGrid = document.getElementById('recipes');
         if (recipesGrid) loadAllRecipes(); // Homepage
-        
-        // 3. Load Page Specifics
         if (document.getElementById('chefNotes')) loadUserNote(); // Recipe Page
         if (document.getElementById('commentsList')) loadComments(); // Recipe Page
         if (document.getElementById('plan-Mon')) loadMealPlan(); // Homepage
 
     } else {
-        console.log("User is guest.");
-        // Guest handling logic here if needed
+        console.log("User is guest/logged out.");
+        // UI Updates
+        const notSignedMsg = document.getElementById("notsigned");
+        if(notSignedMsg) notSignedMsg.style.display = 'block';
+        
+        const recipesGrid = document.getElementById('recipes');
+        if(recipesGrid) recipesGrid.style.display = 'none';
+
+        // --- NEW: Reset Profile Icon to Default ---
+        resetProfileIcon();
     }
 });
+
+// --- NEW HELPER FUNCTIONS FOR PROFILE ICON ---
+function updateProfileIcon(name) {
+    const iconEl = document.getElementById('header-profile-icon');
+    if (!iconEl) return;
+
+    // Create Initials (e.g., "Sue Egbert" -> "SE")
+    const initials = name.split(' ')
+        .map(part => part.charAt(0))
+        .join('')
+        .toUpperCase()
+        .substring(0, 2);
+
+    // Use UI Avatars API to generate the image
+    // We use your app's blue color (#0a4d74) for the background
+    const avatarUrl = `https://ui-avatars.com/api/?name=${initials}&background=0a4d74&color=fff&size=100&font-size=0.5&rounded=true`;
+    iconEl.src = avatarUrl;
+}
+
+function resetProfileIcon() {
+    const iconEl = document.getElementById('header-profile-icon');
+    if (iconEl) {
+        // Set back to your generic placeholder image
+        iconEl.src = "images/profile-icon.png"; 
+    }
+}
+
 
 // ==========================================
 // 3. RECIPE DISPLAY LOGIC
@@ -122,7 +169,36 @@ function RecipeTemplate(recipe) {
 }
 
 // ==========================================
-// 4. SHOPPING LIST (THE FIX)
+// 4. MEAL PLANNER (CLEAR & LOAD)
+// ==========================================
+
+// 1. Clear the Weekly Menu
+window.clearMealPlan = function() {
+    if (confirm("Are you sure you want to clear the entire Weekly Menu?")) {
+        localStorage.removeItem('mealPlan');
+        window.location.reload();
+    }
+};
+
+// 2. Load the Menu
+function loadMealPlan() {
+    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    
+    days.forEach(day => {
+        const element = document.getElementById(`plan-${day}`);
+        if (element && plan[day]) {
+            element.innerText = plan[day];
+            if(element.parentElement) {
+                element.parentElement.style.borderColor = "#10b981"; 
+                element.parentElement.style.backgroundColor = "#f0fdf4";
+            }
+        }
+    });
+}
+
+// ==========================================
+// 5. SHOPPING LIST
 // ==========================================
 
 window.openShoppingModal = async function() {
@@ -134,9 +210,11 @@ window.openShoppingModal = async function() {
         modal.classList.remove('hidden');
         modal.style.display = 'flex';
     }
-    document.getElementById('shopping-status').style.display = 'block';
-    document.getElementById('shopping-list-container').style.display = 'none';
-    document.getElementById('shopping-status').innerText = "Syncing with cloud...";
+    const status = document.getElementById('shopping-status');
+    const container = document.getElementById('shopping-list-container');
+    
+    if(status) { status.style.display = 'block'; status.innerText = "Syncing with cloud..."; }
+    if(container) container.style.display = 'none';
 
     try {
         const listRef = doc(db, "shopping_lists", user.uid);
@@ -157,12 +235,14 @@ window.generateFromPlan = async function() {
     const recipes = Object.values(plan); 
 
     if (recipes.length === 0) {
-        document.getElementById('shopping-status').innerText = "Meal plan is empty.";
+        const status = document.getElementById('shopping-status');
+        if(status) status.innerText = "Meal plan is empty.";
         renderShoppingList([]); 
         return;
     }
     
-    document.getElementById('shopping-status').innerText = "Finding ingredients...";
+    const status = document.getElementById('shopping-status');
+    if(status) status.innerText = "Finding ingredients...";
     
     try {
         const snapshot = await getDocs(collection(db, "recipes"));
@@ -175,8 +255,7 @@ window.generateFromPlan = async function() {
             if (recipes.includes(rName)) {
                 newList.push({ text: rName, type: 'header', checked: false });
 
-                // --- SMART INGREDIENT CHECKER ---
-                // We check recipeIngredient (from your recipePage.js) AND other variations
+                // SMART INGREDIENT CHECKER
                 let raw = data.recipeIngredient || data.ingredients || data.Ingredients || data.recipeIngredients || [];
                 
                 if (Array.isArray(raw)) {
@@ -200,7 +279,7 @@ window.generateFromPlan = async function() {
 
     } catch (error) {
         console.error(error);
-        document.getElementById('shopping-status').innerText = "Error reading recipes.";
+        if(status) status.innerText = "Error reading recipes.";
     }
 };
 
@@ -275,7 +354,7 @@ window.closeShoppingModal = function() {
 };
 
 // ==========================================
-// 5. USER ACTIONS (Hearts, Notes, Etc.)
+// 6. USER ACTIONS (Hearts, Notes, Etc.)
 // ==========================================
 window.toggleHeart = async function(event, recipeId) {
     event.stopPropagation();
@@ -313,16 +392,3 @@ window.recordCook = async function(btnElement) {
         await addDoc(collection(db, "global_cooks"), { recipe: recipeTitle, timestamp: serverTimestamp() });
     } catch (error) { console.error("Error recording cook:", error); }
 };
-
-// MEAL PLANNER LOADER
-function loadMealPlan() {
-    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    days.forEach(day => {
-        const element = document.getElementById(`plan-${day}`);
-        if (element && plan[day]) {
-            element.innerText = plan[day];
-            if(element.parentElement) element.parentElement.style.borderColor = "#10b981"; 
-        }
-    });
-}
