@@ -642,3 +642,111 @@ window.saveNote = async function() {
         alert("Could not save note.");
     }
 };
+// ==========================================
+// 8. SEARCH BAR & CATEGORY FILTERS
+// ==========================================
+
+// --- A. SETUP SEARCH BAR ---
+// This wires up the magnifying glass button and the popup box
+function setupSearch() {
+    const openBtn = document.getElementById('header-search-btn');
+    const closeBtn = document.getElementById('close-search');
+    const overlay = document.getElementById('search-overlay');
+    const form = document.getElementById('search-form');
+    const input = document.getElementById('searchbar');
+
+    // Safety Check: If these elements don't exist, stop.
+    if (!openBtn || !overlay) return;
+
+    // 1. Open the Search Box
+    openBtn.addEventListener('click', () => {
+        overlay.classList.remove('hidden-overlay'); // Show it
+        overlay.style.display = 'flex'; // Force flex layout
+        setTimeout(() => input.focus(), 100); // Auto-select the typing area
+    });
+
+    // 2. Close the Search Box
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            overlay.classList.add('hidden-overlay');
+            overlay.style.display = 'none';
+        });
+    }
+
+    // 3. Run the Search when "GO" is clicked
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            e.preventDefault(); // Stop page reload
+            const term = input.value.toLowerCase().trim();
+            
+            if (!term) return; // Don't search if empty
+
+            // Filter the global 'allRecipes' list
+            const filtered = allRecipes.filter(r => {
+                const name = (r.name || "").toLowerCase();
+                // We check Name AND Ingredients
+                const ingredients = (r.ingredients || r.recipeIngredient || []).toString().toLowerCase();
+                return name.includes(term) || ingredients.includes(term);
+            });
+
+            console.log(`Found ${filtered.length} matches for "${term}"`);
+            renderRecipes(filtered);
+            
+            // Close overlay after searching
+            overlay.classList.add('hidden-overlay');
+            overlay.style.display = 'none';
+            input.value = ""; 
+        });
+    }
+}
+
+// --- B. SETUP CATEGORY BUTTONS (Toggle Version) ---
+function setupCategoryFilters() {
+    const buttons = document.querySelectorAll('.folders button');
+    
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const category = btn.innerText.replace("✓ ", "").trim(); // Remove old checkmark if exists
+            
+            // 1. CHECK: Is this button already active?
+            if (btn.classList.contains('active-filter')) {
+                // --- TOGGLE OFF ---
+                console.log("Clearing filter...");
+                
+                // Remove visual class from THIS button
+                btn.classList.remove('active-filter');
+                
+                // Show ALL recipes
+                renderRecipes(allRecipes);
+            } 
+            else {
+                // --- TOGGLE ON ---
+                console.log("Filtering by:", category);
+                
+                // Reset ALL buttons first (Turn off others)
+                buttons.forEach(b => b.classList.remove('active-filter'));
+                
+                // Turn ON this button
+                btn.classList.add('active-filter');
+
+                // Filter the List
+                const filtered = allRecipes.filter(r => {
+                    const tags = r.tags || [];
+                    const cat = r.category || "";
+                    
+                    // Check if the tag array includes the category OR if the string matches
+                    if (Array.isArray(tags)) {
+                        return tags.includes(category);
+                    }
+                    return cat === category;
+                });
+                renderRecipes(filtered);
+            }
+        });
+    });
+}
+
+// --- C. ACTIVATE THEM IMMEDIATELY ---
+// Run these functions as soon as this script loads
+setupSearch();
+setupCategoryFilters();

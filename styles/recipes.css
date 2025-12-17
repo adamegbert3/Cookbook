@@ -1054,3 +1054,46 @@ button.add-recipe-btn {
         display: none; 
     }
 }
+/* --- FIXED SEARCH MODAL --- */
+#search-overlay {
+    position: fixed;       /* This forces it to float over the screen */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85); /* Dark dimmed background */
+    z-index: 9999;         /* Sit on top of everything */
+    display: none;         /* Hidden by default */
+    justify-content: center; /* Center horizontally */
+    align-items: center;     /* Center vertically */
+    backdrop-filter: blur(5px); /* Optional: Blur the background */
+}
+
+/* Make sure the content box inside looks nice */
+.search-box-content {
+    background: white;
+    padding: 30px;
+    border-radius: 15px;
+    width: 90%;
+    max-width: 500px;
+    text-align: center;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    position: relative; 
+}
+
+/* --- ACTIVE CATEGORY BUTTON --- */
+/* This class makes the button stay blue and look pressed */
+.folders button.active-filter {
+    background-color: #0a4d74 !important;
+    color: white !important;
+    border: 2px solid #063957 !important;
+    font-weight: bold;
+    transform: scale(0.98); /* Slight shrink effect */
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Add a checkmark before the text when active */
+.folders button.active-filter::before {
+    content: "✓ ";
+    font-weight: bold;
+}

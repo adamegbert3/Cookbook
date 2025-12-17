@@ -121,6 +121,24 @@
                 <p>Loading reports...</p>
             </div>
         </div>
+        <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0a4d74;">
+    <h3 style="margin-top: 0; color: #0a4d74;">🚀 Speed Upload Station</h3>
+    <p style="font-size: 14px; color: #666;">Paste a list of recipes (JSON format) here to add them all at once.</p>
+    
+    <textarea id="bulk-input" rows="10" placeholder='[
+    {
+      "name": "Moms Spaghetti",
+      "ingredients": ["Pasta", "Sauce"],
+      "instructions": "Boil water...",
+      "tags": ["Dinner"],
+      "author": "Mom"
+    }
+]' style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px;"></textarea>
+    
+    <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold;">
+        🚀 Launch Recipes
+    </button>
+</div>
 
     </div> <div style="margin-top: 40px; text-align: center;">
         <a href="index.html" style="color: #666; text-decoration: none;">← Back to Cookbook</a>

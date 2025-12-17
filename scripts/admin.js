@@ -507,24 +507,67 @@ async function loadRecipeManager() {
     }
 }
 
+// ==========================================
+// 🎯 SMART RECIPE MANAGER (With Category Edit)
+// ==========================================
+
+const VALID_CATEGORIES = [
+    "Appetizers & Snacks", 
+    "Breakfast", 
+    "Desserts", 
+    "Main Dishes", 
+    "Miscellaneous", 
+    "Sauces, Dressings & Marinades", 
+    "Sides, Veggies & Breads", 
+    "Soups & Salads", 
+    "Dutch Oven"
+];
+
 function renderManagerList(recipes) {
     const list = document.getElementById('manager-list');
     let html = "";
 
     recipes.forEach(r => {
-        // Check if Hidden
         const isHidden = r.isHidden === true;
         const opacity = isHidden ? "0.6" : "1";
         const bg = isHidden ? "#f3f4f6" : "white";
-        const btnText = isHidden ? "❌ Hidden" : "👁️ Live";
-        const btnColor = isHidden ? "#ef4444" : "#10b981"; // Red vs Green
+        
+        // 1. Detect Current Category
+        let currentCat = "Miscellaneous"; // Default
+        if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) {
+            currentCat = r.tags[0]; 
+        } else if (typeof r.tags === 'string') {
+            currentCat = r.tags;
+        } else if (r.category) {
+            currentCat = r.category;
+        }
 
+        // 2. Build Dropdown Menu
+        let optionsHtml = "";
+        VALID_CATEGORIES.forEach(cat => {
+            const isSelected = cat === currentCat ? "selected" : "";
+            optionsHtml += `<option value="${cat}" ${isSelected}>${cat}</option>`;
+        });
+
+        // 3. Render Row
         html += `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: ${bg}; border: 1px solid #eee; border-radius: 6px; opacity: ${opacity};">
-                <span style="font-size: 13px; font-weight: bold; color: #333;">${r.name || "Untitled"}</span>
-                <button onclick="toggleVisibility('${r.id}', ${isHidden})" style="background: ${btnColor}; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; min-width: 70px;">
-                    ${btnText}
-                </button>
+            <div style="display: flex; flex-direction: column; padding: 10px; background: ${bg}; border: 1px solid #eee; border-radius: 6px; opacity: ${opacity}; gap: 5px; margin-bottom: 5px;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: 14px; font-weight: bold; color: #333;">${r.name || "Untitled"}</span>
+                    
+                    <button onclick="toggleVisibility('${r.id}', ${isHidden})" style="background: ${isHidden ? '#ef4444' : '#10b981'}; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 10px; min-width: 60px;">
+                        ${isHidden ? "❌ Hidden" : "👁️ Live"}
+                    </button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 11px; color: #666;">Category:</span>
+                    <select onchange="updateCategory('${r.id}', this)" style="flex-grow: 1; padding: 4px; border: 1px solid #ccc; border-radius: 4px; font-size: 12px; background: white;">
+                        ${optionsHtml}
+                    </select>
+                </div>
+
             </div>
         `;
     });
@@ -532,30 +575,30 @@ function renderManagerList(recipes) {
     list.innerHTML = html || "<p>No recipes found.</p>";
 }
 
-// SEARCH FILTER (For finding recipes quickly)
-window.filterManagerList = function() {
-    const query = document.getElementById('manager-search').value.toLowerCase();
-    const filtered = managerRecipes.filter(r => (r.name || "").toLowerCase().includes(query));
-    renderManagerList(filtered);
-};
-
-// THE TOGGLE ACTION
-window.toggleVisibility = async function(id, currentStatus) {
-    const newStatus = !currentStatus; // Flip it (True -> False)
-    const action = newStatus ? "HIDE" : "PUBLISH";
+// --- NEW FUNCTION: SAVE THE CATEGORY INSTANTLY ---
+window.updateCategory = async function(id, selectElement) {
+    const newCat = selectElement.value;
     
-    if(!confirm(`${action} this recipe?`)) return;
+    // Visual feedback (turn yellow while saving)
+    selectElement.style.background = "#fef9c3";
 
     try {
         const recipeRef = doc(db, "recipes", id);
-        await updateDoc(recipeRef, { isHidden: newStatus });
         
-        // Refresh the list to show change
-        loadRecipeManager(); 
+        // We update 'tags' (array) AND 'category' (string) to cover all bases
+        await updateDoc(recipeRef, { 
+            tags: [newCat],
+            category: newCat
+        });
+
+        // Turn green to show success!
+        selectElement.style.background = "#d1fae5";
+        setTimeout(() => selectElement.style.background = "white", 1000);
         
     } catch (error) {
-        console.error("Error updating:", error);
-        alert("Could not update.");
+        console.error("Error updating category:", error);
+        selectElement.style.background = "#fee2e2"; // Red if error
+        alert("Failed to save: " + error.message);
     }
 };
 // ==========================================
@@ -588,5 +631,54 @@ window.postAnnouncement = async function() {
     } catch (error) {
         console.error("Announcement Error:", error);
         alert("Error posting: " + error.message); // This will tell us the EXACT reason now
+    }
+};
+// ==========================================
+// 9. BULK UPLOADER
+// ==========================================
+window.uploadBulkRecipes = async function() {
+    const input = document.getElementById('bulk-input');
+    const rawText = input.value.trim();
+    
+    if (!rawText) return alert("Please paste some JSON data first!");
+
+    try {
+        // 1. Convert text to real data
+        const recipes = JSON.parse(rawText);
+        
+        if (!Array.isArray(recipes)) {
+            return alert("Error: Data must be a list [...]");
+        }
+
+        if (!confirm(`Are you sure you want to upload ${recipes.length} recipes?`)) return;
+
+        console.log("🚀 Starting Bulk Upload...");
+        let count = 0;
+
+        // 2. Loop through and save each one
+        for (const r of recipes) {
+            await addDoc(collection(db, "recipes"), {
+                name: r.name || "Untitled",
+                ingredients: r.ingredients || [],
+                instructions: r.instructions || "",
+                tags: r.tags || ["Miscellaneous"],
+                author: r.author || "Admin",
+                reviewed: true,         // Auto-approve since YOU are adding them
+                isHidden: false,        // Live immediately
+                createdAt: serverTimestamp()
+            });
+            count++;
+            console.log(`✅ Uploaded: ${r.name}`);
+        }
+
+        alert(`Success! ${count} recipes added.`);
+        input.value = ""; // Clear the box
+        
+        // Refresh the manager list so you can see them
+        loadRecipeManager(); 
+
+    } catch (error) {
+        console.error("Bulk Upload Error:", error);
+        alert("Invalid JSON Format! Check your commas and quotes.\n\n" + error.message);
     }
 };
