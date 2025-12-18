@@ -98,34 +98,70 @@ onAuthStateChanged(auth, async (user) => {
 // ==========================================
 // 3. RECIPE DISPLAY LOGIC
 // ==========================================
+// ==========================================
+// 🔒 MEGA-DOC LOADER (Costs 1 Read)
+// ==========================================
+let masterRecipeList = []; // Holds the list locally
+
 async function loadAllRecipes() {
     const container = document.getElementById('recipes');
-    if (!container) return;
-
-    container.innerHTML = "<p>Loading recipes...</p>";
+    container.innerHTML = '<p style="text-align:center; margin-top: 20px;">Opening Cookbook...</p>';
 
     try {
-        const querySnapshot = await getDocs(collection(db, "recipes"));
-        allRecipes = [];
+        // 1. FETCH THE ONE MEGA-DOC
+        const docRef = doc(db, "static_assets", "cookbook_index");
+        const docSnap = await getDoc(docRef);
 
-        querySnapshot.forEach((doc) => {
-            const data = doc.data(); // <--- FIXED: Defined 'data' here
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            masterRecipeList = data.recipes || [];
             
-            // Filter Hidden Recipes
-            if (data.isHidden === true) return; 
+            console.log(`✅ Loaded ${masterRecipeList.length} recipes locally.`);
             
-            allRecipes.push({ id: doc.id, ...data });
-        });
-
-        // Sort A-Z
-        allRecipes.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-        renderRecipes(allRecipes);
-
-    } catch (error) {
-        console.error("Error loading recipes:", error);
-        container.innerHTML = "<p>Error loading recipes.</p>";
+            // 2. RENDER FROM LOCAL MEMORY
+            renderLocalList(masterRecipeList); 
+        } else {
+            container.innerHTML = "<p style='text-align:center;'>Index not found.<br>Admin: Please click 'Update Homepage Index'.</p>";
+        }
+    } catch (e) {
+        console.error("Load Error:", e);
     }
 }
+
+// NEW RENDERER (Uses the short variable names n, t, a)
+function renderLocalList(list) {
+    const container = document.getElementById('recipes');
+    container.innerHTML = "";
+
+    // Sort Alphabetically
+    list.sort((a, b) => a.n.localeCompare(b.n));
+
+    let html = "";
+    list.forEach(item => {
+        const badge = item.r ? "✅" : ""; // Reviewed checkmark
+        
+        html += `
+        <div class="recipe-card" onclick="goToRecipe('${item.id}', '${item.n}')">
+            <div style="position:absolute; top:10px; right:10px; font-size:12px;">${badge}</div>
+            <div id="info">
+                <div id="tags">${(item.t || []).map(t => `<p>${t}</p>`).join('')}</div>
+                <h2>${item.n}</h2>
+            </div>
+            <div id="author"><p>From: ${item.a}</p></div>
+        </div>`;
+    });
+    container.innerHTML = html || "<p>No recipes found.</p>";
+}
+
+// NAVIGATION HELPER
+window.goToRecipe = function(id, name) {
+    // Save basic info so the next page knows what to load
+    localStorage.setItem("currentRecipeData", JSON.stringify({ id: id, name: name }));
+    
+    // Go to the detail page (This is where the 1 Read happens)
+    const slug = name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+    window.location.href = `recipe.html?id=${slug}`;
+};
 
 function renderRecipes(list) {
     const container = document.getElementById('recipes');
@@ -746,65 +782,65 @@ function setupCategoryFilters() {
     });
 }
 // ==========================================
-// 🚩 REPORTING SYSTEM (Fixed to match your HTML)
+// 🚩 REPORTING SYSTEM
 // ==========================================
 
-// 1. TOGGLE THE BOX (Matches <button onclick="toggleReportBox()">)
-window.toggleReportBox = function() {
-    const box = document.getElementById('reportBox');
-    if (!box) return console.error("Report box not found!");
-
-    if (box.style.display === 'none' || box.style.display === '') {
-        box.style.display = 'block'; // Show it
+// 1. OPEN THE MODAL
+window.openReportModal = function() {
+    const modal = document.getElementById('report-modal');
+    if (modal) {
+        modal.style.display = 'flex'; // Shows the box
     } else {
-        box.style.display = 'none';  // Hide it
+        alert("Error: Report modal missing from HTML.");
     }
 };
 
-// 2. SEND REPORT
+// 2. CLOSE THE MODAL
+window.closeReportModal = function() {
+    const modal = document.getElementById('report-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+// 3. SEND THE REPORT TO ADMIN
 window.submitReport = async function() {
-    // 1. Get the text from the CORRECT input ID
-    const reasonInput = document.getElementById('issueText'); 
-    if (!reasonInput) return;
-    
+    const reasonInput = document.getElementById('report-reason');
     const issue = reasonInput.value.trim();
+
     if (!issue) return alert("Please type a reason first.");
 
-    // 2. Get accurate data from Local Storage
-    const storedData = localStorage.getItem("currentRecipeData");
-    let recipeName = "Unknown Recipe";
-    let recipeId = "unknown";
-
-    if (storedData) {
-        try {
-            const parsed = JSON.parse(storedData);
-            recipeName = parsed.name || "Unknown";
-            recipeId = parsed.id || "unknown";
-        } catch (e) { console.error("Data parse error", e); }
-    } else {
-        const urlParams = new URLSearchParams(window.location.search);
-        recipeId = urlParams.get('id');
-    }
+    // Get recipe details from the URL or page content
+    // (This assumes your URL looks like: recipe.html?id=brownies)
+    const urlParams = new URLSearchParams(window.location.search);
+    const recipeSlug = urlParams.get('id') || "Unknown ID";
+    
+    // Try to grab the title from the page <h1> tag
+    const recipeTitle = document.querySelector('h1') ? document.querySelector('h1').innerText : "Unknown Recipe";
 
     try {
-        // 3. Send to Firestore
+        // Send to Firestore
         await addDoc(collection(db, "recipe_reports"), {
             issue: issue,
-            recipeName: recipeName,
-            recipeId: recipeId,
+            recipeName: recipeTitle,
+            recipeId: recipeSlug,
             reporter: auth.currentUser ? auth.currentUser.email : "Anonymous Guest",
             timestamp: serverTimestamp()
         });
 
         alert("Thanks! The Admin has been notified.");
-        
-        // 4. Close and Clear
-        toggleReportBox(); // Close the box
-        reasonInput.value = ""; // Clear the text
+        closeReportModal();
+        reasonInput.value = ""; // Clear the text box
 
     } catch (error) {
         console.error("Report Error:", error);
-        alert("Could not send report. You might be offline.");
+        alert("Could not send report: " + error.message);
+    }
+};
+
+// Close modal if clicking outside the box
+window.onclick = function(event) {
+    const modal = document.getElementById('report-modal');
+    if (event.target === modal) {
+        modal.style.display = "none";
     }
 };
 
