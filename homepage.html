@@ -2,206 +2,132 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta property="og:title" content="Recipes">
-    <meta property="og:type" content="website">
-    <meta property="og:description" content="Recipes">
-    <meta property="og:image" content="images/recipe-book.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <meta name="description" content="Recipes">
     <link rel="stylesheet" href="styles/recipes.css">
     <script src="scripts/main.js" type="module" defer></script>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=person_apron" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="header">
     <div class="header-container">
-    
-    <div class="logo">
-    <img src="images/logo.jpg" alt="Logo" class="logo-img" style="height: 60px; width: auto;">
-</div>
-
-    <div class="header-title">
-        <h1 style="margin: 0; font-family: 'Amatic SC', cursive; font-size: 2rem; color: #0a4d74;">
-            Welcome to the Cookbook!
-        </h1>
-    </div>
-
-    <div style="display: flex; align-items: center; gap: 10px;">
-        
-        <a id="admin-btn" href="admin.html" style="display: none; background: #0f172a; color: #fbbf24; padding: 5px 12px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold; border: 1px solid #fbbf24; white-space: nowrap;">
-            👑 Admin
-        </a>
-
-        <button id="header-search-btn" class="icon-btn" aria-label="Search">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-        </button>
-
-        <a href="profile.html" class="profile-link" aria-label="My Profile">
-            <img id="header-profile-icon" src="images/profile-icon.png" alt="Profile" style="border-radius: 50%; width: 40px; height: 40px; object-fit: cover; border: 2px solid #0a4d74;">
-        </a>
-
-    </div>
-</div>
-    <div style="max-width: 800px; margin: 20px auto; background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-left: 5px solid #0a4d74;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h2 style="margin: 0; font-family: 'Amatic SC', cursive; font-size: 2rem; color: #0a4d74;">📢 Family Buzz</h2>
-            <span style="font-size: 12px; color: #666;">Latest updates</span>
+        <div class="logo-area">
+            <img src="images/logo.jpg" alt="Logo" class="logo-img">
+            <div class="header-title">
+                <h1>Welcome to the Cookbook!</h1>
+            </div>
         </div>
-        
-        <div id="family-feed" style="max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
-            <p style="color: #999;">Listening for gossip...</p>
+
+        <div class="header-actions">
+            <a id="admin-btn" href="admin.html" class="admin-pill hidden" style="display:none;">👑 Admin</a>
+            
+            <button id="header-search-btn" class="icon-btn" aria-label="Search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+
+            <a href="profile.html" class="profile-link" aria-label="My Profile">
+                <img id="header-profile-icon" alt="Profile" class="profile-img">
+            </a>
         </div>
     </div>
 
-    <h3>Please search for a recipe or click on a category below.</h3>
     <main>
+        <div class="buzz-container">
+            <div class="buzz-header">
+                <h2>📢 Family Buzz</h2>
+                <span style="font-size: 12px; color: #666;">Latest updates</span>
+            </div>
+            <div id="family-feed">
+                <p style="color:#999; font-style:italic;">Listening for news...</p>
+            </div>
+        </div>
+
         <div class="folders">
-            <button>
-                Appetizers & Snacks
-            </button>
-            <button>
-                Breakfast
-            </button>
-            <button>
-                Desserts
-            </button>
-            <button>
-                Main Dishes
-            </button>
-            <button>
-                Miscellaneous
-            </button>
-            <button>
-                Sauces, Dressings & Marinades
-            </button>
-            <button>
-                Sides, Veggies & Breads
-            </button>
-            <button>
-                Soups & Salads
-            </button>
+            <button>Appetizers & Snacks</button>
+            <button>Breakfast</button>
+            <button>Desserts</button>
+            <button>Main Dishes</button>
+            <button>Miscellaneous</button>
+            <button>Sauces, Dressings & Marinades</button>
+            <button>Sides, Veggies & Breads</button>
+            <button>Soups & Salads</button>
             <button>Dutch Oven</button>
         </div>
-        <div style="text-align: center; margin: 20px 0;">
-    <a href="submit.html" style="text-decoration: none;">
-        <button class="homepagebtn" style="background: #1f2937; color: white;">
-            + Add Your Own Recipe
-        </button>
-    </a>
-</div>
-        <div id="recent-recipes-box">
-    <h3>🕰️ Pick up where you left off:</h3>
-    <div id="last-recipe-display">
-        <p>No recent history.</p>
-    </div>
-</div>
-<div id="meal-plan-box">
-    <h3>📅 Weekly Menu</h3>
-    <div class="week-grid">
-        <div class="day-card" data-day="Sun"><strong>Sun</strong><span id="plan-Sun">-</span></div>
-        <div class="day-card" data-day="Mon"><strong>Mon</strong><span id="plan-Mon">-</span></div>
-        <div class="day-card" data-day="Tue"><strong>Tue</strong><span id="plan-Tue">-</span></div>
-        <div class="day-card" data-day="Wed"><strong>Wed</strong><span id="plan-Wed">-</span></div>
-        <div class="day-card" data-day="Thu"><strong>Thu</strong><span id="plan-Thu">-</span></div>
-        <div class="day-card" data-day="Fri"><strong>Fri</strong><span id="plan-Fri">-</span></div>
-        <div class="day-card" data-day="Sat"><strong>Sat</strong><span id="plan-Sat">-</span></div>
-    </div>
-    <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
-    
-    <button onclick="clearMealPlan()" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer;">
-        🗑️ Clear Plan
-    </button>
-    
-    <button onclick="openShoppingModal()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 5px;">
-        🛒 Shopping List
-    </button>
-</div>
-</div>
-<div id="shoppingModal" class="modal hidden">
-    <div class="modal-content" style="max-width: 500px; text-align: left; height: 80vh; display: flex; flex-direction: column;">
-        
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
-            <h2 style="margin: 0; color: #0a4d74;">🛒 Your List</h2>
-            <button onclick="closeShoppingModal()" style="background:none; border:none; font-size: 24px; cursor: pointer;">&times;</button>
-        </div>
-        
-        <p id="shopping-status" style="text-align: center; color: #666; font-size: 14px; margin-top: 20px;">Loading...</p>
 
-        <div id="shopping-list-container" style="flex-grow: 1; overflow-y: auto; display: none;">
-            <ul id="shopping-ul" style="list-style: none; padding: 0;"></ul>
-        </div>
-
-        <div style="margin-top: 15px; display: flex; gap: 10px; border-top: 1px solid #eee; padding-top: 10px;">
-            <button onclick="generateFromPlan()" style="flex: 1; background: #3b82f6; color: white; border:none; padding: 10px; border-radius: 8px; font-size: 13px;">
-                🔄 Resync with Menu
-            </button>
-            <button onclick="copyShoppingList()" style="background: #64748b; color: white; border:none; padding: 10px; border-radius: 8px;">📋 Copy</button>
-            <button onclick="clearShoppingList()" style="background: #ef4444; color: white; border:none; padding: 10px; border-radius: 8px;">🗑️</button>
-        </div>
-    </div>
-</div>
-<div id="reviewInfoModal" class="modal hidden">
-    <div class="modal-content">
-        <h3>About Our Recipes</h3>
-        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
-            This cookbook was created with the help of <strong>Artificial Intelligence</strong>. 
-            While AI is amazing, it can sometimes make mistakes!
-        </p>
-        <p style="margin-bottom: 20px; line-height: 1.5; color: #4b5563;">
-            When you see the <strong>"Reviewed: ✅"</strong> badge, it means a human chef has personally 
-            tested and double-checked the recipe to ensure it is accurate and delicious. 
-            If you would like a recipe to be reviewed, please contact us using our contact page!
-        </p>
-        <button onclick="closeReviewModal()" class="modal-btn">Got it!</button>
-    </div>
-</div>
-<script>
-    function openReviewModal() {
-        document.getElementById('reviewInfoModal').classList.remove('hidden');
-        document.getElementById('reviewInfoModal').style.display = 'flex'; // Ensures flex centering works
-    }
-
-    function closeReviewModal() {
-        document.getElementById('reviewInfoModal').classList.add('hidden');
-        document.getElementById('reviewInfoModal').style.display = 'none';
-    }
-</script>
-<button onclick="openReviewModal()" class="info-pill-btn">
-    ℹ️ What are some hidden features?
-</button>
-<div id="search-overlay" class="hidden-overlay">
-    <div class="search-box-content">
-        <button id="close-search">✕</button>
-        <h3>What are you craving?</h3>
-        <form id="search-form">
-            <input type="text" id="searchbar" placeholder="Tacos, Pie, etc..." autocomplete="off">
-            <button type="submit" id="search-submit">GO</button>
-        </form>
-    </div>
-</div>
-
-<script>
-    // 1. Get the single saved item
-    const lastRecipe = JSON.parse(localStorage.getItem('lastRecipeSingle'));
-    const displayBox = document.getElementById('last-recipe-display');
-
-    if (lastRecipe) {
-        // 2. Show it as a big, clickable link
-        displayBox.innerHTML = `
-            <a href="recipe.html?id=${lastRecipe.id}" class="last-recipe-link">
-                ${lastRecipe.name} ➡️
+        <div style="text-align: center; margin-bottom: 30px;">
+            <a href="submit.html" style="background: #0f172a; color: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 0.9rem;">
+                + Add Your Own Recipe
             </a>
-        `;
-    }
-</script>
-        <div id ="recipes">    
         </div>
-        <p id = "notsigned">
-            Please sign in to access the digital cookbook.
-        </p>
+
+        <div id="recent-recipes-box">
+            <h3>🕰️ Pick up where you left off:</h3>
+            <div id="last-recipe-display">
+                <p>No recent history.</p>
+            </div>
+        </div>
+
+        <div id="meal-plan-box">
+            <h3>📅 Weekly Menu</h3>
+            <div class="week-grid">
+                <div class="day-card" data-day="Sun"><strong>Sun</strong><span id="plan-Sun">-</span></div>
+                <div class="day-card" data-day="Mon"><strong>Mon</strong><span id="plan-Mon">-</span></div>
+                <div class="day-card" data-day="Tue"><strong>Tue</strong><span id="plan-Tue">-</span></div>
+                <div class="day-card" data-day="Wed"><strong>Wed</strong><span id="plan-Wed">-</span></div>
+                <div class="day-card" data-day="Thu"><strong>Thu</strong><span id="plan-Thu">-</span></div>
+                <div class="day-card" data-day="Fri"><strong>Fri</strong><span id="plan-Fri">-</span></div>
+                <div class="day-card" data-day="Sat"><strong>Sat</strong><span id="plan-Sat">-</span></div>
+            </div>
+            <div style="margin-top: 15px;">
+                <button onclick="clearMealPlan()" style="background: white; border: 1px solid #ef4444; color: #ef4444; padding: 5px 10px; border-radius: 6px; cursor: pointer;">🗑️ Clear</button>
+                <button onclick="openShoppingModal()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">🛒 List</button>
+            </div>
+        </div>
+
+        <div id="search-overlay" class="hidden">
+            <div class="search-box-content">
+                <button id="close-search">✕</button>
+                <h3>What are you craving?</h3>
+                <form id="search-form">
+                    <input type="text" id="searchbar" placeholder="Tacos, Pie, etc..." autocomplete="off">
+                    <button type="submit" id="search-submit">GO</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="recipes"></div>
+        
+        <p id="notsigned" class="hidden" style="text-align:center; color:red; display:none;">Please sign in to view recipes.</p>
     </main>
-<footer>
-</footer>
+
+    <div id="shoppingModal" class="modal hidden" style="display:none;">
+        <div class="search-box-content" style="max-height: 80vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2>🛒 Your List</h2>
+                <button onclick="closeShoppingModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+            <div id="shopping-list-container">
+                <ul id="shopping-ul" style="list-style:none; padding:0; text-align:left;"></ul>
+            </div>
+            <button onclick="generateFromPlan()" style="background:#3b82f6; color:white; padding:10px; border:none; border-radius:8px; width:100%; margin-top:10px;">🔄 Sync from Menu</button>
+        </div>
+    </div>
+
+    <div id="reviewInfoModal" class="modal hidden" style="display:none;">
+        <div class="search-box-content">
+            <h3>About Our Recipes</h3>
+            <p><strong>"Reviewed: ✅"</strong> means a human has tested this recipe.</p>
+            <button onclick="closeReviewModal()" style="background:#10b981; color:white; padding:10px; width:100%; border:none; border-radius:8px; margin-top:10px;">Got it!</button>
+        </div>
+    </div>
+
+    <script>
+        // Inline Logic for Simple UI Restore
+        const lastRecipe = JSON.parse(localStorage.getItem('lastRecipeSingle'));
+        if (lastRecipe) {
+            document.getElementById('last-recipe-display').innerHTML = `<a href="recipe.html?id=${lastRecipe.id}" class="last-recipe-link">${lastRecipe.name} ➡️</a>`;
+        }
+        function openReviewModal() { document.getElementById('reviewInfoModal').style.display = 'flex'; }
+        function closeReviewModal() { document.getElementById('reviewInfoModal').style.display = 'none'; }
+    </script>
 </body>
 </html>

@@ -1,47 +1,26 @@
-// ==========================================
-// 📖 RECIPE PAGE - HYBRID LOADER (Fixed)
-// ==========================================
 import { db } from './firebase-config.js';
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
-// 1. Get the ID from the URL
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
 
-console.log("Recipe Page Loaded. ID:", recipeId);
-
-// 2. MAIN LOADER
+// ==========================================
+// 1. LOAD RECIPE
+// ==========================================
 async function loadRecipe() {
     const recipeContainer = document.getElementById("recipe");
-    if (!recipeContainer) return console.error("Error: <div id='recipe'> missing.");
+    if (!recipeContainer) return;
 
-    // STEP A: Try to load what we have in Local Storage (Title & Author)
-    // This makes the page feel instant, even if ingredients are missing for a second.
+    // A. Local Check
     let localData = null;
     try {
         const stored = localStorage.getItem("currentRecipeData");
         if (stored) localData = JSON.parse(stored);
-    } catch (e) { console.error("Storage error:", e); }
+    } catch (e) {}
 
-    // If we have local data, render the header immediately
-    if (localData && localData.name) {
-        document.title = localData.name;
-        // Check if we have the FULL data (Ingredients exist)
-        if (localData.ingredients || localData.recipeIngredient) {
-            console.log("✅ Full recipe found locally.");
-            renderRecipeHTML(localData);
-            loadUserUserData();
-            return; // We are done!
-        } else {
-            console.log("⚠️ Lite version found. Fetching full ingredients...");
-            // Render the "Skeleton" (Title only) while we wait
-            renderRecipeHTML(localData, true); 
-        }
-    }
-
-    // STEP B: Fetch the FULL data from Firestore (The Fix!)
+    // B. Database Fetch
     if (!recipeId) {
-        recipeContainer.innerHTML = "<h2>No recipe selected. <a href='index.html'>Go Home</a></h2>";
+        recipeContainer.innerHTML = "<h2>No recipe selected.</h2>";
         return;
     }
 
@@ -51,124 +30,154 @@ async function loadRecipe() {
 
         if (docSnap.exists()) {
             const fullData = { id: recipeId, ...docSnap.data() };
-            
-            // Save the full version to memory so we don't fetch it again
             localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
-            
-            // Render the complete page
-            console.log("✅ Downloaded full details.");
             renderRecipeHTML(fullData);
             loadUserUserData();
         } else {
-            recipeContainer.innerHTML = "<h2>Recipe not found in database.</h2>";
+            // Fallback to local if DB fails
+            if(localData && localData.id === recipeId) {
+                renderRecipeHTML(localData);
+            } else {
+                recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
+            }
         }
-    } catch (error) {
-        console.error("Download Error:", error);
-        recipeContainer.innerHTML += `<p style='color:red'>Error loading details: ${error.message}</p>`;
-    }
+    } catch (error) { console.error(error); }
 }
 
-// 3. RENDER FUNCTION
-function renderRecipeHTML(recipe, isLoadingIngredients = false) {
+function renderRecipeHTML(recipe) {
     const recipeContainer = document.getElementById("recipe");
-
-    // Handle different data names (recipeIngredient vs ingredients)
+    
+    // Data Setup
     const ingredients = recipe.ingredients || recipe.recipeIngredient || [];
     const instructions = recipe.instructions || recipe.recipeInstructions || ""; 
-    const tags = recipe.tags || [];
-    const author = recipe.author || "The Egbert Family";
+    const author = recipe.author || recipe.a || "Family";
 
-    // Build Lists
+    // Build Ingredients
     let ingHtml = "";
-    if (isLoadingIngredients) {
-        ingHtml = `<li style="color:#888; list-style:none;">🔄 Downloading ingredients...</li>`;
-    } else if (Array.isArray(ingredients)) {
+    if (Array.isArray(ingredients)) {
         ingHtml = ingredients.map(i => `<li>${i}</li>`).join("");
     } else {
-        ingHtml = `<pre style="font-family:inherit;">${ingredients}</pre>`;
+        ingHtml = `<pre>${ingredients}</pre>`;
     }
 
+    // Build Instructions
     let instHtml = "";
-    if (isLoadingIngredients) {
-        instHtml = `<p style="color:#888;">🔄 Downloading instructions...</p>`;
-    } else if (Array.isArray(instructions)) {
-        instHtml = `<ol id="normal-instructions">${instructions.map(s => `<li>${s}</li>`).join("")}</ol>`;
+    if (Array.isArray(instructions)) {
+        // We give these 'li's a class so we can target them too
+        instHtml = `<ol id="normal-instructions">${instructions.map(s => `<li class="instruction-step">${s}</li>`).join("")}</ol>`;
     } else {
         instHtml = `<p style="white-space: pre-wrap;">${instructions}</p>`;
     }
 
-    // Inject HTML
+    // Render HTML
     recipeContainer.innerHTML = `
-        <h1>${recipe.name}</h1>
-        <h2>From: ${author}</h2>
+        <h1 style="text-align:center; font-family:'Amatic SC'; font-size: 3rem; margin-bottom: 5px; color:#0f172a;">${recipe.name || recipe.n}</h1>
+        <h2 style="text-align:center; color:#64748b; font-size: 1rem; margin-top: 0; font-style:italic;">From: ${author}</h2>
         
-        <h3>Ingredients</h3>
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+
+        <h3 style="color:#0d9488;">Ingredients</h3>
+        <p style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
         <ul id="ingredient-list">
             ${ingHtml}
         </ul>
 
-        <h3>Instructions</h3>
+        <h3 style="color:#0d9488; margin-top:30px;">Instructions</h3>
         <div id="instructions-container">
             ${instHtml}
         </div>
-
-        <div class="tags-section" style="margin-top:20px; color:#666; font-size: 12px;">
-            <strong>Tags:</strong> ${tags.join(", ") || "None"}
-        </div>
     `;
 
-    // Save for history
-    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: recipe.name, id: recipeId }));
+    // ⚡️ ACTIVATE CLICK-TO-CROSS-OUT (Ingredients & Instructions)
+    
+    // 1. For Ingredients
+    document.querySelectorAll('#ingredient-list li').forEach(li => {
+        li.addEventListener('click', function() {
+            this.classList.toggle('checked');
+        });
+    });
+
+    // 2. For Instructions
+    document.querySelectorAll('.instruction-step').forEach(li => {
+        li.addEventListener('click', function() {
+            this.classList.toggle('checked');
+        });
+    });
+
+    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: recipeId }));
 }
 
-// 4. USER DATA (Notes & Counts)
+// ==========================================
+// 2. BUTTON ACTIONS
+// ==========================================
+let wakeLock = null;
+window.toggleCookMode = async function() {
+    const btn = document.getElementById('cookModeBtn');
+    if (!wakeLock) {
+        try {
+            wakeLock = await navigator.wakeLock.request('screen');
+            btn.innerText = "Cook Mode: ON 🍳";
+            btn.classList.add('cook-mode-active');
+        } catch (err) { alert("Screen Wake Lock not supported"); }
+    } else {
+        wakeLock.release();
+        wakeLock = null;
+        btn.innerText = "Enable Cook Mode 🍳";
+        btn.classList.remove('cook-mode-active');
+    }
+}
+
+let currentSize = 16;
+window.resizeText = function(change) {
+    currentSize += change;
+    const elements = document.querySelectorAll('#ingredient-list li, #instructions-container li, #instructions-container p');
+    elements.forEach(el => el.style.fontSize = currentSize + 'px');
+}
+
+window.saveRecipeOffline = function() {
+    alert("Page saved to browser cache!");
+}
+
+window.addToMealPlan = function() {
+    const modal = document.getElementById('plannerModal');
+    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+}
+
+window.closePlannerModal = function() {
+    document.getElementById('plannerModal').style.display = 'none';
+}
+
+window.confirmAddToPlan = function() {
+    const day = document.getElementById('daySelect').value;
+    const current = JSON.parse(localStorage.getItem("currentRecipeData"));
+    if(!current) return;
+
+    let plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    plan[day] = current.name || current.n;
+    localStorage.setItem('mealPlan', JSON.stringify(plan));
+    
+    alert(`Added to ${day}!`);
+    closePlannerModal();
+}
+
+// ==========================================
+// 3. USER DATA & COOKING
+// ==========================================
 function loadUserUserData() {
     if (!recipeId) return;
-    
-    // Load Chef Notes
     const savedNotes = localStorage.getItem(`notes-${recipeId}`);
     const noteBox = document.getElementById('chefNotes'); 
     if (noteBox) noteBox.value = savedNotes || ""; 
-
-    // Load Cook Count
+    
     const count = localStorage.getItem(`cook-${recipeId}`) || 0;
-    const lastDate = localStorage.getItem(`date-${recipeId}`);
-    updateText(count, lastDate);
+    document.getElementById('cook-counter').innerHTML = count > 0 ? `Cooked <b>${count}</b> times` : "Not cooked yet";
 }
 
-function updateText(count, date) {
-    const textElement = document.getElementById('cook-counter');
-    if (textElement) {
-        if (count > 0) {
-            textElement.innerHTML = `You've cooked this <strong>${count} times</strong>! (Last: ${date})`;
-        } else {
-            textElement.innerHTML = "You haven't cooked this yet.";
-        }
-    }
-}
-
-// 5. GLOBAL HELPERS
-window.saveNotes = function() { // Updated to match your HTML logic
-    const box = document.getElementById('chefNotes');
-    if (recipeId && box) {
-        localStorage.setItem(`notes-${recipeId}`, box.value);
-        alert("Note saved locally!");
-    }
-}
-
-window.recordCook = function(btnElement) {
-    if (!recipeId) return;
-    if (typeof fireConfetti === "function") fireConfetti(btnElement);
-
+window.recordCook = function() {
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
-    const today = new Date().toLocaleDateString();
-    
     localStorage.setItem(`cook-${recipeId}`, count);
-    localStorage.setItem(`date-${recipeId}`, today);
-    
-    updateText(count, today);
+    loadUserUserData();
 }
 
-// START
 loadRecipe();

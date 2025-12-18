@@ -1,67 +1,66 @@
-import { db, auth } from './firebase-config.js'; 
+import { db, auth } from './firebase-config.js';
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-// 1. Check if user is logged in (Optional: kick out guests)
+// Check Login
 onAuthStateChanged(auth, (user) => {
     if (!user) {
-        alert("You must be logged in to submit recipes!");
+        alert("Please log in to submit recipes.");
         window.location.href = "index.html";
     }
 });
 
-// 2. Handle Form Submission
-document.getElementById('submitForm').addEventListener('submit', async (e) => {
-    e.preventDefault(); // Stop page refresh
+// Handle Form Submit
+const form = document.getElementById('submitForm');
+if (form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-    const btn = document.querySelector('.login-btn');
-    const originalText = btn.innerText;
-    
-    // Show loading state
-    btn.innerText = "Submitting...";
-    btn.disabled = true;
+        const user = auth.currentUser;
+        if (!user) return alert("You must be logged in.");
 
-    try {
-        // A. Helper function to split text by new lines into an Array
-        // This turns: "Apple\nSugar" into ["Apple", "Sugar"]
-        const getList = (id) => {
-            const val = document.getElementById(id).value;
-            return val.split('\n').map(item => item.trim()).filter(item => item.length > 0);
-        };
-        // B. Gather Data
-        const newRecipe = {
-            name: document.getElementById('title').value,
-            author: document.getElementById('chef').value,
-            
-            // REMOVED: description: document.getElementById('desc').value,
-            
-            // ADDED: The new Notes field!
-            // We use || "" to make sure it doesn't crash if they leave it empty
-            notes: document.getElementById('notes') ? document.getElementById('notes').value : "", 
-            
-            category: document.getElementById('category').value,
-            
-            // Arrays for lists
-            ingredients: getList('ingredients'),
-            instructions: getList('instructions'),
-            
-            // Metadata
-            reviewed: false, 
-            userId: auth.currentUser.uid,
-            createdAt: serverTimestamp()
-        };
+        // Grab values
+        const title = document.getElementById('title').value.trim();
+        const chef = document.getElementById('chef').value.trim();
+        const category = document.getElementById('category').value;
+        
+        // Convert text areas into Arrays (Split by new line)
+        const ingredientsRaw = document.getElementById('ingredients').value;
+        const ingredientsList = ingredientsRaw.split('\n').map(s => s.trim()).filter(s => s);
 
-        // C. Send to Firestore 'pending_recipes' collection
-        await addDoc(collection(db, "pending_recipes"), newRecipe);
+        const instructionsRaw = document.getElementById('instructions').value;
+        const instructionsList = instructionsRaw.split('\n').map(s => s.trim()).filter(s => s);
 
-        // D. Success!
-        alert("Recipe Submitted! An admin will review it shortly.");
-        window.location.href = "index.html";
+        const notes = document.getElementById('notes').value.trim();
 
-    } catch (error) {
-        console.error("Error submitting:", error);
-        alert("Error: " + error.message);
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-});
+        // 🚀 SEND TO "PENDING" COLLECTION
+        const submitBtn = form.querySelector('button');
+        const originalText = submitBtn.innerText;
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Sending...";
+
+        try {
+            await addDoc(collection(db, "pending_recipes"), {
+                name: title,
+                author: chef, // The name they typed (e.g. "Grandma")
+                submittedBy: user.email, // The real user account
+                uid: user.uid,
+                category: category,
+                ingredients: ingredientsList,
+                instructions: instructionsList,
+                notes: notes,
+                timestamp: serverTimestamp(),
+                status: "pending"
+            });
+
+            alert("Recipe submitted! The Admin will review it shortly.");
+            window.location.href = "homepage.html";
+
+        } catch (error) {
+            console.error("Error submitting:", error);
+            alert("Error: " + error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerText = originalText;
+        }
+    });
+}
