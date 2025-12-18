@@ -1,82 +1,134 @@
-// recipePage.js - FINAL VERSION
+// ==========================================
+// 📖 RECIPE PAGE - HYBRID LOADER (Fixed)
+// ==========================================
+import { db } from './firebase-config.js';
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
-// 1. Get the ID from the URL (e.g., ?id=fruit-dip)
+// 1. Get the ID from the URL
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
 
 console.log("Recipe Page Loaded. ID:", recipeId);
 
-function loadRecipe() {
-    // 2. Get the data passed from the Homepage
-    const storedData = localStorage.getItem("currentRecipeData");
-
+// 2. MAIN LOADER
+async function loadRecipe() {
     const recipeContainer = document.getElementById("recipe");
-    if (!recipeContainer) {
-        console.error("CRITICAL ERROR: Could not find <div id='recipe'> in HTML.");
-        return;
-    }
+    if (!recipeContainer) return console.error("Error: <div id='recipe'> missing.");
 
-    if (!storedData) {
-        recipeContainer.innerHTML = "<h2>No recipe loaded. Go back to <a href='homepage.html'>Homepage</a>.</h2>";
-        return;
-    }
-
-    // 3. Parse the data
-    let recipe;
+    // STEP A: Try to load what we have in Local Storage (Title & Author)
+    // This makes the page feel instant, even if ingredients are missing for a second.
+    let localData = null;
     try {
-        recipe = JSON.parse(storedData);
-    } catch (e) {
-        console.error("Data corrupted:", e);
+        const stored = localStorage.getItem("currentRecipeData");
+        if (stored) localData = JSON.parse(stored);
+    } catch (e) { console.error("Storage error:", e); }
+
+    // If we have local data, render the header immediately
+    if (localData && localData.name) {
+        document.title = localData.name;
+        // Check if we have the FULL data (Ingredients exist)
+        if (localData.ingredients || localData.recipeIngredient) {
+            console.log("✅ Full recipe found locally.");
+            renderRecipeHTML(localData);
+            loadUserUserData();
+            return; // We are done!
+        } else {
+            console.log("⚠️ Lite version found. Fetching full ingredients...");
+            // Render the "Skeleton" (Title only) while we wait
+            renderRecipeHTML(localData, true); 
+        }
+    }
+
+    // STEP B: Fetch the FULL data from Firestore (The Fix!)
+    if (!recipeId) {
+        recipeContainer.innerHTML = "<h2>No recipe selected. <a href='index.html'>Go Home</a></h2>";
         return;
     }
 
-    // 4. Build the HTML
-    const ingredients = recipe.recipeIngredient || [];
-    const instructions = recipe.recipeInstructions || [];
-    const tags = recipe.tags || [];
+    try {
+        const docRef = doc(db, "recipes", recipeId);
+        const docSnap = await getDoc(docRef);
 
-    const html = `
+        if (docSnap.exists()) {
+            const fullData = { id: recipeId, ...docSnap.data() };
+            
+            // Save the full version to memory so we don't fetch it again
+            localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
+            
+            // Render the complete page
+            console.log("✅ Downloaded full details.");
+            renderRecipeHTML(fullData);
+            loadUserUserData();
+        } else {
+            recipeContainer.innerHTML = "<h2>Recipe not found in database.</h2>";
+        }
+    } catch (error) {
+        console.error("Download Error:", error);
+        recipeContainer.innerHTML += `<p style='color:red'>Error loading details: ${error.message}</p>`;
+    }
+}
+
+// 3. RENDER FUNCTION
+function renderRecipeHTML(recipe, isLoadingIngredients = false) {
+    const recipeContainer = document.getElementById("recipe");
+
+    // Handle different data names (recipeIngredient vs ingredients)
+    const ingredients = recipe.ingredients || recipe.recipeIngredient || [];
+    const instructions = recipe.instructions || recipe.recipeInstructions || ""; 
+    const tags = recipe.tags || [];
+    const author = recipe.author || "The Egbert Family";
+
+    // Build Lists
+    let ingHtml = "";
+    if (isLoadingIngredients) {
+        ingHtml = `<li style="color:#888; list-style:none;">🔄 Downloading ingredients...</li>`;
+    } else if (Array.isArray(ingredients)) {
+        ingHtml = ingredients.map(i => `<li>${i}</li>`).join("");
+    } else {
+        ingHtml = `<pre style="font-family:inherit;">${ingredients}</pre>`;
+    }
+
+    let instHtml = "";
+    if (isLoadingIngredients) {
+        instHtml = `<p style="color:#888;">🔄 Downloading instructions...</p>`;
+    } else if (Array.isArray(instructions)) {
+        instHtml = `<ol id="normal-instructions">${instructions.map(s => `<li>${s}</li>`).join("")}</ol>`;
+    } else {
+        instHtml = `<p style="white-space: pre-wrap;">${instructions}</p>`;
+    }
+
+    // Inject HTML
+    recipeContainer.innerHTML = `
         <h1>${recipe.name}</h1>
-        <h2>From: ${recipe.author || "The Egbert Family"}</h2>
+        <h2>From: ${author}</h2>
         
         <h3>Ingredients</h3>
         <ul id="ingredient-list">
-            ${ingredients.map(i => `<li>${i}</li>`).join("")}
+            ${ingHtml}
         </ul>
 
         <h3>Instructions</h3>
-        <ol id="normal-instructions">
-            ${instructions.map(step => `<li>${step}</li>`).join("")}
-        </ol>
+        <div id="instructions-container">
+            ${instHtml}
+        </div>
 
-        <div class="tags-section">
-            <strong>Tags:</strong> ${tags.join(", ")}
+        <div class="tags-section" style="margin-top:20px; color:#666; font-size: 12px;">
+            <strong>Tags:</strong> ${tags.join(", ") || "None"}
         </div>
     `;
 
-    // 5. Inject into the page
-    recipeContainer.innerHTML = html;
-    document.title = recipe.name;
-    // --- NEW: Save just THIS recipe as the last one ---
-    const lastRecipeData = {
-        name: recipe.name,
-        id: recipeId
-};
-    localStorage.setItem('lastRecipeSingle', JSON.stringify(lastRecipeData));
-    
-    // 6. Load Notes & Counts
-    loadUserUserData();
+    // Save for history
+    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: recipe.name, id: recipeId }));
 }
 
+// 4. USER DATA (Notes & Counts)
 function loadUserUserData() {
     if (!recipeId) return;
-
+    
     // Load Chef Notes
     const savedNotes = localStorage.getItem(`notes-${recipeId}`);
-    const noteBox = document.getElementById('chef-notes-area'); 
-    if (noteBox) {
-        noteBox.value = savedNotes || ""; 
-    }
+    const noteBox = document.getElementById('chefNotes'); 
+    if (noteBox) noteBox.value = savedNotes || ""; 
 
     // Load Cook Count
     const count = localStorage.getItem(`cook-${recipeId}`) || 0;
@@ -95,23 +147,21 @@ function updateText(count, date) {
     }
 }
 
-// Global functions for HTML interaction
-window.saveNotes = function(elementId) {
-    const box = document.getElementById(elementId);
+// 5. GLOBAL HELPERS
+window.saveNotes = function() { // Updated to match your HTML logic
+    const box = document.getElementById('chefNotes');
     if (recipeId && box) {
         localStorage.setItem(`notes-${recipeId}`, box.value);
+        alert("Note saved locally!");
     }
 }
 
-window.celebrateInHouse = function(btnElement) {
+window.recordCook = function(btnElement) {
     if (!recipeId) return;
-
-    // Fire confetti if available
     if (typeof fireConfetti === "function") fireConfetti(btnElement);
 
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
-    
     const today = new Date().toLocaleDateString();
     
     localStorage.setItem(`cook-${recipeId}`, count);
@@ -120,90 +170,5 @@ window.celebrateInHouse = function(btnElement) {
     updateText(count, today);
 }
 
-// Start the engine
+// START
 loadRecipe();
-
-// ==========================================
-// MEAL PLANNER: ADD RECIPE (DROPDOWN VERSION)
-// ==========================================
-
-const planBtn = document.getElementById('plan-meal-btn');
-const plannerModal = document.getElementById('plannerModal');
-
-// 1. OPEN THE POPUP
-if (planBtn && plannerModal) {
-    planBtn.addEventListener('click', () => {
-        plannerModal.style.display = 'flex'; // Show the box
-    });
-}
-
-// 2. CLOSE THE POPUP
-window.closePlannerModal = function() {
-    if (plannerModal) {
-        plannerModal.style.display = 'none'; // Hide the box
-    }
-};
-
-// 3. SAVE THE SELECTION (The "Welcome" Bug Fix)
-window.confirmAddToPlan = function() {
-    const selectBox = document.getElementById('daySelect');
-    const selectedDay = selectBox.value; 
-    
-    // 1. Get the REAL data from memory (Bypasses the HTML header)
-    const currentData = JSON.parse(localStorage.getItem("currentRecipeData"));
-    
-    // 2. Use the real name
-    const recipeName = currentData ? currentData.name : "Unknown Recipe";
-
-    // 3. Save to the Local Sticky Note (Meal Plan)
-    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-    plan[selectedDay] = recipeName;
-    localStorage.setItem('mealPlan', JSON.stringify(plan));
-
-    alert(`✅ Added ${recipeName} to ${selectedDay}!`);
-    closePlannerModal();
-};
-
-// Close if clicking outside the white box
-window.addEventListener('click', (e) => {
-    if (e.target === plannerModal) {
-        closePlannerModal();
-    }
-});
-
-// --- TUTORIAL LOGIC ---
-
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Check if user has already seen this
-    const hasSeenTutorial = localStorage.getItem('tutorialSeen');
-
-    if (!hasSeenTutorial) {
-        const tutorialOverlay = document.getElementById('tutorial-overlay');
-        const closeTutBtn = document.getElementById('close-tutorial');
-        const demoEgg = document.getElementById('demo-egg');
-
-        if (tutorialOverlay) {
-            // Show it after a short delay (so the recipe loads first)
-            setTimeout(() => {
-                tutorialOverlay.classList.add('show-search'); // Re-using your existing "Show" class
-            }, 1000);
-        }
-
-        // 2. Interactive Demo Logic (Clicking the egg)
-        if (demoEgg) {
-            demoEgg.addEventListener('click', () => {
-                demoEgg.classList.toggle('checked');
-            });
-        }
-
-        // 3. Close & Save "Seen" Status
-        if (closeTutBtn) {
-            closeTutBtn.addEventListener('click', () => {
-                tutorialOverlay.classList.remove('show-search');
-                
-                // IMPORTANT: Save this so it never shows again!
-                localStorage.setItem('tutorialSeen', 'true');
-            });
-        }
-    }
-});
