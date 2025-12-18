@@ -745,6 +745,68 @@ function setupCategoryFilters() {
         });
     });
 }
+// ==========================================
+// 🚩 REPORTING SYSTEM (Fixed to match your HTML)
+// ==========================================
+
+// 1. TOGGLE THE BOX (Matches <button onclick="toggleReportBox()">)
+window.toggleReportBox = function() {
+    const box = document.getElementById('reportBox');
+    if (!box) return console.error("Report box not found!");
+
+    if (box.style.display === 'none' || box.style.display === '') {
+        box.style.display = 'block'; // Show it
+    } else {
+        box.style.display = 'none';  // Hide it
+    }
+};
+
+// 2. SEND REPORT
+window.submitReport = async function() {
+    // 1. Get the text from the CORRECT input ID
+    const reasonInput = document.getElementById('issueText'); 
+    if (!reasonInput) return;
+    
+    const issue = reasonInput.value.trim();
+    if (!issue) return alert("Please type a reason first.");
+
+    // 2. Get accurate data from Local Storage
+    const storedData = localStorage.getItem("currentRecipeData");
+    let recipeName = "Unknown Recipe";
+    let recipeId = "unknown";
+
+    if (storedData) {
+        try {
+            const parsed = JSON.parse(storedData);
+            recipeName = parsed.name || "Unknown";
+            recipeId = parsed.id || "unknown";
+        } catch (e) { console.error("Data parse error", e); }
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        recipeId = urlParams.get('id');
+    }
+
+    try {
+        // 3. Send to Firestore
+        await addDoc(collection(db, "recipe_reports"), {
+            issue: issue,
+            recipeName: recipeName,
+            recipeId: recipeId,
+            reporter: auth.currentUser ? auth.currentUser.email : "Anonymous Guest",
+            timestamp: serverTimestamp()
+        });
+
+        alert("Thanks! The Admin has been notified.");
+        
+        // 4. Close and Clear
+        toggleReportBox(); // Close the box
+        reasonInput.value = ""; // Clear the text
+
+    } catch (error) {
+        console.error("Report Error:", error);
+        alert("Could not send report. You might be offline.");
+    }
+};
 
 // --- C. ACTIVATE THEM IMMEDIATELY ---
 // Run these functions as soon as this script loads
