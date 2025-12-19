@@ -5,13 +5,13 @@ const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
 
 // ==========================================
-// 1. LOAD RECIPE
+// 1. LOAD RECIPE LOGIC
 // ==========================================
 async function loadRecipe() {
     const recipeContainer = document.getElementById("recipe");
     if (!recipeContainer) return;
 
-    // A. Local Check
+    // A. Local Storage Check (Fast Load)
     let localData = null;
     try {
         const stored = localStorage.getItem("currentRecipeData");
@@ -30,9 +30,10 @@ async function loadRecipe() {
 
         if (docSnap.exists()) {
             const fullData = { id: recipeId, ...docSnap.data() };
+            // Update storage with fresh data
             localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
             renderRecipeHTML(fullData);
-            loadUserUserData();
+            loadCookStats(); // Load "Times Cooked"
         } else {
             // Fallback to local if DB fails
             if(localData && localData.id === recipeId) {
@@ -47,12 +48,11 @@ async function loadRecipe() {
 function renderRecipeHTML(recipe) {
     const recipeContainer = document.getElementById("recipe");
     
-    // Data Setup
     const ingredients = recipe.ingredients || recipe.recipeIngredient || [];
     const instructions = recipe.instructions || recipe.recipeInstructions || ""; 
     const author = recipe.author || recipe.a || "Family";
 
-    // Build Ingredients
+    // Build Ingredients List
     let ingHtml = "";
     if (Array.isArray(ingredients)) {
         ingHtml = ingredients.map(i => `<li>${i}</li>`).join("");
@@ -60,56 +60,53 @@ function renderRecipeHTML(recipe) {
         ingHtml = `<pre>${ingredients}</pre>`;
     }
 
-    // Build Instructions
+    // Build Instructions List
     let instHtml = "";
     if (Array.isArray(instructions)) {
-        // We give these 'li's a class so we can target them too
         instHtml = `<ol id="normal-instructions">${instructions.map(s => `<li class="instruction-step">${s}</li>`).join("")}</ol>`;
     } else {
         instHtml = `<p style="white-space: pre-wrap;">${instructions}</p>`;
     }
 
-    // Render HTML
+    // INJECT HTML (Using New CSS Classes)
     recipeContainer.innerHTML = `
-        <h1 style="text-align:center; font-family:'Amatic SC'; font-size: 3rem; margin-bottom: 5px; color:#0f172a;">${recipe.name || recipe.n}</h1>
-        <h2 style="text-align:center; color:#64748b; font-size: 1rem; margin-top: 0; font-style:italic;">From: ${author}</h2>
+        <h1 class="recipe-title-lg">${recipe.name || recipe.n}</h1>
+        <h2 class="recipe-chef">From: ${author}</h2>
         
-        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+        <hr class="recipe-divider">
 
-        <h3 style="color:#0d9488;">Ingredients</h3>
+        <h3 class="section-header">Ingredients</h3>
         <p style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
         <ul id="ingredient-list">
             ${ingHtml}
         </ul>
 
-        <h3 style="color:#0d9488; margin-top:30px;">Instructions</h3>
+        <h3 class="section-header">Instructions</h3>
         <div id="instructions-container">
             ${instHtml}
         </div>
     `;
 
-    // ⚡️ ACTIVATE CLICK-TO-CROSS-OUT (Ingredients & Instructions)
-    
-    // 1. For Ingredients
-    document.querySelectorAll('#ingredient-list li').forEach(li => {
-        li.addEventListener('click', function() {
-            this.classList.toggle('checked');
+    // ENABLE CLICK-TO-CROSS-OUT
+    // We wait 100ms to ensure HTML is injected before attaching listeners
+    setTimeout(() => {
+        document.querySelectorAll('#ingredient-list li').forEach(li => {
+            li.addEventListener('click', function() { this.classList.toggle('checked'); });
         });
-    });
-
-    // 2. For Instructions
-    document.querySelectorAll('.instruction-step').forEach(li => {
-        li.addEventListener('click', function() {
-            this.classList.toggle('checked');
+        document.querySelectorAll('.instruction-step').forEach(li => {
+            li.addEventListener('click', function() { this.classList.toggle('checked'); });
         });
-    });
+    }, 100);
 
+    // Save history for Homepage "Pick Up"
     localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: recipeId }));
 }
 
 // ==========================================
-// 2. BUTTON ACTIONS
+// 2. KITCHEN TOOLS (Attached to Window)
 // ==========================================
+
+// COOK MODE (Screen Wake Lock)
 let wakeLock = null;
 window.toggleCookMode = async function() {
     const btn = document.getElementById('cookModeBtn');
@@ -118,29 +115,38 @@ window.toggleCookMode = async function() {
             wakeLock = await navigator.wakeLock.request('screen');
             btn.innerText = "Cook Mode: ON 🍳";
             btn.classList.add('cook-mode-active');
-        } catch (err) { alert("Screen Wake Lock not supported"); }
+        } catch (err) { alert("Screen Wake Lock not supported on this device."); }
     } else {
-        wakeLock.release();
+        if(wakeLock) wakeLock.release();
         wakeLock = null;
         btn.innerText = "Enable Cook Mode 🍳";
         btn.classList.remove('cook-mode-active');
     }
 }
 
+// TEXT RESIZER
 let currentSize = 16;
 window.resizeText = function(change) {
     currentSize += change;
+    if (currentSize < 12) currentSize = 12; // Min limit
+    if (currentSize > 30) currentSize = 30; // Max limit
+    
     const elements = document.querySelectorAll('#ingredient-list li, #instructions-container li, #instructions-container p');
     elements.forEach(el => el.style.fontSize = currentSize + 'px');
 }
 
+// SAVE OFFLINE
 window.saveRecipeOffline = function() {
     alert("Page saved to browser cache!");
 }
 
+// MEAL PLAN MODAL
 window.addToMealPlan = function() {
     const modal = document.getElementById('plannerModal');
-    if(modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+    if(modal) {
+        modal.classList.remove('hidden'); 
+        modal.style.display = 'flex';
+    }
 }
 
 window.closePlannerModal = function() {
@@ -160,24 +166,23 @@ window.confirmAddToPlan = function() {
     closePlannerModal();
 }
 
-// ==========================================
-// 3. USER DATA & COOKING
-// ==========================================
-function loadUserUserData() {
-    if (!recipeId) return;
-    const savedNotes = localStorage.getItem(`notes-${recipeId}`);
-    const noteBox = document.getElementById('chefNotes'); 
-    if (noteBox) noteBox.value = savedNotes || ""; 
-    
+// COOK COUNTER
+function loadCookStats() {
     const count = localStorage.getItem(`cook-${recipeId}`) || 0;
-    document.getElementById('cook-counter').innerHTML = count > 0 ? `Cooked <b>${count}</b> times` : "Not cooked yet";
+    const el = document.getElementById('cook-counter');
+    if(el) el.innerHTML = count > 0 ? `You've cooked this <b>${count}</b> times!` : "You haven't cooked this yet.";
 }
 
 window.recordCook = function() {
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
     localStorage.setItem(`cook-${recipeId}`, count);
-    loadUserUserData();
+    loadCookStats();
+    
+    // Confetti effect (simple fallback)
+    const btn = document.querySelector('.celebration-area button');
+    if(btn) btn.innerText = "🎉 Yay!";
 }
 
+// Start
 loadRecipe();
