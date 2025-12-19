@@ -3,86 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cookbook Login</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Login | Cookbook</title>
     <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="login-page">
 
     <div class="login-card">
         <div class="login-header">
-            <div class="logo-icon">🍽️</div>
-            <h1>Welcome Back,<br>Chef!</h1>
-            <p class="subtitle">Sign in to access your digital cookbook.</p>
+            <img src="images/logo.jpg" style="height: 60px; margin-bottom: 10px;">
+            <h1>Welcome Back!</h1>
+            <p class="subtitle">Please sign in to access the cookbook.</p>
         </div>
 
-        <form id="loginForm" class="login-form">
+        <form id="login-form">
             <div class="input-group">
-                <label for="email">Email Address</label>
+                <label>Email Address</label>
                 <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
             </div>
 
             <div class="input-group">
-                <label for="password">Password</label>
+                <label>Password</label>
                 <input type="password" id="password" class="form-input" placeholder="••••••••" required>
             </div>
 
-            <div class="forgot-link">
-                <a href="#" onclick="sendReset()">Forgot Password?</a>
-            </div>
-
-            <button type="submit" class="login-btn">Log In</button>
+            <button type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center; margin-top: 10px;">
+                Sign In
+            </button>
         </form>
 
-        <div class="signup-link">
-            Don't have an account? <a href="#" onclick="showSignUp()">Create Account</a>
+        <div style="margin-top: 20px; font-size: 0.9rem; color: #64748b;">
+            <p>Don't have an account? <a href="#" class="auth-link">Ask the Admin</a></p>
         </div>
     </div>
 
-<div id="messageBox" class="modal hidden">
-        <div class="modal-content">
-            <p id="messageText"></p>
-            <button onclick="hideMessageBox()" class="modal-btn">OK</button>
-        </div>
-    </div>
+    <script type="module">
+        import { auth } from './scripts/firebase-config.js';
+        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-    <div id="signUp" class="modal hidden" style="display: none;">
-        <div class="login-card" style="margin: 50px auto; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        document.getElementById('login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
             
-            <div class="login-header">
-                <h2>Create Account</h2>
-                <p class="subtitle">Join the family cookbook!</p>
-            </div>
-
-            <form id="signUpForm" class="login-form">
-                
-                <div class="input-group">
-                    <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" class="form-input" placeholder="e.g. Chef Ramsay" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="emailSign">Email Address</label>
-                    <input type="email" id="emailSign" class="form-input" placeholder="you@example.com" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="passwordSign">Password</label>
-                    <input type="password" id="passwordSign" class="form-input" placeholder="••••••••" required>
-                </div>
-
-                <button type="submit" class="login-btn">Sign Up</button>
-                
-                <div style="text-align: center; margin-top: 15px;">
-                    <a href="#" onclick="hideSignUpBox()" style="color: #6b7280; font-size: 14px; text-decoration: none;">Cancel</a>
-                </div>
-            </form>
-        </div>
-    </div>
-    <script src="./scripts/login.js" type="module"></script>
-</body>
-</html>
-
-    <script src="./scripts/login.js" type="module"></script>
+            signInWithEmailAndPassword(auth, email, pass)
+                .then(() => window.location.href = "homepage.html")
+                .catch((error) => alert("Login Failed: " + error.message));
+        });
+    </script>
 </body>
 </html>

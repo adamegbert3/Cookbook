@@ -3,66 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit a Recipe</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Submit Recipe</title>
     <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="login-page">
 
-    <div class="login-card">
-        
-        <div class="login-header">
-            <div class="logo-icon">🍳</div>
+    <div class="login-card" style="max-width: 700px; text-align: left;">
+        <div class="login-header" style="text-align: center;">
             <h1>Contribute a Recipe</h1>
             <p class="subtitle">Share your masterpiece! We will review it and add it to the cookbook.</p>
         </div>
 
-        <form id="submitForm" class="login-form">
+        <form id="submitForm">
             
-            <div class="input-group">
-                <label for="title">Recipe Title</label>
-                <input type="text" id="title" class="form-input" placeholder="e.g. Grandma's Famous Apple Pie" required>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="input-group">
+                    <label>Recipe Title</label>
+                    <input type="text" id="title" class="form-input" placeholder="e.g. Grandma's Apple Pie" required>
+                </div>
+                <div class="input-group">
+                    <label>From (Chef)</label>
+                    <input type="text" id="chef" class="form-input" placeholder="e.g. Aunt Sally" required>
+                </div>
             </div>
 
             <div class="input-group">
-                <label for="chef">Where is this recipe from?</label>
-                <input type="text" id="chef" class="form-input" placeholder="e.g. Aunt Sally" required>
+                <label>Ingredients (Put each on a new line)</label>
+                <textarea id="ingredients" class="form-input" rows="5" placeholder="2 Cups Flour&#10;1 tsp Salt&#10;3 Apples" required></textarea>
             </div>
 
             <div class="input-group">
-                <label for="ingredients">Ingredients (Put each on a new line)</label>
-                <textarea id="ingredients" class="form-input" rows="6" placeholder="2 Cups Flour&#10;1 tsp Salt&#10;3 Apples" required></textarea>
+                <label>Instructions (Put each step on a new line)</label>
+                <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix flour..." required></textarea>
             </div>
 
             <div class="input-group">
-                <label for="instructions">Instructions (Put each step on a new line)</label>
-                <textarea id="instructions" class="form-input" rows="6" placeholder="1. Preheat oven to 350°...&#10;2. Mix flour and salt..." required></textarea>
-            </div>
-
-            <div class="input-group">
-                <label for="notes">Any notes that would be helpful for this recipe?</label>
-                <textarea id="notes" class="form-input" rows="6" placeholder="Sometimes bake for 6 mins, depending on your oven..." required></textarea>
-            </div>
-            <div class="input-group">
-                <label for="category">Category (Folder)</label>
+                <label>Category</label>
                 <select id="category" class="form-input">
                     <option value="Main Dishes">Main Dishes</option>
-                    <option value="Side Dishes">Side Dishes</option>
                     <option value="Appetizers & Snacks">Appetizers & Snacks</option>
                     <option value="Breakfast">Breakfast</option>
                     <option value="Desserts">Desserts</option>
+                    <option value="Breads & Rolls">Breads & Rolls</option>
+                    <option value="Soups & Salads">Soups & Salads</option>
+                    <option value="Sides, Veggies & Breads">Sides & Veggies</option>
+                    <option value="Miscellaneous">Miscellaneous</option>
                 </select>
             </div>
 
-            <button type="submit" class="login-btn">Submit for Review</button>
-        </form>
+            <div class="input-group">
+                <label>Chef's Notes (Optional)</label>
+                <textarea id="notes" class="form-input" rows="2" placeholder="Best served warm..."></textarea>
+            </div>
 
-        <div class="signup-link">
-            <a href="index.html">← Cancel and Go Back</a>
-        </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="pill-btn btn-teal" style="flex: 1; justify-content: center;">Submit for Review</button>
+                <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none;">Cancel</a>
+            </div>
+        </form>
     </div>
 
     <script type="module" src="scripts/submit.js"></script>
-
 </body>
 </html>
