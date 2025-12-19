@@ -9,66 +9,75 @@
 </head>
 <body>
 
-    <header class="header-container">
+    <div class="header-container">
         <div class="logo-area">
-            <img src="images/logo.jpg" alt="Book Icon" class="logo-img">
-            <h1 class="header-title">Welcome to the Cookbook!</h1>
+            <a href="homepage.html">
+                <img src="images/logo.jpg" alt="Logo" class="logo-img">
+            </a>
+            <div class="header-title">
+                <h1>Welcome to the Cookbook!</h1>
+            </div>
         </div>
         <div class="header-actions">
             <a href="homepage.html">
                 <button class="pill-btn btn-slate">← Back</button>
             </a>
         </div>
-    </header>
+    </div>
 
-    <main style="max-width: 800px; margin: 30px auto; padding: 0 20px;">
-        
+    <main>
         <div id="recipe"></div>
 
-        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin-top: 40px; text-align: center; border: 1px solid #e2e8f0;">
-            <h3 style="margin-top: 0;">Kitchen Tools</h3>
-            <div style="display: flex; justify-content: center; flex-wrap: wrap; gap: 10px;">
+        <div style="background:white; padding:20px; border-radius:12px; margin-top:40px; text-align:center; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="margin-top:0; color:#0f172a;">Kitchen Tools</h3>
+            
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
                 <button onclick="saveRecipeOffline()" class="pill-btn btn-teal">📡 Save Offline</button>
                 <button id="cookModeBtn" onclick="toggleCookMode()" class="pill-btn btn-orange">Enable Cook Mode 🍳</button>
                 <button onclick="addToMealPlan()" class="pill-btn btn-blue">📅 Add to Menu</button>
             </div>
-            <div style="margin-top: 15px;">
-                <button onclick="resizeText(2)" class="pill-btn btn-slate" style="font-size: 0.7rem;">Make Text Bigger +</button>
-                <button onclick="resizeText(-2)" class="pill-btn btn-slate" style="font-size: 0.7rem;">Make Text Smaller -</button>
+
+            <div style="display:flex; justify-content:center; gap:10px;">
+                <button onclick="resizeText(2)" class="pill-btn btn-slate">Text +</button>
+                <button onclick="resizeText(-2)" class="pill-btn btn-slate">Text -</button>
+            </div>
+            
+            <div style="margin-top:15px;">
+                <button onclick="openReportModal()" class="pill-btn btn-red-outline" style="font-size:0.8rem;">🚩 Report Issue</button>
             </div>
         </div>
 
-        <div style="text-align: center; margin-top: 30px;">
-            <button onclick="recordCook()" style="background: #fde047; border: none; padding: 10px 20px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+        <div class="celebration-area" style="text-align:center; margin-top:30px;">
+            <button onclick="recordCook()" style="background:#fde047; color:#854d0e; border:none; padding:12px 24px; border-radius:8px; font-weight:bold; cursor:pointer; font-size:1rem;">
                 🎉 I Made This!
             </button>
-            <p id="cook-counter" style="font-size: 0.9rem; color: #64748b; margin-top: 10px;">Loading stats...</p>
+            <p id="cook-counter" style="color:#64748b; font-size:0.9rem; margin-top:10px;">Loading stats...</p>
         </div>
 
-        <div style="margin-top: 40px;">
-            <h3>👨‍🍳 Chef's Notes</h3>
-            <textarea id="chefNotes" placeholder="Private notes..." style="width: 100%; height: 100px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;"></textarea>
-            <button onclick="saveNote()" class="pill-btn btn-teal" style="margin-top: 10px;">Save Note</button>
-            <span id="saveStatus" style="color: #10b981; margin-left: 10px;"></span>
+        <div style="margin-top:40px;">
+            <h3>👨‍🍳 Chef's Notes (Private)</h3>
+            <textarea id="chefNotes" class="form-input" placeholder="e.g. Add extra cinnamon next time..." style="min-height:100px; margin-bottom:10px;"></textarea>
+            <button onclick="saveNote()" class="pill-btn btn-teal">Save Note</button>
+            <span id="saveStatus" style="color:#10b981; margin-left:10px; font-weight:bold;"></span>
         </div>
 
-        <div class="comments-section" style="margin-top: 50px;">
+        <div class="comments-section" style="margin-top:50px;">
             <h3>💬 Family Discussion</h3>
-            <div id="commentsList" style="max-height: 300px; overflow-y: auto; margin-bottom: 20px;">
-                <p>Loading comments...</p>
+            <div id="commentsList" style="max-height:300px; overflow-y:auto; margin-bottom:20px;">
+                <p class="empty-feed">Loading comments...</p>
             </div>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="commentInput" placeholder="How was it?" style="flex: 1; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px;">
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="commentInput" class="form-input" placeholder="How was it?">
                 <button onclick="postComment()" class="pill-btn btn-blue">Post</button>
             </div>
         </div>
     </main>
 
     <div id="plannerModal" class="modal hidden">
-        <div class="modal-content" style="text-align: center;">
+        <div class="modal-content">
             <h3>📅 Add to Menu</h3>
-            <p>Pick a day:</p>
-            <select id="daySelect" style="width: 100%; padding: 10px; margin-bottom: 20px;">
+            <p style="margin-bottom:15px;">Pick a day:</p>
+            <select id="daySelect" class="form-input" style="margin-bottom:20px;">
                 <option value="Mon">Monday</option>
                 <option value="Tue">Tuesday</option>
                 <option value="Wed">Wednesday</option>
@@ -77,14 +86,30 @@
                 <option value="Sat">Saturday</option>
                 <option value="Sun">Sunday</option>
             </select>
-            <div style="display: flex; gap: 10px; justify-content: center;">
-                <button onclick="confirmAddToPlan()" class="pill-btn btn-teal">Save</button>
-                <button onclick="closePlannerModal()" class="pill-btn btn-slate">Cancel</button>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button onclick="confirmAddToPlan()" class="pill-btn btn-teal" style="flex:1;">Save</button>
+                <button onclick="closePlannerModal()" class="pill-btn btn-slate" style="flex:1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="report-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>Report Issue</h3>
+            <textarea id="report-reason" class="form-input" placeholder="What's wrong?" style="min-height:80px; margin-bottom:15px;"></textarea>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button onclick="submitReport()" class="pill-btn btn-dark">Send Report</button>
+                <button onclick="closeReportModal()" class="pill-btn btn-slate">Cancel</button>
             </div>
         </div>
     </div>
 
     <script type="module" src="scripts/recipePage.js"></script>
     <script type="module" src="scripts/main.js"></script>
+    
+    <script>
+        function openReportModal() { document.getElementById('report-modal').classList.remove('hidden'); }
+        function closeReportModal() { document.getElementById('report-modal').classList.add('hidden'); }
+    </script>
 </body>
 </html>

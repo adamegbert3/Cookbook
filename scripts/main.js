@@ -2,108 +2,101 @@
 // 1. IMPORTS & SETUP
 // ==========================================
 import { db, auth } from './firebase-config.js'; 
-import { collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, serverTimestamp, arrayUnion, arrayRemove, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 let allRecipes = []; 
-const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; // ⚠️ PUT YOUR ID HERE
+const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
 
-console.log("✅ MAIN.JS LOADED - v12.0 (Notes Fixed)");
+console.log("✅ MAIN.JS LOADED - v14.0 (CSS Classes Refactor)");
 
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // User Logged In
-        const notSigned = document.getElementById("notsigned");
-        if(notSigned) notSigned.style.display = 'none';
-        
-        const grid = document.getElementById('recipes');
-        if(grid) grid.style.display = 'grid';
+        document.getElementById("notsigned").classList.add('hidden');
+        document.getElementById('recipes').style.display = 'grid';
 
         if (user.uid === MY_ADMIN_ID) {
-            const adminBtn = document.getElementById('admin-btn');
-            if(adminBtn) adminBtn.style.display = 'block';
+            document.getElementById('admin-btn').classList.add('visible');
         }
         
-        // Load Data
         loadAllRecipes(); 
         
-        // Load Profile Name
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
             let userName = user.displayName || user.email.split('@')[0];
             if (userSnap.exists() && userSnap.data().Name) { userName = userSnap.data().Name; }
             updateProfileIcon(userName); 
-        } catch (err) { console.error("Error loading profile:", err); }
+        } catch (err) { console.error(err); }
         
-        // Page Specifics
         if (document.getElementById('family-feed')) loadFamilyFeed();
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('plan-Mon')) loadMealPlan();
-        if (document.getElementById('chefNotes')) loadUserNote(); // This will work now!
+        if (document.getElementById('chefNotes')) loadUserNote();
 
     } else {
-        // Guest Handling
         if (document.getElementById('chefNotes')) {
             window.location.href = "homepage.html";
             return;
         }
-        const notSigned = document.getElementById("notsigned");
-        if(notSigned) notSigned.style.display = 'block';
-        
-        const grid = document.getElementById('recipes');
-        if(grid) grid.style.display = 'none';
-        
+        document.getElementById("notsigned").classList.remove('hidden');
+        document.getElementById('recipes').style.display = 'none';
         resetProfileIcon();
     }
 });
 
 // ==========================================
-// 2. RECIPE LOADER (1 READ ONLY)
+// 2. RECIPE LOADER & COLORS
 // ==========================================
 async function loadAllRecipes() {
     const container = document.getElementById('recipes');
-    if(!container) return; // Stop if not on homepage
+    if(!container) return; 
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Opening Cookbook...</p>';
 
     try {
-        // 1. Fetch ONLY the Index Document
         const docRef = doc(db, "static_assets", "cookbook_index");
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const data = docSnap.data();
             allRecipes = data.recipes || [];
-            console.log(`✅ Index loaded: ${allRecipes.length} recipes. (1 Read Used)`);
             renderLocalList(allRecipes); 
         } else {
-            container.innerHTML = "<p style='text-align:center; color:red;'>Index missing. Admin: Please go to Admin Panel and click 'Update Homepage Index'.</p>";
-            allRecipes = [];
+            container.innerHTML = "<p style='text-align:center;'>Index missing.</p>";
         }
-    } catch (e) { 
-        console.error("Load Error:", e);
-        container.innerHTML = "<p>Error loading recipes.</p>";
-    }
+    } catch (e) { container.innerHTML = "<p>Error loading.</p>"; }
+}
+
+function getCategoryClass(category) {
+    if (!category) return ''; 
+    const cat = category.toLowerCase();
+    
+    if (cat.includes('appetizer')) return 'border-blue';
+    if (cat.includes('bread')) return 'border-green';
+    if (cat.includes('dessert')) return 'border-yellow';
+    if (cat.includes('main')) return 'border-red';
+    if (cat.includes('soup') || cat.includes('salad')) return 'border-purple';
+    if (cat.includes('breakfast')) return 'border-orange';
+    
+    return ''; // Default Teal
 }
 
 function renderLocalList(list) {
     const container = document.getElementById('recipes');
     container.innerHTML = "";
-    
-    // Alphabetical Sort
     list.sort((a, b) => a.n.localeCompare(b.n));
 
     let html = "";
     list.forEach(item => {
-        // COMPACT CARD TEMPLATE
+        const cat = item.c || (item.t && item.t[0]) || ""; 
+        const colorClass = getCategoryClass(cat);
+
         html += `
-        <div class="recipe-card" onclick="goToRecipe('${item.id}', '${item.n.replace(/'/g, "\\'")}')">
+        <div class="recipe-card ${colorClass}" onclick="goToRecipe('${item.id}', '${item.n.replace(/'/g, "\\'")}')">
             <div class="status-badge">${item.r ? "✅" : ""}</div>
-            
             <div class="card-content">
                 <h2>${item.n}</h2>
                 <div class="recipe-author">From: ${item.a}</div>
-                
                 <div class="tag-container">
                     ${(item.t || []).map(t => `<span class="tag-pill">${t}</span>`).join('')}
                 </div>
@@ -111,11 +104,7 @@ function renderLocalList(list) {
         </div>`;
     });
     
-    if (list.length === 0) {
-        container.innerHTML = "<p style='text-align:center'>No recipes found.</p>";
-    } else {
-        container.innerHTML = html;
-    }
+    container.innerHTML = html || "<p style='text-align:center'>No recipes found.</p>";
 }
 
 window.goToRecipe = function(id, name) {
@@ -124,94 +113,175 @@ window.goToRecipe = function(id, name) {
 };
 
 // ==========================================
-// 3. MEAL PLANNER
+// 3. ANNOUNCEMENTS & COMMENTS (CSS CLASSES)
 // ==========================================
+async function loadFamilyFeed() {
+    const feedList = document.getElementById('family-feed');
+    if (!feedList) return;
+    try {
+        const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"), limit(3));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) { 
+            feedList.innerHTML = "<p class='empty-feed'>No announcements.</p>"; 
+            return; 
+        }
+        
+        let html = "";
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            let icon = "📢";
+            if (data.type === "new_recipe") icon = "🍳";
+
+            html += `<div class="announce-item">
+                <div class="announce-icon">${icon}</div>
+                <div class="announce-text">${data.message}</div>
+            </div>`;
+        });
+        feedList.innerHTML = html;
+    } catch (e) { console.error(e); }
+}
+
+function loadComments() {
+    const list = document.getElementById('commentsList');
+    if (!list) return;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    if (!currentRecipe) return;
+    
+    const user = auth.currentUser;
+    const q = query(collection(db, "recipes", currentRecipe.id, "comments"), orderBy("timestamp", "asc"));
+    
+    onSnapshot(q, (snap) => {
+        if(snap.empty){list.innerHTML='<p class="empty-feed">No comments.</p>';return;}
+        
+        let html='';
+        snap.forEach(docSnap => {
+            const d = docSnap.data(); 
+            const init = (d.author||"G").charAt(0).toUpperCase();
+            
+            let deleteBtn = "";
+            if (user && (user.uid === d.uid || user.uid === MY_ADMIN_ID)) {
+                deleteBtn = `<span onclick="deleteComment('${docSnap.id}')" class="delete-icon" title="Delete">🗑️</span>`;
+            }
+
+            html += `
+            <div class="comment-row">
+                <div class="comment-avatar">${init}</div>
+                <div class="comment-bubble">
+                    <div class="comment-author">
+                        ${d.author}
+                        ${deleteBtn}
+                    </div>
+                    <div class="comment-text">${d.text}</div>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = html;
+    });
+}
+
+window.deleteComment = async function(commentId) {
+    if(!confirm("Delete this comment?")) return;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    try {
+        await deleteDoc(doc(db, "recipes", currentRecipe.id, "comments", commentId));
+    } catch(e) { alert("Error deleting."); }
+}
+
+window.postComment = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Log in first.");
+    const inp = document.getElementById('commentInput');
+    const val = inp.value.trim();
+    if(!val) return;
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    await addDoc(collection(db, "recipes", currentRecipe.id, "comments"), {
+        text: val, author: user.displayName || user.email.split('@')[0], uid: user.uid, timestamp: serverTimestamp()
+    });
+    inp.value = "";
+}
+
+// ==========================================
+// 4. SHOPPING & MEAL PLAN (CSS CLASSES)
+// ==========================================
+window.openShoppingModal = function() {
+    const modal = document.getElementById('shoppingModal');
+    if(modal) {
+        modal.classList.remove('hidden');
+        generateFromPlan();
+    }
+}
+window.closeShoppingModal = function() {
+    document.getElementById('shoppingModal').classList.add('hidden');
+}
+
+window.generateFromPlan = async function() {
+    const listEl = document.getElementById('shopping-ul');
+    const status = document.getElementById('shopping-status');
+    const container = document.getElementById('shopping-list-container');
+    
+    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
+    const recipeNames = Object.values(plan);
+
+    if(recipeNames.length === 0) {
+        status.innerText = "Weekly Menu is empty.";
+        container.classList.add('hidden');
+        return;
+    }
+
+    status.innerText = "Loading ingredients...";
+    container.classList.add('hidden');
+    listEl.innerHTML = "";
+
+    try {
+        const q = query(collection(db, "recipes")); 
+        const snap = await getDocs(q);
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (recipeNames.includes(data.name)) {
+                // Header
+                listEl.innerHTML += `<li class="shop-header">${data.name}</li>`;
+                const ings = data.ingredients || data.recipeIngredient || [];
+                if(Array.isArray(ings)) {
+                    ings.forEach((i, idx) => {
+                        // Interactive Item
+                        listEl.innerHTML += `
+                        <li class="shop-item" onclick="this.classList.toggle('checked')">
+                            <div class="check-box">✓</div>
+                            <span class="shop-text">${i}</span>
+                        </li>`;
+                    });
+                }
+            }
+        });
+        status.style.display = 'none';
+        container.classList.remove('hidden');
+        container.style.display = 'block';
+    } catch(e) { status.innerText = "Error loading list."; }
+}
+
+window.copyShoppingList = function() {
+    const list = document.getElementById('shopping-ul').innerText;
+    navigator.clipboard.writeText(list).then(() => alert("Copied to clipboard!"));
+}
+
 function loadMealPlan() {
     const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    
-    days.forEach(day => {
-        const element = document.getElementById(`plan-${day}`);
-        if (element && plan[day]) {
-            element.innerText = plan[day];
-            if(element.parentElement) {
-                element.parentElement.style.borderColor = "#0d9488";
-                element.parentElement.style.backgroundColor = "#f0fdf4";
-            }
+    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
+        const el = document.getElementById(`plan-${day}`);
+        if(el && plan[day]) {
+            el.innerText = plan[day];
+            if(el.parentElement) el.parentElement.classList.add('active');
         }
     });
 }
-
 window.clearMealPlan = function() {
-    if (confirm("Clear Weekly Menu?")) {
-        localStorage.removeItem('mealPlan');
-        window.location.reload();
-    }
-};
-
-// ==========================================
-// 4. SEARCH & FILTERS
-// ==========================================
-function setupSearch() {
-    const openBtn = document.getElementById('header-search-btn');
-    const overlay = document.getElementById('search-overlay');
-    const closeBtn = document.getElementById('close-search');
-    const form = document.getElementById('search-form');
-    const input = document.getElementById('searchbar');
-
-    if (!openBtn || !overlay) return;
-
-    openBtn.onclick = () => {
-        overlay.classList.remove('hidden');
-        setTimeout(() => input.focus(), 100);
-    };
-
-    if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
-
-    if (form) {
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            const term = input.value.toLowerCase().trim();
-            if (!term) return;
-
-            const filtered = allRecipes.filter(r => {
-                const name = (r.n || "").toLowerCase();
-                const tags = (r.t || []).join(" ").toLowerCase();
-                return name.includes(term) || tags.includes(term);
-            });
-
-            renderLocalList(filtered);
-            overlay.classList.add('hidden');
-            input.value = "";
-        }
-    }
-}
-
-function setupCategoryFilters() {
-    const buttons = document.querySelectorAll('.folders button');
-    buttons.forEach(btn => {
-        btn.onclick = () => {
-            const category = btn.innerText.replace("✓ ", "").trim();
-            
-            if (btn.classList.contains('active-filter')) {
-                btn.classList.remove('active-filter');
-                renderLocalList(allRecipes);
-            } else {
-                buttons.forEach(b => b.classList.remove('active-filter'));
-                btn.classList.add('active-filter');
-                
-                const filtered = allRecipes.filter(r => {
-                    const tags = r.t || [];
-                    return tags.includes(category); 
-                });
-                renderLocalList(filtered);
-            }
-        };
-    });
+    if(confirm("Clear Menu?")) { localStorage.removeItem('mealPlan'); window.location.reload(); }
 }
 
 // ==========================================
-// 5. CHEF NOTES (THE MISSING PIECE!)
+// 5. NOTES & UTILS
 // ==========================================
 async function loadUserNote() {
     const noteBox = document.getElementById('chefNotes');
@@ -231,78 +301,22 @@ window.saveNote = async function() {
     const noteBox = document.getElementById('chefNotes');
     const user = auth.currentUser;
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    if (!user || !noteBox || !currentRecipe) return;
+    
+    if (!user || !noteBox || !currentRecipe) return alert("Please log in to save notes.");
 
     try {
-        await setDoc(doc(db, "users", user.uid, "private_notes", currentRecipe.id), {
-            text: noteBox.value, updatedAt: serverTimestamp(), recipeName: currentRecipe.name
+        const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
+        await setDoc(noteRef, {
+            text: noteBox.value, 
+            updatedAt: serverTimestamp(), 
+            recipeName: currentRecipe.name
         });
+        
         const status = document.getElementById('saveStatus');
-        if(status) {
-            status.innerText = "Saved!";
-            setTimeout(() => status.innerText = "", 2000);
-        }
-    } catch (e) { alert("Error saving note"); }
+        if(status) { status.innerText = "Saved!"; setTimeout(() => status.innerText = "", 2000); }
+        
+    } catch (e) { alert("Error saving note."); }
 };
-
-// ==========================================
-// 6. FEED, COMMENTS & UTILS
-// ==========================================
-async function loadFamilyFeed() {
-    const feedList = document.getElementById('family-feed');
-    if (!feedList) return;
-    try {
-        const q = query(collection(db, "announcements"), orderBy("timestamp", "desc"), limit(3));
-        const snapshot = await getDocs(q);
-        if (snapshot.empty) { feedList.innerHTML = "<p style='color:#999;font-style:italic;'>No new announcements.</p>"; return; }
-        let html = "";
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const icon = data.type === "new_recipe" ? "🍳" : "📢";
-            html += `<div style="padding:10px;border-bottom:1px solid #eee;display:flex;gap:10px;align-items:center;"><div style="font-size:18px;">${icon}</div><div style="font-size:14px;color:#334155;">${data.message}</div></div>`;
-        });
-        feedList.innerHTML = html;
-    } catch (e) { console.error(e); }
-}
-
-function loadComments() {
-    const list = document.getElementById('commentsList');
-    if (!list) return;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    if (!currentRecipe) return;
-    const q = query(collection(db, "recipes", currentRecipe.id, "comments"), orderBy("timestamp", "asc"));
-    onSnapshot(q, (snap) => {
-        if(snap.empty){list.innerHTML='<p style="text-align:center;color:#999">No comments.</p>';return;}
-        let html='';
-        snap.forEach(d=>{
-            const dat=d.data(); 
-            const init=(dat.author||"G").charAt(0).toUpperCase();
-            html+=`<div style="display:flex;gap:10px;margin-bottom:10px;"><div style="background:#0a4d74;color:white;width:25px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;">${init}</div><div style="background:#f1f5f9;padding:8px;border-radius:8px;font-size:0.9rem;"><strong>${dat.author}:</strong> ${dat.text}</div></div>`;
-        });
-        list.innerHTML=html;
-    });
-}
-
-window.postComment = async function() {
-    const user = auth.currentUser;
-    if (!user) return alert("Log in first.");
-    const inp = document.getElementById('commentInput');
-    const val = inp.value.trim();
-    if(!val) return;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    await addDoc(collection(db, "recipes", currentRecipe.id, "comments"), {
-        text: val, author: user.displayName || user.email.split('@')[0], uid: user.uid, timestamp: serverTimestamp()
-    });
-    inp.value = "";
-}
-
-window.openShoppingModal = function() {
-    document.getElementById('shoppingModal').style.display = 'flex';
-    document.getElementById('shoppingModal').classList.remove('hidden');
-}
-window.closeShoppingModal = function() {
-    document.getElementById('shoppingModal').style.display = 'none';
-}
 
 function updateProfileIcon(name) {
     const iconEl = document.getElementById('header-profile-icon');
@@ -318,8 +332,49 @@ function resetProfileIcon() {
     if (iconEl) iconEl.src = `data:image/svg+xml;base64,${btoa(svg)}`;
 }
 
+// Helper Functions from before (Search/Filter) - Ensure these exist
+// I'll re-add them briefly here so you don't lose them
+function setupSearch() {
+    const openBtn = document.getElementById('header-search-btn');
+    const overlay = document.getElementById('search-overlay');
+    const closeBtn = document.getElementById('close-search');
+    const form = document.getElementById('search-form');
+    const input = document.getElementById('searchbar');
+
+    if (!openBtn) return;
+    openBtn.onclick = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
+    if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
+    if (form) form.onsubmit = (e) => {
+        e.preventDefault();
+        const term = input.value.toLowerCase().trim();
+        if (!term) return;
+        const filtered = allRecipes.filter(r => (r.n || "").toLowerCase().includes(term));
+        renderLocalList(filtered);
+        overlay.classList.add('hidden');
+        input.value = "";
+    }
+}
+
+function setupCategoryFilters() {
+    const buttons = document.querySelectorAll('.folders button');
+    buttons.forEach(btn => {
+        btn.onclick = () => {
+            const category = btn.innerText.replace("✓ ", "").trim();
+            if (btn.classList.contains('active-filter')) {
+                btn.classList.remove('active-filter');
+                renderLocalList(allRecipes);
+            } else {
+                buttons.forEach(b => b.classList.remove('active-filter'));
+                btn.classList.add('active-filter');
+                const filtered = allRecipes.filter(r => {
+                    const tags = r.t || [];
+                    return tags.includes(category); 
+                });
+                renderLocalList(filtered);
+            }
+        };
+    });
+}
+
 // Init
-setTimeout(() => {
-    setupSearch();
-    setupCategoryFilters();
-}, 500);
+setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);

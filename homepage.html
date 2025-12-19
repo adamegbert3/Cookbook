@@ -18,14 +18,14 @@
         </div>
 
         <div class="header-actions">
-            <a id="admin-btn" href="admin.html" class="admin-pill hidden" style="display:none;">👑 Admin</a>
+            <a id="admin-btn" href="admin.html" class="admin-pill">👑 Admin</a>
             
             <button id="header-search-btn" class="icon-btn" aria-label="Search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
 
             <a href="profile.html" class="profile-link" aria-label="My Profile">
-                <img id="header-profile-icon" alt="Profile" class="profile-img">
+                <img id="header-profile-icon" class="profile-img" alt="Profile">
             </a>
         </div>
     </div>
@@ -33,11 +33,11 @@
     <main>
         <div class="buzz-container">
             <div class="buzz-header">
-                <h2>📢 Family Buzz</h2>
-                <span style="font-size: 12px; color: #666;">Latest updates</span>
+                <h2>📢 Announcements</h2>
+                <span class="buzz-subtext">Latest updates</span>
             </div>
             <div id="family-feed">
-                <p style="color:#999; font-style:italic;">Listening for news...</p>
+                <p class="empty-feed">Loading...</p>
             </div>
         </div>
 
@@ -54,15 +54,13 @@
         </div>
 
         <div style="text-align: center; margin-bottom: 30px;">
-            <a href="submit.html" style="background: #0f172a; color: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; font-size: 0.9rem;">
-                + Add Your Own Recipe
-            </a>
+            <a href="submit.html" class="btn-dark">+ Add Your Own Recipe</a>
         </div>
 
         <div id="recent-recipes-box">
             <h3>🕰️ Pick up where you left off:</h3>
-            <div id="last-recipe-display">
-                <p>No recent history.</p>
+            <div id="last-recipe-display" style="margin-top: 15px;">
+                <p class="recent-placeholder">No recent history.</p>
             </div>
         </div>
 
@@ -77,9 +75,9 @@
                 <div class="day-card" data-day="Fri"><strong>Fri</strong><span id="plan-Fri">-</span></div>
                 <div class="day-card" data-day="Sat"><strong>Sat</strong><span id="plan-Sat">-</span></div>
             </div>
-            <div style="margin-top: 15px;">
-                <button onclick="clearMealPlan()" style="background: white; border: 1px solid #ef4444; color: #ef4444; padding: 5px 10px; border-radius: 6px; cursor: pointer;">🗑️ Clear</button>
-                <button onclick="openShoppingModal()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-weight: bold;">🛒 List</button>
+            <div class="menu-footer">
+                <button onclick="clearMealPlan()" class="pill-btn btn-red-outline">🗑️ Clear</button>
+                <button onclick="openShoppingModal()" class="pill-btn btn-teal">🛒 View List</button>
             </div>
         </div>
 
@@ -99,35 +97,44 @@
         <p id="notsigned" class="hidden" style="text-align:center; color:red; display:none;">Please sign in to view recipes.</p>
     </main>
 
-    <div id="shoppingModal" class="modal hidden" style="display:none;">
-        <div class="search-box-content" style="max-height: 80vh; overflow-y: auto;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div id="shoppingModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="shopping-header">
                 <h2>🛒 Your List</h2>
-                <button onclick="closeShoppingModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                <button onclick="closeShoppingModal()" class="close-btn">&times;</button>
             </div>
-            <div id="shopping-list-container">
-                <ul id="shopping-ul" style="list-style:none; padding:0; text-align:left;"></ul>
+            
+            <div id="shopping-status" class="shopping-status">Loading...</div>
+            
+            <div id="shopping-list-container" class="shopping-list-scroll hidden">
+                <ul id="shopping-ul" class="shopping-ul"></ul>
             </div>
-            <button onclick="generateFromPlan()" style="background:#3b82f6; color:white; padding:10px; border:none; border-radius:8px; width:100%; margin-top:10px;">🔄 Sync from Menu</button>
+            
+            <div class="shopping-actions">
+                <button onclick="generateFromPlan()" class="pill-btn btn-blue" style="flex:1;">🔄 Sync</button>
+                <button onclick="copyShoppingList()" class="pill-btn btn-slate">📋 Copy</button>
+            </div>
         </div>
     </div>
 
-    <div id="reviewInfoModal" class="modal hidden" style="display:none;">
-        <div class="search-box-content">
+    <div id="reviewInfoModal" class="modal hidden">
+        <div class="modal-content">
             <h3>About Our Recipes</h3>
             <p><strong>"Reviewed: ✅"</strong> means a human has tested this recipe.</p>
-            <button onclick="closeReviewModal()" style="background:#10b981; color:white; padding:10px; width:100%; border:none; border-radius:8px; margin-top:10px;">Got it!</button>
+            <button onclick="closeReviewModal()" class="pill-btn btn-teal" style="width:100%; margin-top:15px;">Got it!</button>
         </div>
     </div>
 
     <script>
-        // Inline Logic for Simple UI Restore
         const lastRecipe = JSON.parse(localStorage.getItem('lastRecipeSingle'));
         if (lastRecipe) {
-            document.getElementById('last-recipe-display').innerHTML = `<a href="recipe.html?id=${lastRecipe.id}" class="last-recipe-link">${lastRecipe.name} ➡️</a>`;
+            document.getElementById('last-recipe-display').innerHTML = `
+                <a href="recipe.html?id=${lastRecipe.id}" class="btn-dark" style="display:inline-flex; align-items:center; gap:8px;">
+                    ${lastRecipe.name} ➡️
+                </a>`;
         }
-        function openReviewModal() { document.getElementById('reviewInfoModal').style.display = 'flex'; }
-        function closeReviewModal() { document.getElementById('reviewInfoModal').style.display = 'none'; }
+        function openReviewModal() { document.getElementById('reviewInfoModal').classList.remove('hidden'); }
+        function closeReviewModal() { document.getElementById('reviewInfoModal').classList.add('hidden'); }
     </script>
 </body>
 </html>
