@@ -2,54 +2,78 @@
 // 1. IMPORTS & SETUP
 // ==========================================
 import { db, auth } from './firebase-config.js'; 
-import { collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, serverTimestamp, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { 
+    collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, 
+    serverTimestamp, arrayUnion, arrayRemove, query, orderBy, limit, onSnapshot 
+} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 let allRecipes = []; 
-const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
+let userFavorites = []; 
+const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; // ⚠️ PASTE YOUR ID HERE
 
-console.log("✅ MAIN.JS LOADED - v14.0 (CSS Classes Refactor)");
+console.log("✅ MAIN.JS LOADED - v18.0 (Safety Checks Added)");
 
+// ==========================================
+// 2. AUTH & STARTUP
+// ==========================================
 onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        document.getElementById("notsigned").classList.add('hidden');
-        document.getElementById('recipes').style.display = 'grid';
+    // Define elements safely
+    const notSignedMsg = document.getElementById("notsigned");
+    const recipeGrid = document.getElementById('recipes');
+    const adminBtn = document.getElementById('admin-btn');
 
-        if (user.uid === MY_ADMIN_ID) {
-            document.getElementById('admin-btn').classList.add('visible');
+    if (user) {
+        // 1. UI Updates (Only if elements exist)
+        if (notSignedMsg) notSignedMsg.classList.add('hidden');
+        if (recipeGrid) recipeGrid.style.display = 'grid';
+        if (user.uid === MY_ADMIN_ID && adminBtn) {
+            adminBtn.classList.add('visible');
         }
         
-        loadAllRecipes(); 
-        
+        // 2. Load User Data (Favorites & Profile)
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
             let userName = user.displayName || user.email.split('@')[0];
-            if (userSnap.exists() && userSnap.data().Name) { userName = userSnap.data().Name; }
+            
+            if (userSnap.exists()) {
+                userName = userSnap.data().Name || userName;
+                userFavorites = userSnap.data().favorites || []; 
+            }
             updateProfileIcon(userName); 
-        } catch (err) { console.error(err); }
+        } catch (err) { console.error("Profile Error:", err); }
+
+        // 3. Load Content
+        loadAllRecipes(); 
         
+        // Page Specific Loaders (Check if elements exist first)
         if (document.getElementById('family-feed')) loadFamilyFeed();
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('plan-Mon')) loadMealPlan();
         if (document.getElementById('chefNotes')) loadUserNote();
 
     } else {
+        // Guest Handling
+        // If on a "Private" page (like Recipe View), kick them out
         if (document.getElementById('chefNotes')) {
-            window.location.href = "homepage.html";
+            window.location.href = "index.html"; // Go to Login
             return;
         }
-        document.getElementById("notsigned").classList.remove('hidden');
-        document.getElementById('recipes').style.display = 'none';
+
+        // If on Homepage, show "Not Signed In" message
+        if (notSignedMsg) notSignedMsg.classList.remove('hidden');
+        if (recipeGrid) recipeGrid.style.display = 'none';
+        
         resetProfileIcon();
     }
 });
 
 // ==========================================
-// 2. RECIPE LOADER & COLORS
+// 3. RECIPE LOADER
 // ==========================================
 async function loadAllRecipes() {
     const container = document.getElementById('recipes');
-    if(!container) return; 
+    if(!container) return; // Stop if not on homepage
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Opening Cookbook...</p>';
 
@@ -64,25 +88,25 @@ async function loadAllRecipes() {
         } else {
             container.innerHTML = "<p style='text-align:center;'>Index missing.</p>";
         }
-    } catch (e) { container.innerHTML = "<p>Error loading.</p>"; }
+    } catch (e) { container.innerHTML = "<p>Error loading recipes.</p>"; }
 }
 
 function getCategoryClass(category) {
     if (!category) return ''; 
     const cat = category.toLowerCase();
-    
     if (cat.includes('appetizer')) return 'border-blue';
     if (cat.includes('bread')) return 'border-green';
     if (cat.includes('dessert')) return 'border-yellow';
     if (cat.includes('main')) return 'border-red';
     if (cat.includes('soup') || cat.includes('salad')) return 'border-purple';
     if (cat.includes('breakfast')) return 'border-orange';
-    
-    return ''; // Default Teal
+    return ''; 
 }
 
 function renderLocalList(list) {
     const container = document.getElementById('recipes');
+    if(!container) return;
+
     container.innerHTML = "";
     list.sort((a, b) => a.n.localeCompare(b.n));
 
@@ -90,10 +114,13 @@ function renderLocalList(list) {
     list.forEach(item => {
         const cat = item.c || (item.t && item.t[0]) || ""; 
         const colorClass = getCategoryClass(cat);
+        const isFav = userFavorites.includes(item.id);
+        const heartIcon = isFav ? "❤️" : "🤍";
 
         html += `
         <div class="recipe-card ${colorClass}" onclick="goToRecipe('${item.id}', '${item.n.replace(/'/g, "\\'")}')">
             <div class="status-badge">${item.r ? "✅" : ""}</div>
+            <button class="card-heart" onclick="toggleHeart(event, '${item.id}')">${heartIcon}</button>
             <div class="card-content">
                 <h2>${item.n}</h2>
                 <div class="recipe-author">From: ${item.a}</div>
@@ -112,8 +139,29 @@ window.goToRecipe = function(id, name) {
     window.location.href = `recipe.html?id=${id}`;
 };
 
+window.toggleHeart = async function(event, recipeId) {
+    event.stopPropagation(); 
+    const user = auth.currentUser;
+    if (!user) return alert("Log in to favorite!");
+    
+    const btn = event.currentTarget;
+    const userRef = doc(db, "users", user.uid);
+
+    try {
+        if (userFavorites.includes(recipeId)) {
+            btn.innerText = "🤍";
+            userFavorites = userFavorites.filter(id => id !== recipeId);
+            await updateDoc(userRef, { favorites: arrayRemove(recipeId) });
+        } else {
+            btn.innerText = "❤️";
+            userFavorites.push(recipeId);
+            await updateDoc(userRef, { favorites: arrayUnion(recipeId) });
+        }
+    } catch (e) { console.error("Heart Error:", e); }
+};
+
 // ==========================================
-// 3. ANNOUNCEMENTS & COMMENTS (CSS CLASSES)
+// 4. ANNOUNCEMENTS & COMMENTS
 // ==========================================
 async function loadFamilyFeed() {
     const feedList = document.getElementById('family-feed');
@@ -202,7 +250,7 @@ window.postComment = async function() {
 }
 
 // ==========================================
-// 4. SHOPPING & MEAL PLAN (CSS CLASSES)
+// 5. SHOPPING & MEAL PLAN
 // ==========================================
 window.openShoppingModal = function() {
     const modal = document.getElementById('shoppingModal');
@@ -219,7 +267,8 @@ window.generateFromPlan = async function() {
     const listEl = document.getElementById('shopping-ul');
     const status = document.getElementById('shopping-status');
     const container = document.getElementById('shopping-list-container');
-    
+    if(!listEl) return;
+
     const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
     const recipeNames = Object.values(plan);
 
@@ -240,12 +289,10 @@ window.generateFromPlan = async function() {
         snap.forEach(doc => {
             const data = doc.data();
             if (recipeNames.includes(data.name)) {
-                // Header
                 listEl.innerHTML += `<li class="shop-header">${data.name}</li>`;
                 const ings = data.ingredients || data.recipeIngredient || [];
                 if(Array.isArray(ings)) {
-                    ings.forEach((i, idx) => {
-                        // Interactive Item
+                    ings.forEach((i) => {
                         listEl.innerHTML += `
                         <li class="shop-item" onclick="this.classList.toggle('checked')">
                             <div class="check-box">✓</div>
@@ -281,7 +328,7 @@ window.clearMealPlan = function() {
 }
 
 // ==========================================
-// 5. NOTES & UTILS
+// 6. NOTES & UTILS
 // ==========================================
 async function loadUserNote() {
     const noteBox = document.getElementById('chefNotes');
@@ -301,20 +348,12 @@ window.saveNote = async function() {
     const noteBox = document.getElementById('chefNotes');
     const user = auth.currentUser;
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    
     if (!user || !noteBox || !currentRecipe) return alert("Please log in to save notes.");
-
     try {
         const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
-        await setDoc(noteRef, {
-            text: noteBox.value, 
-            updatedAt: serverTimestamp(), 
-            recipeName: currentRecipe.name
-        });
-        
+        await setDoc(noteRef, { text: noteBox.value, updatedAt: serverTimestamp(), recipeName: currentRecipe.name });
         const status = document.getElementById('saveStatus');
         if(status) { status.innerText = "Saved!"; setTimeout(() => status.innerText = "", 2000); }
-        
     } catch (e) { alert("Error saving note."); }
 };
 
@@ -328,19 +367,18 @@ function updateProfileIcon(name) {
 
 function resetProfileIcon() {
     const iconEl = document.getElementById('header-profile-icon');
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#cbd5e1" /><path d="M20 20a8 8 0 100-16 8 8 0 000 16zm0 4c-5.33 0-16 2.67-16 8v4h32v-4c0-5.33-10.67-8-16-8z" fill="white"/></svg>`;
-    if (iconEl) iconEl.src = `data:image/svg+xml;base64,${btoa(svg)}`;
+    if (iconEl) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#cbd5e1" /><path d="M20 20a8 8 0 100-16 8 8 0 000 16zm0 4c-5.33 0-16 2.67-16 8v4h32v-4c0-5.33-10.67-8-16-8z" fill="white"/></svg>`;
+        iconEl.src = `data:image/svg+xml;base64,${btoa(svg)}`;
+    }
 }
 
-// Helper Functions from before (Search/Filter) - Ensure these exist
-// I'll re-add them briefly here so you don't lose them
 function setupSearch() {
     const openBtn = document.getElementById('header-search-btn');
     const overlay = document.getElementById('search-overlay');
     const closeBtn = document.getElementById('close-search');
     const form = document.getElementById('search-form');
     const input = document.getElementById('searchbar');
-
     if (!openBtn) return;
     openBtn.onclick = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
     if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
@@ -376,5 +414,4 @@ function setupCategoryFilters() {
     });
 }
 
-// Init
 setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);

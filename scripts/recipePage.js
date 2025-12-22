@@ -1,5 +1,5 @@
-import { db } from './firebase-config.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { db, auth } from './firebase-config.js';
+import { doc, getDoc, addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -30,12 +30,10 @@ async function loadRecipe() {
 
         if (docSnap.exists()) {
             const fullData = { id: recipeId, ...docSnap.data() };
-            // Update storage with fresh data
             localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
             renderRecipeHTML(fullData);
-            loadCookStats(); // Load "Times Cooked"
+            loadCookStats(); 
         } else {
-            // Fallback to local if DB fails
             if(localData && localData.id === recipeId) {
                 renderRecipeHTML(localData);
             } else {
@@ -52,7 +50,6 @@ function renderRecipeHTML(recipe) {
     const instructions = recipe.instructions || recipe.recipeInstructions || ""; 
     const author = recipe.author || recipe.a || "Family";
 
-    // Build Ingredients List
     let ingHtml = "";
     if (Array.isArray(ingredients)) {
         ingHtml = ingredients.map(i => `<li>${i}</li>`).join("");
@@ -60,7 +57,6 @@ function renderRecipeHTML(recipe) {
         ingHtml = `<pre>${ingredients}</pre>`;
     }
 
-    // Build Instructions List
     let instHtml = "";
     if (Array.isArray(instructions)) {
         instHtml = `<ol id="normal-instructions">${instructions.map(s => `<li class="instruction-step">${s}</li>`).join("")}</ol>`;
@@ -68,7 +64,6 @@ function renderRecipeHTML(recipe) {
         instHtml = `<p style="white-space: pre-wrap;">${instructions}</p>`;
     }
 
-    // INJECT HTML (Using New CSS Classes)
     recipeContainer.innerHTML = `
         <h1 class="recipe-title-lg">${recipe.name || recipe.n}</h1>
         <h2 class="recipe-chef">From: ${author}</h2>
@@ -87,8 +82,6 @@ function renderRecipeHTML(recipe) {
         </div>
     `;
 
-    // ENABLE CLICK-TO-CROSS-OUT
-    // We wait 100ms to ensure HTML is injected before attaching listeners
     setTimeout(() => {
         document.querySelectorAll('#ingredient-list li').forEach(li => {
             li.addEventListener('click', function() { this.classList.toggle('checked'); });
@@ -98,15 +91,13 @@ function renderRecipeHTML(recipe) {
         });
     }, 100);
 
-    // Save history for Homepage "Pick Up"
     localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: recipeId }));
 }
 
 // ==========================================
-// 2. KITCHEN TOOLS (Attached to Window)
+// 2. KITCHEN TOOLS
 // ==========================================
 
-// COOK MODE (Screen Wake Lock)
 let wakeLock = null;
 window.toggleCookMode = async function() {
     const btn = document.getElementById('cookModeBtn');
@@ -124,23 +115,19 @@ window.toggleCookMode = async function() {
     }
 }
 
-// TEXT RESIZER
 let currentSize = 16;
 window.resizeText = function(change) {
     currentSize += change;
-    if (currentSize < 12) currentSize = 12; // Min limit
-    if (currentSize > 30) currentSize = 30; // Max limit
-    
+    if (currentSize < 12) currentSize = 12; 
+    if (currentSize > 30) currentSize = 30; 
     const elements = document.querySelectorAll('#ingredient-list li, #instructions-container li, #instructions-container p');
     elements.forEach(el => el.style.fontSize = currentSize + 'px');
 }
 
-// SAVE OFFLINE
 window.saveRecipeOffline = function() {
     alert("Page saved to browser cache!");
 }
 
-// MEAL PLAN MODAL
 window.addToMealPlan = function() {
     const modal = document.getElementById('plannerModal');
     if(modal) {
@@ -166,7 +153,6 @@ window.confirmAddToPlan = function() {
     closePlannerModal();
 }
 
-// COOK COUNTER
 function loadCookStats() {
     const count = localStorage.getItem(`cook-${recipeId}`) || 0;
     const el = document.getElementById('cook-counter');
@@ -182,6 +168,41 @@ window.recordCook = function() {
     // Confetti effect (simple fallback)
     const btn = document.querySelector('.celebration-area button');
     if(btn) btn.innerText = "🎉 Yay!";
+}
+
+// ==========================================
+// 3. REPORTING LOGIC (THE FIX)
+// ==========================================
+window.submitReport = async function() {
+    const reason = document.getElementById('report-reason').value.trim();
+    if(!reason) return alert("Please describe the issue.");
+    
+    const current = JSON.parse(localStorage.getItem("currentRecipeData"));
+    if(!current) return alert("Error finding recipe data.");
+    
+    const user = auth.currentUser;
+
+    try {
+        await addDoc(collection(db, "recipe_reports"), {
+            recipeId: current.id,
+            recipeName: current.name || current.n,
+            issue: reason,
+            reporter: user ? (user.displayName || user.email) : "Guest",
+            uid: user ? user.uid : "anonymous",
+            timestamp: serverTimestamp()
+        });
+        
+        alert("Report sent! We will take a look.");
+        document.getElementById('report-reason').value = "";
+        
+        // Use the modal close function from your HTML
+        if(window.closeReportModal) window.closeReportModal();
+        else document.getElementById('report-modal').classList.add('hidden');
+        
+    } catch(e) {
+        console.error("Report Error:", e);
+        alert("Error sending report.");
+    }
 }
 
 // Start
