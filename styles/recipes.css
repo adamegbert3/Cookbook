@@ -11,7 +11,6 @@
     --bg-body: #f8fafc;       
     --bg-card: #ffffff;
     --border: #e2e8f0;
-
     --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
     --shadow-hover: 0 4px 6px -1px rgba(0,0,0,0.1);
 }
@@ -27,7 +26,6 @@ body {
     line-height: 1.6;
 }
 
-/* GLOBAL TYPOGRAPHY */
 h1, h2, h3, h4 {
     font-family: 'Amatic SC', cursive;
     font-weight: 700;
@@ -36,101 +34,67 @@ h1, h2, h3, h4 {
     line-height: 1.2;
 }
 
-main {
-    max-width: 1000px;
-    margin: 0 auto;
-    padding: 0 15px;
-}
+main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 
 /* ==========================================================================
    2. HEADER
    ========================================================================== */
 .header-container {
-    background: white;
-    padding: 10px 15px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between; 
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    position: sticky; top: 0; z-index: 100;
-    height: 60px;
-    margin-bottom: 20px;
+    background: white; padding: 10px 15px; display: flex; align-items: center;
+    justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    position: sticky; top: 0; z-index: 100; height: 60px; margin-bottom: 20px;
 }
-
 .logo-area { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .logo-img { height: 40px; width: auto; }
-
-.header-title h1 {
-    font-size: 1.8rem;
-    margin: 0;
-    white-space: nowrap; 
-}
-
+.header-title h1 { font-size: 1.8rem; margin: 0; white-space: nowrap; }
 .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-
 .icon-btn {
     background: #f1f5f9; border: none; padding: 8px; border-radius: 50%;
     cursor: pointer; color: var(--primary); transition: background 0.2s;
     display: flex; align-items: center; justify-content: center;
 }
 .icon-btn:hover { background: var(--accent-teal); color: white; }
-
-.profile-img {
-    width: 32px; height: 32px; border-radius: 50%;
-    border: 2px solid var(--accent-teal); object-fit: cover;
-}
-
+.profile-img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--accent-teal); object-fit: cover; }
 .admin-pill {
     background: var(--primary); color: #fbbf24; padding: 4px 12px;
     border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-decoration: none;
-    display: none; /* Hidden by default, JS shows it */
+    display: none;
 }
 .admin-pill.visible { display: inline-block; }
 
 /* ==========================================================================
-   3. RECIPE CARDS & COLORS
+   3. RECIPE CARDS (With Hearts!)
    ========================================================================== */
 #recipes {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
-    gap: 15px;
-    margin-top: 20px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+    gap: 15px; margin-top: 20px;
 }
-
 .recipe-card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 15px;
-    position: relative;
-    box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease;
-    display: flex; 
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100%;
-    min-height: 140px;
-    border-left: 4px solid var(--accent-teal); /* Default Color */
-    cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    padding: 15px; position: relative; box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease; display: flex; flex-direction: column;
+    justify-content: space-between; height: 100%; min-height: 140px;
+    border-left: 4px solid var(--accent-teal); cursor: pointer;
 }
-
-.recipe-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
-
-.recipe-card h2 { font-size: 1.6rem; margin: 0 0 5px 0; }
+.recipe-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
+.recipe-card h2 { font-size: 1.6rem; margin: 15px 0 5px 0; } /* Added top margin for Heart space */
 .recipe-author { font-family: 'Inter', sans-serif; font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
-
 .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
 .tag-pill {
     background: #f1f5f9; color: #475569; font-size: 0.65rem;
     padding: 2px 6px; border-radius: 4px; font-weight: 600; font-family: 'Inter', sans-serif;
 }
 
-.status-badge { position: absolute; top: 10px; right: 10px; font-size: 0.8rem; }
+/* Badges & Icons */
+.status-badge { position: absolute; top: 10px; left: 10px; font-size: 0.8rem; }
+.card-heart {
+    position: absolute; top: 10px; right: 10px;
+    background: transparent; border: none; font-size: 1.2rem; cursor: pointer;
+    transition: transform 0.2s; z-index: 10;
+}
+.card-heart:hover { transform: scale(1.2); }
 
-/* --- CARD COLORS (Controlled by JS Classes) --- */
+/* Card Colors */
 .border-blue { border-left-color: #3b82f6 !important; }
 .border-green { border-left-color: #10b981 !important; }
 .border-yellow { border-left-color: #eab308 !important; }
@@ -150,7 +114,6 @@ main {
 .buzz-header h2 { margin: 0; font-size: 1.6rem; color: var(--accent-teal); }
 .buzz-subtext { font-size: 12px; color: #666; font-family: 'Inter', sans-serif; }
 
-/* Categories */
 .folders { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 20px 0; }
 .folders button {
     background: white; border: 1px solid var(--border); color: var(--primary);
@@ -161,14 +124,12 @@ main {
     background: var(--primary); color: white; border-color: var(--primary);
 }
 
-/* Menu Boxes */
 #meal-plan-box, #recent-recipes-box {
     background: white; border-radius: 12px; padding: 20px;
     margin: 20px auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
     text-align: center;
 }
 #meal-plan-box h3, #recent-recipes-box h3 { margin-top: 0; color: var(--accent-teal); }
-
 .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 15px 0; }
 .day-card {
     background: #f8fafc; border: 1px solid var(--border);
@@ -176,8 +137,6 @@ main {
     font-size: 0.75rem; display: flex; flex-direction: column; justify-content: center;
 }
 .day-card strong { color: var(--accent-teal); margin-bottom: 3px; display: block; font-family: 'Inter', sans-serif;}
-.day-card.active { background-color: #f0fdf4; border-color: #10b981; }
-
 .menu-footer { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
 .recent-placeholder { color: #666; font-style: italic; }
 
@@ -194,7 +153,6 @@ main {
 .pill-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
 .pill-btn:active { transform: scale(0.95); }
 
-/* Theme Colors */
 .btn-teal { background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%); }
 .btn-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
 .btn-blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
@@ -202,63 +160,69 @@ main {
 .btn-red-outline { background: white; color: #ef4444; border: 1px solid #ef4444; }
 .btn-dark { background: var(--primary); color: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; display: inline-block; }
 
-.cook-mode-active {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
-    animation: pulse 2s infinite;
+/* ==========================================================================
+   6. LOGIN & SUBMIT PAGES (RESTORED BACKBONE)
+   ========================================================================== */
+.login-page {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 20px; background-color: var(--bg-body);
 }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+.login-card {
+    background: white; width: 100%; max-width: 500px; padding: 40px;
+    border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+    border: 1px solid var(--border); text-align: center;
+}
+.login-header { margin-bottom: 30px; }
+.login-header h1 { font-size: 3rem; margin: 0; }
+.subtitle { color: #64748b; font-size: 0.9rem; margin-top: 5px; font-family: 'Inter'; }
+
+.input-group { text-align: left; margin-bottom: 20px; }
+.input-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--primary); margin-bottom: 8px; font-family: 'Inter'; }
+
+.form-input {
+    width: 100%; padding: 12px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 16px; font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s;
+}
+.form-input:focus { outline: none; border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
+textarea.form-input { resize: vertical; min-height: 100px; }
+.auth-link { color: var(--accent-teal); text-decoration: none; font-weight: 600; font-size: 0.9rem; font-family: 'Inter'; }
+.auth-link:hover { text-decoration: underline; }
 
 /* ==========================================================================
-   6. MODALS & OVERLAYS
+   7. MODALS, SEARCH & MOBILE
    ========================================================================== */
 .hidden { display: none !important; }
-
 #search-overlay, .modal {
-    position: fixed; inset: 0;
-    background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(4px); 
-    display: flex; align-items: center; justify-content: center; z-index: 9999;
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999;
 }
-
 .modal-content, .search-box-content {
     background: white; padding: 30px; border-radius: 16px; width: 90%; max-width: 400px;
     text-align: center; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
 }
-
-/* Search */
 #search-form { display: flex; gap: 10px; margin-top: 20px; }
 #searchbar { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
 #search-submit { background: var(--accent-teal); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer;}
-#close-search { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+#close-search, .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
 
-/* Shopping Modal Specifics */
+/* Shopping Modal */
 .shopping-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .shopping-list-scroll { max-height: 60vh; overflow-y: auto; text-align: left; margin-bottom: 20px; }
 .shopping-ul { list-style: none; padding: 0; margin: 0; }
-.shopping-actions { display: flex; gap: 10px; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px; }
-.shopping-status { color: #666; font-style: italic; margin: 20px 0; }
-
-/* ==========================================================================
-   7. DYNAMIC JS CONTENT CLASSES (NEW SECTION!)
-   ========================================================================== */
-/* Announcements */
-.announce-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; gap: 10px; align-items: center; text-align: left; }
-.announce-icon { font-size: 18px; }
-.announce-text { font-size: 14px; color: #334155; }
-.empty-feed { color: #999; font-style: italic; }
-
-/* Shopping List Items */
 .shop-header { font-weight: 700; margin-top: 15px; color: var(--accent-teal); border-bottom: 2px solid #f1f5f9; padding-bottom: 5px; }
 .shop-item { padding: 8px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 12px; }
 .shop-item:hover { background-color: #f8fafc; }
 .check-box { width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; }
 .shop-text { font-size: 15px; color: var(--primary); }
-
-/* Checked State */
 .shop-item.checked .check-box { background-color: var(--success); border-color: var(--success); }
 .shop-item.checked .shop-text { text-decoration: line-through; color: #cbd5e1; }
 
-/* Comments */
+/* Announcement & Comment Classes */
+.announce-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; gap: 10px; align-items: center; text-align: left; }
+.announce-icon { font-size: 18px; }
+.announce-text { font-size: 14px; color: #334155; }
+.empty-feed { color: #999; font-style: italic; }
 .comment-row { display: flex; gap: 10px; margin-bottom: 15px; }
 .comment-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0; background: var(--primary); color: white; }
 .comment-bubble { background: #f1f5f9; padding: 10px 14px; border-radius: 0 12px 12px 12px; flex: 1; text-align: left; }
@@ -267,7 +231,7 @@ main {
 .delete-icon { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; font-size: 14px; }
 .delete-icon:hover { opacity: 1; color: var(--danger); }
 
-/* Recipe Page Details */
+/* Recipe Page */
 .recipe-title-lg { text-align: center; font-size: 3rem; margin-bottom: 5px; color: var(--primary); }
 .recipe-chef { text-align: center; color: #64748b; font-size: 1rem; margin-top: 0; font-style: italic; }
 .recipe-divider { border: 0; border-top: 1px solid var(--border); margin: 30px 0; }
@@ -276,9 +240,8 @@ main {
 .instruction-step:hover { background: #f8fafc; }
 .instruction-step.checked { opacity: 0.5; text-decoration: line-through; }
 
-/* Mobile */
 @media (max-width: 600px) {
-    .header-title h1 { display: block; font-size: 1.4rem; } /* Ensure title visible */
+    .header-title h1 { display: block; font-size: 1.4rem; }
     .header-container { padding: 10px; }
     .week-grid { grid-template-columns: repeat(3, 1fr); }
     .day-card:last-child { grid-column: span 3; }

@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login | Cookbook</title>
+    <title>Login</title>
     <link rel="stylesheet" href="styles/recipes.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="login-page">
-
     <div class="login-card">
         <div class="login-header">
             <img src="images/logo.jpg" style="height: 60px; margin-bottom: 10px;">
@@ -21,20 +20,14 @@
                 <label>Email Address</label>
                 <input type="email" id="email" class="form-input" placeholder="you@example.com" required>
             </div>
-
             <div class="input-group">
                 <label>Password</label>
                 <input type="password" id="password" class="form-input" placeholder="••••••••" required>
             </div>
-
             <button type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center; margin-top: 10px;">
                 Sign In
             </button>
         </form>
-
-        <div style="margin-top: 20px; font-size: 0.9rem; color: #64748b;">
-            <p>Don't have an account? <a href="#" class="auth-link">Ask the Admin</a></p>
-        </div>
     </div>
 
     <script type="module">
@@ -45,7 +38,6 @@
             e.preventDefault();
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
-            
             signInWithEmailAndPassword(auth, email, pass)
                 .then(() => window.location.href = "homepage.html")
                 .catch((error) => alert("Login Failed: " + error.message));

@@ -8,19 +8,17 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
 </head>
 <body class="login-page">
-
     <div class="login-card" style="max-width: 700px; text-align: left;">
         <div class="login-header" style="text-align: center;">
             <h1>Contribute a Recipe</h1>
-            <p class="subtitle">Share your masterpiece! We will review it and add it to the cookbook.</p>
+            <p class="subtitle">Share your masterpiece!</p>
         </div>
 
         <form id="submitForm">
-            
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div class="input-group">
                     <label>Recipe Title</label>
-                    <input type="text" id="title" class="form-input" placeholder="e.g. Grandma's Apple Pie" required>
+                    <input type="text" id="title" class="form-input" placeholder="e.g. Grandma's Pie" required>
                 </div>
                 <div class="input-group">
                     <label>From (Chef)</label>
@@ -29,13 +27,13 @@
             </div>
 
             <div class="input-group">
-                <label>Ingredients (Put each on a new line)</label>
-                <textarea id="ingredients" class="form-input" rows="5" placeholder="2 Cups Flour&#10;1 tsp Salt&#10;3 Apples" required></textarea>
+                <label>Ingredients (New line for each)</label>
+                <textarea id="ingredients" class="form-input" rows="5" placeholder="2 Cups Flour&#10;1 tsp Salt" required></textarea>
             </div>
 
             <div class="input-group">
-                <label>Instructions (Put each step on a new line)</label>
-                <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix flour..." required></textarea>
+                <label>Instructions (New line for each)</label>
+                <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix..." required></textarea>
             </div>
 
             <div class="input-group">
@@ -48,6 +46,7 @@
                     <option value="Breads & Rolls">Breads & Rolls</option>
                     <option value="Soups & Salads">Soups & Salads</option>
                     <option value="Sides, Veggies & Breads">Sides & Veggies</option>
+                    <option value="Dutch Oven">Dutch Oven</option>
                     <option value="Miscellaneous">Miscellaneous</option>
                 </select>
             </div>
@@ -58,12 +57,11 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="pill-btn btn-teal" style="flex: 1; justify-content: center;">Submit for Review</button>
+                <button type="submit" class="pill-btn btn-teal" style="flex: 1; justify-content: center;">Submit</button>
                 <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none;">Cancel</a>
             </div>
         </form>
     </div>
-
     <script type="module" src="scripts/submit.js"></script>
 </body>
 </html>
