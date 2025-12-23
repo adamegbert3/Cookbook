@@ -327,10 +327,19 @@ function renderUnreviewed(recipes) {
 }
 
 // D. RECIPE MANAGER
+// --- CONFIGURATION ---
 const VALID_CATEGORIES = [
-    "Appetizers & Snacks", "Breakfast", "Desserts", "Main Dishes", 
-    "Miscellaneous", "Sauces, Dressings & Marinades", 
-    "Sides, Veggies & Breads", "Soups & Salads", "Dutch Oven"
+    "Appetizers & Snacks",
+    "Breads & Rolls",
+    "Breakfast",
+    "Desserts",
+    "Dutch Oven",
+    "Main Dishes",
+    "Miscellaneous",
+    "Sauces, Dressings & Marinades",
+    "Sides, Veggies & Breads",
+    "Soups & Salads",
+    "Vegetables & Sides" 
 ];
 
 function renderRecipeManager(recipes) {
