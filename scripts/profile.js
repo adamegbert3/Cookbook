@@ -88,6 +88,9 @@ function ProfileCardTemplate(id, recipe) {
 
     return `
     <div class="recipe-card" onclick="goToRecipe('${id}', '${safeData}')" style="cursor:pointer; width: 250px; min-height: 200px;">
+    <div class="status-badge" style="position: absolute; top: 10px; left: 10px;">
+    ${(recipe.reviewed === true || recipe.r === true) ? "✅" : ""}
+</div>
         <div style="position: absolute; top: 10px; right: 10px; font-size: 20px;">❤️</div>
         <h2 style="font-size: 1.5rem; margin-top: 30px;">${recipe.name}</h2>
         <p style="color: #666; font-size: 14px;">From: ${recipe.author || "Family"}</p>
