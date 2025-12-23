@@ -33,6 +33,10 @@ async function loadRecipe() {
             localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
             renderRecipeHTML(fullData);
             loadCookStats(); 
+            
+            // 🚨 NEW: Tell the database we viewed this!
+            logViewToDatabase(fullData);
+
         } else {
             if(localData && localData.id === recipeId) {
                 renderRecipeHTML(localData);
@@ -43,25 +47,67 @@ async function loadRecipe() {
     } catch (error) { console.error(error); }
 }
 
+// 🚨 UPDATED: Log View with Real Name
+async function logViewToDatabase(recipeData) {
+    // 1. Check duplicate views
+    const sessionKey = `viewed-${recipeData.id}`;
+    if (sessionStorage.getItem(sessionKey)) return; 
+
+    try {
+        const user = auth.currentUser;
+        let viewerName = "Guest";
+
+        if (user) {
+            // Start with a fallback (Email)
+            viewerName = user.email ? user.email.split('@')[0] : "Family Member";
+
+            // 2. FETCH REAL NAME from Database (The Fix!)
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists() && userDoc.data().Name) {
+                    viewerName = userDoc.data().Name; // Use "Aunt Sally" instead of "sally@gmail"
+                }
+            } catch (err) {
+                console.log("Could not fetch profile name, using email.");
+            }
+        }
+
+        // 3. Send to Database
+        await addDoc(collection(db, "recipe_views"), {
+            recipeId: recipeData.id,
+            recipeTitle: recipeData.name || recipeData.n,
+            timestamp: serverTimestamp(),
+            viewer: viewerName // Now saves the real name!
+        });
+
+        sessionStorage.setItem(sessionKey, "true");
+        console.log(`View logged for ${viewerName}!`);
+        
+    } catch (e) {
+        console.error("Could not log view:", e);
+    }
+}
+
 function renderRecipeHTML(recipe) {
     const recipeContainer = document.getElementById("recipe");
     
-    const ingredients = recipe.ingredients || recipe.recipeIngredient || [];
-    const instructions = recipe.instructions || recipe.recipeInstructions || ""; 
+    // Smart find for ingredients/instructions
+    const rawIng = recipe.ingredients || recipe.recipeIngredient;
+    const rawInst = recipe.instructions || recipe.recipeInstructions;
     const author = recipe.author || recipe.a || "Family";
 
     let ingHtml = "";
-    if (Array.isArray(ingredients)) {
-        ingHtml = ingredients.map(i => `<li>${i}</li>`).join("");
-    } else {
-        ingHtml = `<pre>${ingredients}</pre>`;
+    if (Array.isArray(rawIng)) {
+        ingHtml = rawIng.map(i => `<li>${i}</li>`).join("");
+    } else if (typeof rawIng === 'string') {
+        ingHtml = `<pre>${rawIng}</pre>`;
     }
 
     let instHtml = "";
-    if (Array.isArray(instructions)) {
-        instHtml = `<ol id="normal-instructions">${instructions.map(s => `<li class="instruction-step">${s}</li>`).join("")}</ol>`;
-    } else {
-        instHtml = `<p style="white-space: pre-wrap;">${instructions}</p>`;
+    if (Array.isArray(rawInst)) {
+        instHtml = `<ol id="normal-instructions">${rawInst.map(s => `<li class="instruction-step">${s}</li>`).join("")}</ol>`;
+    } else if (typeof rawInst === 'string') {
+        instHtml = `<p style="white-space: pre-wrap;">${rawInst}</p>`;
     }
 
     recipeContainer.innerHTML = `
@@ -159,19 +205,34 @@ function loadCookStats() {
     if(el) el.innerHTML = count > 0 ? `You've cooked this <b>${count}</b> times!` : "You haven't cooked this yet.";
 }
 
-window.recordCook = function() {
+// 🚨 UPDATED FUNCTION: Record Cook (Sends to DB)
+window.recordCook = async function() {
+    // 1. Local Update (Instant Feedback)
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
     localStorage.setItem(`cook-${recipeId}`, count);
     loadCookStats();
     
-    // Confetti effect (simple fallback)
+    // Confetti
     const btn = document.querySelector('.celebration-area button');
     if(btn) btn.innerText = "🎉 Yay!";
+
+    // 2. Database Update (For Admin Panel)
+    try {
+        const user = auth.currentUser;
+        await addDoc(collection(db, "global_cooks"), {
+            recipeId: recipeId,
+            timestamp: serverTimestamp(),
+            chef: user ? (user.displayName || "Family Member") : "Guest"
+        });
+        console.log("Cook recorded to DB!");
+    } catch (e) {
+        console.error("Could not record cook to DB:", e);
+    }
 }
 
 // ==========================================
-// 3. REPORTING LOGIC (THE FIX)
+// 3. REPORTING LOGIC
 // ==========================================
 window.submitReport = async function() {
     const reason = document.getElementById('report-reason').value.trim();
@@ -195,7 +256,6 @@ window.submitReport = async function() {
         alert("Report sent! We will take a look.");
         document.getElementById('report-reason').value = "";
         
-        // Use the modal close function from your HTML
         if(window.closeReportModal) window.closeReportModal();
         else document.getElementById('report-modal').classList.add('hidden');
         

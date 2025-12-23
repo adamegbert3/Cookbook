@@ -256,7 +256,7 @@ function renderDeepStats(recipes) {
     catListEl.innerHTML = html;
 }
 
-// C. UNREVIEWED RECIPES
+// C. NEEDS REVIEW WIDGET (Smart Data Finder)
 function renderUnreviewed(recipes) {
     const list = document.getElementById('unreviewed-list');
     if(!list) return;
@@ -265,17 +265,65 @@ function renderUnreviewed(recipes) {
     let count = 0;
 
     recipes.forEach((data) => {
-        if (data.reviewed !== true) {
+        // Check for unverified recipes (false, null, or missing)
+        if (data.reviewed !== true && data.reviewed !== "true") {
             count++;
+            
+            // 1. SMART DATA FINDER: Check both naming styles
+            let rawIng = data.ingredients || data.recipeIngredient;
+            let rawInst = data.instructions || data.recipeInstructions;
+
+            // 2. Format Ingredients
+            let ingDisplay = "No ingredients listed";
+            if (Array.isArray(rawIng) && rawIng.length > 0) {
+                ingDisplay = rawIng.join('\n');
+            } else if (typeof rawIng === 'string' && rawIng.trim().length > 0) {
+                ingDisplay = rawIng;
+            }
+
+            // 3. Format Instructions
+            let instDisplay = "No instructions listed";
+            if (Array.isArray(rawInst) && rawInst.length > 0) {
+                instDisplay = rawInst.join('\n');
+            } else if (typeof rawInst === 'string' && rawInst.trim().length > 0) {
+                instDisplay = rawInst;
+            }
+
             html += `
-                <div id="unrev-${data.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 6px; margin-bottom: 5px;">
-                    <span style="font-size: 13px; font-weight: bold; color: #92400e;">${data.name}</span>
-                    <button onclick="quickReview('${data.id}')" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px;">✅ Verify</button>
+                <div id="unrev-${data.id}" style="background: white; border: 2px solid #fbbf24; border-radius: 8px; margin-bottom: 12px;">
+                    
+                    <div style="padding: 12px; display: flex; justify-content: space-between; align-items: center; background: #fffbeb; border-bottom: 1px solid #fbbf24;">
+                        <div>
+                            <span style="font-weight: 800; color: #92400e; font-size: 15px; display: block;">${data.name || "Untitled"}</span>
+                            <span style="font-size: 12px; color: #b45309;">From: ${data.author || "Unknown"}</span>
+                        </div>
+                        <button onclick="quickReview('${data.id}')" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;">
+                            ✅ Verify
+                        </button>
+                    </div>
+
+                    <details>
+                        <summary style="padding: 12px; cursor: pointer; color: #2563eb; font-weight: bold; font-size: 13px; background: white;">
+                            👉 Click here to view Ingredients & Instructions
+                        </summary>
+                        
+                        <div style="padding: 15px; border-top: 1px solid #eee; background: #f9fafb;">
+                            <p style="margin: 0 0 5px 0; font-weight: bold; color: #666;">Ingredients:</p>
+                            <pre style="background: white; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; white-space: pre-wrap; margin-bottom: 15px;">${ingDisplay}</pre>
+                            
+                            <p style="margin: 0 0 5px 0; font-weight: bold; color: #666;">Instructions:</p>
+                            <pre style="background: white; padding: 10px; border: 1px solid #e5e7eb; border-radius: 6px; white-space: pre-wrap;">${instDisplay}</pre>
+                        </div>
+                    </details>
                 </div>`;
         }
     });
 
-    list.innerHTML = count === 0 ? "<p style='color: green; font-weight: bold;'>All recipes verified!</p>" : html;
+    if (count === 0) {
+        list.innerHTML = "<p style='color: green; font-weight: bold; text-align:center; padding: 20px;'>All recipes verified! 🎉</p>";
+    } else {
+        list.innerHTML = html;
+    }
 }
 
 // D. RECIPE MANAGER
