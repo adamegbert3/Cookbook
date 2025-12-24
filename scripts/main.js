@@ -10,9 +10,14 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/fir
 
 let allRecipes = []; 
 let userFavorites = []; 
-const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; // ⚠️ PASTE YOUR ID HERE
+// ⚠️ LIST OF ADMINS (Array of Strings)
+const ADMIN_UIDS = [
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92", 
+    "NrY491PYN3MIrqJp4rhu5S86w2R2",
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+];
 
-console.log("✅ MAIN.JS LOADED - v18.0 (Safety Checks Added)");
+console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
 
 // ==========================================
 // 2. AUTH & STARTUP
@@ -27,7 +32,7 @@ onAuthStateChanged(auth, async (user) => {
         // 1. UI Updates (Only if elements exist)
         if (notSignedMsg) notSignedMsg.classList.add('hidden');
         if (recipeGrid) recipeGrid.style.display = 'grid';
-        if (user.uid === MY_ADMIN_ID && adminBtn) {
+        if (ADMIN_UIDS.includes(user.uid) && adminBtn) {
             adminBtn.classList.add('visible');
         }
         

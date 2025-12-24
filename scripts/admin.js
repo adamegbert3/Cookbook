@@ -6,23 +6,28 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 // --- CONFIGURATION ---
-// ⚠️ PASTE YOUR ACTUAL UID HERE ⚠️
-const MY_ADMIN_ID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; 
+// ⚠️ PASTE THE SAME LIST HERE ⚠️
+const ADMIN_UIDS = [
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
+    "NrY491PYN3MIrqJp4rhu5S86w2R2",
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+];
 
 // Global Variables
 let currentActivityLimit = 20; 
-let allRecipeData = []; // Stores the master list for the session
+let allRecipeData = []; 
 
 // ==========================================
-// 1. SECURITY & STARTUP (OPTIMIZED)
+// 1. SECURITY & STARTUP
 // ==========================================
 onAuthStateChanged(auth, (user) => {
     if (user) {
-        if (user.uid === MY_ADMIN_ID) {
+        // CHECK IF USER IS IN THE LIST
+        if (ADMIN_UIDS.includes(user.uid)) {
             console.log("Welcome, Chef. Loading Dashboard...");
-            loadAdminDashboard(); // <--- The new smart loader
+            loadAdminDashboard(); 
         } else {
-            alert("Nice try! You are not the Admin.");
+            alert("Nice try! You are not an Admin.");
             window.location.href = "index.html"; 
         }
     } else {
