@@ -495,29 +495,55 @@ window.postAnnouncement = async function() {
     } catch (error) { console.error(error); alert(error.message); }
 };
 
-// Bulk Upload
+// ==========================================
+// BULK UPLOAD (Clean Version)
+// ==========================================
 window.uploadBulkRecipes = async function() {
     const input = document.getElementById('bulk-input');
     const rawText = input.value.trim();
+    
     if (!rawText) return alert("Please paste JSON data.");
+
     try {
         const recipes = JSON.parse(rawText);
         if (!Array.isArray(recipes)) return alert("Must be a list [...]");
+        
         if (!confirm(`Upload ${recipes.length} recipes?`)) return;
 
-        console.log("🚀 Bulk Upload...");
+        console.log("🚀 Starting Clean Bulk Upload...");
         let count = 0;
+
         for (const r of recipes) {
-            await addDoc(collection(db, "recipes"), {
-                name: r.name || "Untitled", ingredients: r.ingredients || [],
-                instructions: r.instructions || "", tags: r.tags || ["Miscellaneous"],
-                author: r.author || "Admin", reviewed: true, isHidden: false,
-                createdAt: serverTimestamp()
-            });
+            // We create a strictly defined object to prevent extra data
+            const cleanRecipe = {
+                name: r.name,
+                author: r.author,
+                tags: r.tags,
+                
+                // Maps input to your specific keys. 
+                // Checks if your JSON uses 'recipeIngredient' OR 'ingredients' 
+                // and saves it strictly as 'recipeIngredient'
+                recipeIngredient: r.recipeIngredient || r.ingredients,
+                
+                // Same for instructions
+                recipeInstructions: r.recipeInstructions || r.instructions,
+                
+                // ALWAYS FALSE
+                reviewed: false 
+            };
+
+            // Send to Firebase
+            await addDoc(collection(db, "recipes"), cleanRecipe);
             count++;
         }
-        alert(`Success! ${count} added. Refresh to see them.`);
-    } catch (error) { console.error(error); alert("Invalid JSON: " + error.message); }
+
+        alert(`Success! ${count} recipes added to the review queue.`);
+        input.value = ""; // Clear the box
+
+    } catch (error) {
+        console.error(error);
+        alert("Invalid JSON: " + error.message);
+    }
 };
 
 // Mega Index Generator (For Cheap Reads)
