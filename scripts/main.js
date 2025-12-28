@@ -93,7 +93,10 @@ async function loadAllRecipes() {
         } else {
             container.innerHTML = "<p style='text-align:center;'>Index missing.</p>";
         }
-    } catch (e) { container.innerHTML = "<p>Error loading recipes.</p>"; }
+    } catch (e) { 
+    console.error("Recipe Load Error:", e); // <--- This prints the real error to the console!
+    container.innerHTML = "<p>Error loading recipes.</p>"; 
+}
 }
 
 function getCategoryClass(category) {
@@ -113,24 +116,43 @@ function renderLocalList(list) {
     if(!container) return;
 
     container.innerHTML = "";
-    list.sort((a, b) => a.n.localeCompare(b.n));
+
+    // 1. Sort safely
+    list.sort((a, b) => {
+        const nameA = (a.n || a.name || "Untitled").toLowerCase();
+        const nameB = (b.n || b.name || "Untitled").toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
 
     let html = "";
     list.forEach(item => {
-        const cat = item.c || (item.t && item.t[0]) || ""; 
+        // 2. Safety checks
+        const recName = item.n || item.name || "Untitled Recipe";
+        const recAuth = item.a || item.author || "Family";
+        const recId   = item.id;
+        
+        // 3. TAG FIX: Force it to be an Array!
+        let recTags = item.t || item.tags || [];
+        // If it's NOT an array (like a String), wrap it in brackets
+        if (!Array.isArray(recTags)) {
+             recTags = [String(recTags)];
+        }
+        
+        // Category logic
+        const cat = item.c || recTags[0] || ""; 
         const colorClass = getCategoryClass(cat);
-        const isFav = userFavorites.includes(item.id);
+        const isFav = userFavorites.includes(recId);
         const heartIcon = isFav ? "❤️" : "🤍";
 
         html += `
-        <div class="recipe-card ${colorClass}" onclick="goToRecipe('${item.id}', '${item.n.replace(/'/g, "\\'")}')">
-            <div class="status-badge">${item.r ? "✅" : ""}</div>
-            <button class="card-heart" onclick="toggleHeart(event, '${item.id}')">${heartIcon}</button>
+        <div class="recipe-card ${colorClass}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
+            <div class="status-badge">${(item.r || item.reviewed) ? "✅" : ""}</div>
+            <button class="card-heart" onclick="toggleHeart(event, '${recId}')">${heartIcon}</button>
             <div class="card-content">
-                <h2>${item.n}</h2>
-                <div class="recipe-author">From: ${item.a}</div>
+                <h2>${recName}</h2>
+                <div class="recipe-author">From: ${recAuth}</div>
                 <div class="tag-container">
-                    ${(item.t || []).map(t => `<span class="tag-pill">${t}</span>`).join('')}
+                    ${recTags.map(t => `<span class="tag-pill">${t}</span>`).join('')}
                 </div>
             </div>
         </div>`;
