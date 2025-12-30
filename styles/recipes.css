@@ -239,6 +239,28 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 .instruction-step { margin-bottom: 10px; cursor: pointer; padding: 5px; border-radius: 4px; transition: background 0.1s; }
 .instruction-step:hover { background: #f8fafc; }
 .instruction-step.checked { opacity: 0.5; text-decoration: line-through; }
+/* --- RECIPE LIST STYLING --- */
+
+/* 1. Target both Ingredients (ul) and Instructions (ol) */
+ul li, ol li {
+    margin-bottom: 12px; /* The "Happy Medium" spacing */
+    line-height: 1.6;    /* Makes text easier to read */
+    cursor: pointer;     /* Shows a hand icon so users know they can click */
+    transition: opacity 0.2s; /* Smooth fade effect */
+}
+
+/* 2. The "Crossed Out" Look */
+.is-done {
+    text-decoration: line-through;
+    color: #9ca3af; /* Light Gray */
+    opacity: 0.6;
+}
+
+/* Optional: Add a little hover effect so they know it's active */
+ul li:hover, ol li:hover {
+    background-color: #f9fafb;
+    border-radius: 4px;
+}
 
 @media (max-width: 600px) {
     .header-title h1 { display: block; font-size: 1.4rem; }

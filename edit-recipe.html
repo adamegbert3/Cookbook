@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Recipe</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f9fafb; }
+        .container { background: white; padding: 30px; border-radius: 8px; border: 1px solid #ddd; }
+        label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #333; }
+        input, textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { margin-top: 20px; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        .btn-save { background: #10b981; color: white; font-weight: bold; width: 100%; }
+        .btn-back { background: #6b7280; color: white; font-size: 12px; padding: 8px 16px; display: inline-block; text-decoration: none; border-radius: 4px; margin-bottom: 20px;}
+        #status-msg { margin-top: 15px; text-align: center; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <a href="admin.html" class="btn-back">← Back to Dashboard</a>
+
+    <div class="container">
+        <h2 style="margin-top:0;">✏️ Edit Recipe</h2>
+        
+        <label>Recipe Name</label>
+        <input type="text" id="e-name">
+
+        <label>Author</label>
+        <input type="text" id="e-author">
+
+        <label>Category</label>
+        <select id="e-category">
+            <option value="Main Dishes">Main Dishes</option>
+            <option value="Desserts">Desserts</option>
+            <option value="Appetizers & Snacks">Appetizers & Snacks</option>
+            <option value="Breakfast">Breakfast</option>
+            <option value="Breads & Rolls">Breads & Rolls</option>
+            <option value="Soups & Salads">Soups & Salads</option>
+            <option value="Vegetables & Sides">Vegetables & Sides</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+            <option value="Sauces, Dressings & Marinades">Sauces, Dressings & Marinades</option>
+            <option value="Dutch Oven">Dutch Oven</option>
+        </select>
+
+        <label>Ingredients (One per line)</label>
+        <textarea id="e-ingredients" rows="8"></textarea>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <label style="margin-top: 15px;">Instructions (One per line)</label>
+            <button onclick="autoSplitInstructions()" style="background: #fbbf24; color: black; border: 1px solid #d97706; font-size: 11px; padding: 4px 8px; cursor: pointer; border-radius: 4px; margin-bottom: 5px;">
+                🪄 Split Sentences
+            </button>
+        </div>
+        <textarea id="e-instructions" rows="8"></textarea>
+        <div style="background: #fffbeb; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="e-reviewed" style="width: 20px; height: 20px; margin: 0;">
+            <div>
+                <label for="e-reviewed" style="margin: 0; font-weight: bold; color: #92400e; cursor: pointer;">Mark as Verified / Reviewed</label>
+                <div style="font-size: 12px; color: #b45309;">Check this box to remove the "Needs Review" warning.</div>
+            </div>
+        </div>
+        <button class="btn-save" onclick="saveChanges()">💾 Update Recipe</button>
+        <p id="status-msg"></p>
+    </div>
+
+    <script type="module">
+        import { db, auth } from './scripts/firebase-config.js'; 
+        import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+        // ⚠️ PASTE YOUR ADMIN UIDS HERE ⚠️
+        const ADMIN_UIDS = [
+            "n5aAU1g1tBY04Ut0HnhqegSgZe92",
+            "NrY491PYN3MIrqJp4rhu5S86w2R2",
+            "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+        ];
+
+        let recipeId = null;
+
+        // 1. Check Auth & Get ID
+        onAuthStateChanged(auth, async (user) => {
+            if (user && ADMIN_UIDS.includes(user.uid)) {
+                const urlParams = new URLSearchParams(window.location.search);
+                recipeId = urlParams.get('id');
+
+                if (recipeId) {
+                    loadRecipe(recipeId);
+                } else {
+                    alert("No recipe ID found.");
+                    window.location.href = "admin.html";
+                }
+            } else {
+                alert("Unauthorized.");
+                window.location.href = "index.html";
+            }
+        });
+
+        // 2. Load Data into Inputs
+        async function loadRecipe(id) {
+            try {
+                const docRef = doc(db, "recipes", id);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    
+                    // --- SMARTER CATEGORY DETECTION ---
+                    let detectedCategory = "Miscellaneous";
+                    if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
+                        detectedCategory = data.tags[0]; 
+                    } else if (data.category) {
+                        detectedCategory = data.category;
+                    }
+                    document.getElementById('e-category').value = detectedCategory;
+
+                    // --- LOAD TEXT FIELDS ---
+                    document.getElementById('e-name').value = data.name || "";
+                    document.getElementById('e-author').value = data.author || "";
+
+                    // --- LOAD REVIEW STATUS (NEW!) ---
+                    document.getElementById('e-reviewed').checked = data.reviewed === true;
+
+                    // --- HANDLE ARRAYS ---
+                    let ingText = "";
+                    const rawIng = data.ingredients || data.recipeIngredient;
+                    if(Array.isArray(rawIng)) ingText = rawIng.join('\n');
+                    else if(typeof rawIng === 'string') ingText = rawIng;
+                    document.getElementById('e-ingredients').value = ingText;
+
+                    let instText = "";
+                    const rawInst = data.instructions || data.recipeInstructions;
+                    if(Array.isArray(rawInst)) instText = rawInst.join('\n');
+                    else if(typeof rawInst === 'string') instText = rawInst;
+                    document.getElementById('e-instructions').value = instText;
+
+                } else {
+                    alert("Recipe not found!");
+                }
+            } catch (error) {
+                console.error("Error loading doc:", error);
+            }
+        }
+
+        // 3. Save Changes
+        window.saveChanges = async function() {
+            if(!recipeId) return;
+            const btn = document.querySelector('.btn-save');
+            const status = document.getElementById('status-msg');
+            
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+
+            const ingArray = document.getElementById('e-ingredients').value.split('\n').filter(line => line.trim() !== '');
+            const instArray = document.getElementById('e-instructions').value.split('\n').filter(line => line.trim() !== '');
+            const cat = document.getElementById('e-category').value;
+            
+            // GET CHECKBOX STATUS
+            const isReviewed = document.getElementById('e-reviewed').checked;
+
+            try {
+                await updateDoc(doc(db, "recipes", recipeId), {
+                    name: document.getElementById('e-name').value,
+                    author: document.getElementById('e-author').value,
+                    category: cat,
+                    tags: [cat],
+                    ingredients: ingArray,
+                    recipeIngredient: ingArray,
+                    instructions: instArray,
+                    recipeInstructions: instArray,
+                    
+                    // SAVE VERIFICATION STATUS
+                    reviewed: isReviewed,
+                    
+                    lastUpdated: serverTimestamp()
+                });
+
+                status.innerText = "✅ Saved Successfully!";
+                status.style.color = "green";
+                btn.innerText = "💾 Update Recipe";
+                btn.disabled = false;
+                
+            } catch (error) {
+                console.error(error);
+                status.innerText = "❌ Error: " + error.message;
+                status.style.color = "red";
+                btn.disabled = false;
+            }
+        };
+
+        // --- KEEP YOUR SPLIT TOOL ---
+        window.autoSplitInstructions = function() {
+            const instBox = document.getElementById('e-instructions');
+            let text = instBox.value;
+            if (!text) return;
+            if (text.includes('\n')) {
+                if(!confirm("This looks like it already has lines. Split anyway?")) return;
+            }
+            const formatted = text.replace(/\. /g, '.\n');
+            instBox.value = formatted;
+        };
+    </script>
+</body>
+</html>

@@ -110,6 +110,32 @@
     <script>
         function openReportModal() { document.getElementById('report-modal').classList.remove('hidden'); }
         function closeReportModal() { document.getElementById('report-modal').classList.add('hidden'); }
+        // Wait for the recipe to load
+    document.addEventListener("DOMContentLoaded", function() {
+        
+        // 1. Select ALL list items (Ingredients bullets & Instruction numbers)
+        // We use a slight delay in case your recipe loads from Firebase
+        setTimeout(() => {
+            const allListItems = document.querySelectorAll("ul li, ol li");
+
+            allListItems.forEach(item => {
+                // Remove old listeners to prevent doubles
+                const newClone = item.cloneNode(true);
+                item.parentNode.replaceChild(newClone, item);
+
+                // Add the new Click Listener
+                newClone.addEventListener("click", function() {
+                    this.classList.toggle("is-done");
+                    
+                    // Optional: Vibrate phone slightly on mobile for satisfaction
+                    if (navigator.vibrate) navigator.vibrate(10); 
+                });
+            });
+            
+            console.log(`✅ Made ${allListItems.length} recipe items clickable.`);
+            
+        }, 1500); // 1.5 second delay to ensure Firebase data is on screen
+    });
     </script>
 </body>
 </html>
