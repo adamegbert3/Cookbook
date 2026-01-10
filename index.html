@@ -10,7 +10,7 @@
 <body class="login-page">
     <div class="login-card">
         <div class="login-header">
-            <img src="images/logo.jpg" style="height: 60px; margin-bottom: 10px;">
+            <img src="images/logo.jpg" style="height: 60px; margin-bottom: 10px;" alt="Logo">
             <h1>Welcome Back!</h1>
             <p class="subtitle">Please sign in to access the cookbook.</p>
         </div>
@@ -24,24 +24,88 @@
                 <label>Password</label>
                 <input type="password" id="password" class="form-input" placeholder="••••••••" required>
             </div>
-            <button type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center; margin-top: 10px;">
+            
+            <p id="error-message" style="color: red; font-size: 14px; text-align: center; min-height: 20px;"></p>
+
+            <button id="login-btn" type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center; margin-top: 10px;">
                 Sign In
             </button>
         </form>
     </div>
 
     <script type="module">
-        import { auth } from './scripts/firebase-config.js';
-        import { signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { auth } from './scripts/firebase-config.js'; 
+        import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            const pass = document.getElementById('password').value;
-            signInWithEmailAndPassword(auth, email, pass)
-                .then(() => window.location.href = "homepage.html")
-                .catch((error) => alert("Login Failed: " + error.message));
+        const loginBtn = document.getElementById('login-btn'); 
+        const emailInput = document.getElementById('email');   
+        const passInput = document.getElementById('password'); 
+        const errorMsg = document.getElementById('error-message');
+
+        // 1. AUTO-REDIRECT (If the browser remembers you)
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                console.log("✅ User is authenticated:", user.email);
+                // Only redirect if we aren't already trying to login manually
+                if (!loginBtn.disabled) {
+                    window.location.href = "homepage.html"; 
+                }
+            }
         });
+
+        // 2. MANUAL LOGIN
+        if (loginBtn) {
+            loginBtn.addEventListener('click', async (e) => {
+                e.preventDefault(); 
+                
+                const email = emailInput.value;
+                const password = passInput.value;
+                
+                // Reset Errors
+                if(errorMsg) errorMsg.innerText = "";
+                console.log("🚀 Attempting login for:", email);
+
+                if(!email || !password) {
+                    alert("Please enter both email and password.");
+                    return;
+                }
+
+                // Lock Button
+                const originalText = loginBtn.innerText;
+                loginBtn.innerText = "Signing in...";
+                loginBtn.disabled = true;
+
+                try {
+                    // A. PERFORM LOGIN
+                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                    console.log("🎉 Login Successful!", userCredential.user);
+                    
+                    // B. FORCE REDIRECT (Don't wait for listener)
+                    loginBtn.innerText = "Redirecting...";
+                    
+                    // ⚠️ CHECK: Is your main file called 'homepage.html' or 'index.html'?
+                    // If this fails, try changing it to 'index.html'
+                    window.location.href = "homepage.html"; 
+
+                } catch (error) {
+                    console.error("❌ Login Failed:", error);
+                    
+                    let message = "Login Failed: " + error.message;
+                    if(error.code === "auth/user-not-found") message = "Account not found.";
+                    if(error.code === "auth/wrong-password") message = "Incorrect password.";
+                    if(error.code === "auth/too-many-requests") message = "Too many attempts. Try again later.";
+
+                    if(errorMsg) errorMsg.innerText = message;
+                    else alert(message);
+                    
+                    // Unlock Button
+                    loginBtn.innerText = originalText;
+                    loginBtn.disabled = false;
+                }
+            });
+        } else {
+            console.error("❌ CRITICAL: Button id='login-btn' not found.");
+        }
     </script>
 </body>
 </html>

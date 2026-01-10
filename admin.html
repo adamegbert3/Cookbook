@@ -9,7 +9,7 @@
 <style>
     /* --- BASE SETTINGS --- */
     body { font-family: 'Inter', sans-serif; background: #f3f4f6; margin: 0; padding: 0; }
-    .admin-container { max-width: 900px; margin: 20px auto; padding: 15px; }
+    .admin-container { max-width: 1000px; margin: 30px auto; padding: 20px; } /* Made wider for desktop */
 
     /* WIDGETS */
     .pending-card, .widget-card {
@@ -18,9 +18,13 @@
     }
 
     /* --- DESKTOP TABLE STYLES --- */
-    .table-container { background: white; border-radius: 8px; overflow: hidden; }
+    .table-container { background: white; border-radius: 8px; overflow: hidden; border: 1px solid #e5e7eb; }
     .admin-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-    .admin-table th { background: #f9fafb; padding: 12px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb; }
+    
+    /* Header Styling */
+    .admin-table th { background: #f9fafb; padding: 12px; text-align: left; font-size: 13px; color: #6b7280; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+    
+    /* Cell Styling */
     .admin-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; color: #374151; word-wrap: break-word; }
 
     /* BADGES */
@@ -31,52 +35,63 @@
 
     /* BUTTONS */
     .btn-action {
-        text-decoration: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;
-        display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap;
+        text-decoration: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+        display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
         cursor: pointer; border: none; transition: background 0.2s;
     }
     .btn-edit { background: #2563eb; color: white; }
-    .btn-toggle { background: #e5e7eb; color: #374151; }
-    .btn-toggle:hover { background: #d1d5db; }
+    .btn-edit:hover { background: #1d4ed8; }
+    
+    .btn-toggle { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+    .btn-toggle:hover { background: #e5e7eb; }
+    
+    .btn-delete { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .btn-delete:hover { background: #fecaca; }
 
-    /* --- MOBILE CARD VIEW (The Clean Look) --- */
-    @media only screen and (max-width: 768px) {
+    /* --- MOBILE CARD VIEW (Triggers on screens smaller than 850px) --- */
+    @media only screen and (max-width: 850px) {
+        /* Hide Header */
         .admin-table thead { display: none !important; }
+        
+        /* Force Block Layout */
         .admin-table, .admin-table tbody, .admin-table tr, .admin-table td {
             display: block !important; width: 100% !important; box-sizing: border-box;
         }
 
-        /* CARD CONTAINER */
+        /* Card Style */
         .admin-table tr {
             background: white; margin-bottom: 15px; border: 1px solid #e5e7eb;
-            border-radius: 12px; padding: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-radius: 12px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
             position: relative;
         }
+        .admin-table td { padding: 4px 0; border: none; text-align: left; }
 
-        .admin-table td { padding: 4px 0; border: none; }
-
-        /* 1. STATUS BADGE (Top Right Corner) */
-        .admin-table td:nth-child(4) {
+        /* 1. STATUS BADGE (Top Right Absolute) */
+        .admin-table td:nth-child(5) {
             position: absolute; top: 15px; right: 15px; width: auto !important; margin: 0; padding: 0;
         }
 
-        /* 2. NAME (Big & Dark) */
-        .admin-table td:nth-child(1) {
-            font-size: 16px; font-weight: 800; color: #111827; margin-bottom: 5px; padding-right: 80px; /* Space for badge */
-        }
-        
-        /* 3. AUTHOR & CATEGORY */
+        /* 2. NAME */
+        .admin-table td:nth-child(1) { font-size: 16px; font-weight: 800; color: #111827; margin-bottom: 5px; padding-right: 80px; }
+
+        /* 3. META DATA (Author/Cat) */
         .admin-table td:nth-child(2):before { content: "👤 "; }
         .admin-table td:nth-child(3):before { content: "📂 "; }
         .admin-table td:nth-child(2), .admin-table td:nth-child(3) { color: #6b7280; font-size: 13px; }
 
-        /* 4. ACTION BAR (Bottom Row) */
-        .admin-table td:nth-child(5) {
+        /* 4. VIEWS */
+        .admin-table td:nth-child(4) { margin-top: 5px; font-size: 13px; color: #555; font-weight: bold; }
+        .admin-table td:nth-child(4):before { content: "👀 "; }
+        .admin-table td:nth-child(4):after { content: " views"; font-weight: normal; color: #888; }
+
+        /* 5. ACTION BAR */
+        .admin-table td:nth-child(6) {
             margin-top: 15px; padding-top: 15px; border-top: 1px solid #f3f4f6;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 10px; /* Two buttons side by side */
+            display: grid !important; 
+            grid-template-columns: 1fr 1fr auto; /* Edit | Hide | Delete */
+            gap: 10px;
         }
-        
-        .btn-action { width: 100%; padding: 12px; font-size: 14px; }
+        .btn-action { width: 100%; padding: 10px; font-size: 13px; }
     }
 </style>
 </head>
@@ -86,7 +101,7 @@
     <h1>👨‍🍳 Chef's Admin Panel</h1>
     <p>Review submissions and track stats.</p>
     
-    <div class="dashboard-widgets" style="display: flex; flex-direction: column; gap: 20px; max-width: 800px; margin: 0 auto;">
+    <div class="dashboard-widgets" style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; margin: 0 auto;">
 
         <div class="pending-card widget-card" style="border-left: 5px solid #8b5cf6;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -100,8 +115,7 @@
         <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">
             <h3 style="margin-top:0; color: #0369a1;">📢 Post Announcement</h3>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <input type="text" id="announce-input" placeholder="e.g., Thanksgiving is at 5pm!" 
-                    style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="text" id="announce-input" placeholder="e.g., Thanksgiving is at 5pm!" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                 <button onclick="postAnnouncement()" style="background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">Post</button>
             </div>
         </div>
@@ -115,113 +129,43 @@
         </div>
 
         <div class="pending-card widget-card" style="border-left: 5px solid #2563eb;">
-            <h3 style="margin-top:0; color: #1e3a8a;">🎛️ Master Recipe List</h3>
-            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">View, edit, and verify all recipes in one place.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color: #1e3a8a;">🎛️ Master Recipe List</h3>
+                <button id="btn-sync" onclick="syncViewCounts()" style="background: white; border: 1px solid #ccc; color: #555; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
+            </div>
             
-            <input type="text" id="manager-search" placeholder="🔍 Search by name or author..." 
-                   style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+            <input type="text" id="manager-search" placeholder="🔍 Search recipes..." style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
 
             <div id="unified-list" style="overflow-x: auto;">
                 <p>Loading list...</p>
             </div>
         </div>
 
-        <div class="pending-card widget-card">
-            <h3 style="margin-top:0; color: #b45309;">🏆 Most Popular</h3>
-            <table style="width: 100%; margin-top: 10px;">
-                <tbody id="leaderboard-list">
-                    <tr><td>Loading...</td></tr>
-                </tbody>
-            </table>
-            <div style="text-align: center; margin-top: 15px;">
-                <button onclick="openStatsModal()" class="pill-btn btn-blue" style="width: 100%; justify-content: center; background: #2563eb; color: white; padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer;">
-                    📊 View Full Report
-                </button>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card">
-            <h3 style="margin-top:0; color: #555;">🍰 Recipe Breakdown</h3>
-            <div id="category-stats-list" style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
-                <p>Calculating...</p>
-            </div>
-        </div>
-
-        <div style="margin: 20px 0; padding: 20px; background: #e0f2fe; border: 2px dashed #0284c7; border-radius: 10px; text-align: center;">
-            <h3>📦 Master Index</h3>
-            <p>Click this after adding recipes to update the homepage.</p>
-            <button onclick="generateMegaIndex()" style="background: #0284c7; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">
-                Update Homepage Index
-            </button>
-        </div>
-
-        <div class="pending-card widget-card">
-            <h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3>
-            <div id="activity-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
-            </div>
-            <div style="margin-top: 10px; display: flex; gap: 5px;">
-                <button onclick="loadMoreActivity()" style="flex: 1; padding:5px; font-size: 11px; cursor: pointer; border: none; background: #eee; border-radius: 4px;">👇 Load More</button>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #9ca3af;">
-            <h3 style="margin-top:0; color: #4b5563;">🕸️ Undiscovered</h3>
-            <p style="font-size: 12px; color: #666; margin-bottom: 10px;">Recipes with 0 views:</p>
-            <div id="dusty-list" style="max-height: 200px; overflow-y: auto;">
-                <p>Calculating...</p>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #ef4444;">
-            <h3 style="margin-top:0; color: #b91c1c;">🚩 Reports</h3>
-            <div id="issues-list" style="margin-top: 15px;">
-                <p>Loading reports...</p>
-            </div>
-        </div>
+        <div class="pending-card widget-card"><h3 style="margin-top:0; color: #b45309;">🏆 Most Popular</h3><table style="width: 100%; margin-top: 10px;"><tbody id="leaderboard-list"><tr><td>Loading...</td></tr></tbody></table></div>
+        
+        <div class="pending-card widget-card"><h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3><div id="activity-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div></div>
 
         <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0a4d74;">
             <h3 style="margin-top: 0; color: #0a4d74;">🚀 Speed Upload Station</h3>
-            <p style="font-size: 14px; color: #666;">Paste a list of recipes (JSON format) here to add them all at once.</p>
-            
-            <textarea id="bulk-input" rows="10" placeholder='[
-    {
-      "name": "Moms Spaghetti",
-      "ingredients": ["Pasta", "Sauce"],
-      "instructions": "Boil water...",
-      "tags": ["Dinner"],
-      "author": "Mom"
-    }
-]' style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px;"></textarea>
-            
-            <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold;">
-                🚀 Launch Recipes
-            </button>
+            <textarea id="bulk-input" rows="5" placeholder='[{"name": "Moms Spaghetti"}]\n' style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px;"></textarea>
+            <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold;">🚀 Launch Recipes</button>
         </div>
 
     </div> 
-
+    
     <div style="margin-top: 40px; text-align: center;">
         <a href="index.html" style="color: #666; text-decoration: none;">← Back to Cookbook</a>
     </div>
 
     <div id="stats-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
-                <h2 style="margin: 0; font-size: 20px; color: #333;">📊 Deep Stats</h2>
-                <button onclick="closeStatsModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #666;">&times;</button>
-            </div>
-            <div style="margin-bottom: 20px;">
-                <h3 style="font-size: 14px; color: #666; margin-bottom: 10px;">Category Breakdown</h3>
-                <div id="category-stats-list" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;">
-                    </div>
-            </div>
-            <div style="text-align: right;">
-                <button onclick="closeStatsModal()" style="background: #6b7280; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">Close</button>
-            </div>
+        <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%;">
+            <h2 style="margin: 0 0 20px 0;">📊 Deep Stats</h2>
+            <div id="category-stats-list"></div>
+            <button onclick="closeStatsModal()" style="margin-top:20px; width:100%; padding:10px;">Close</button>
         </div>
     </div>
 </div>
 
-<script type="module" src="scripts/admin.js"></script>
+<script type="module" src="scripts/dashboard.js"></script>
 </body>
 </html>

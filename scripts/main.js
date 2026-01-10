@@ -6,7 +6,7 @@ import {
     collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, 
     serverTimestamp, arrayUnion, arrayRemove, query, orderBy, limit, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 let allRecipes = []; 
 let userFavorites = []; 
@@ -29,6 +29,7 @@ onAuthStateChanged(auth, async (user) => {
     const adminBtn = document.getElementById('admin-btn');
 
     if (user) {
+        loadHomepageMenu(user);
         // 1. UI Updates (Only if elements exist)
         if (notSignedMsg) notSignedMsg.classList.add('hidden');
         if (recipeGrid) recipeGrid.style.display = 'grid';
@@ -442,3 +443,94 @@ function setupCategoryFilters() {
 }
 
 setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
+// ==========================================
+// 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)
+// ==========================================
+
+async function loadHomepageMenu(user) {
+    try {
+        const querySnapshot = await getDocs(collection(db, "users", user.uid, "weekly_plan"));
+        
+        querySnapshot.forEach((doc) => {
+            const dayFull = doc.id; 
+            const data = doc.data();
+            const shortDay = dayFull.substring(0, 3); 
+            const box = document.getElementById(`menu-${shortDay}`);
+            
+            if (box) {
+                if (data.meals && data.meals.length > 0) {
+                    let html = "";
+                    
+                    data.meals.forEach(meal => {
+                        const uniqueId = meal.addedAt || 0;
+                        const safeName = (meal.name || "Unknown").replace(/'/g, "\\'");
+                        const recipeId = meal.id; 
+
+                        html += `
+                        <div style="background: white; margin-top: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                            
+                            <a href="recipe.html?id=${recipeId}" style="text-decoration: none; flex-grow: 1; overflow: hidden; margin-right: 8px;">
+                                <span style="font-size: 13px; color: #2563eb; font-weight: 600; text-align: left; line-height: 1.3; display: block; white-space: normal;">
+                                    ${meal.name}
+                                </span>
+                            </a>
+
+                            <button onclick="deleteMealFromMenu('${dayFull}', ${uniqueId}, '${safeName}')" 
+                                  style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 18px; font-weight: bold; padding: 0; line-height: 1;">
+                                &times;
+                            </button>
+                        </div>`;
+                    });
+                    
+                    box.innerHTML = html;
+                } else {
+                    box.innerHTML = `<span style="color:#9ca3af; font-size: 12px; font-style: italic;">Nothing planned</span>`;
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Error loading menu widget:", e);
+    }
+}
+
+// 🗑️ THIS IS THE MISSING FUNCTION!
+window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    if(!confirm(`Remove "${mealName}" from ${dayFull}?`)) return;
+
+    const shortDay = dayFull.substring(0, 3);
+    const box = document.getElementById(`menu-${shortDay}`);
+    
+    // Visual Feedback
+    if(box) box.style.opacity = "0.5";
+
+    try {
+        const docRef = doc(db, "users", user.uid, "weekly_plan", dayFull);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const currentMeals = docSnap.data().meals || [];
+            
+            // Filter out the meal we want to delete
+            const newMeals = currentMeals.filter(m => {
+                if (uniqueId !== 0 && m.addedAt) {
+                    return m.addedAt !== uniqueId;
+                }
+                return m.name !== mealName;
+            });
+
+            // Update Database
+            await updateDoc(docRef, { meals: newMeals });
+            
+            // Reload UI
+            loadHomepageMenu(user);
+            if(box) box.style.opacity = "1";
+        }
+    } catch (e) {
+        console.error("Delete Error:", e);
+        alert("Could not delete item.");
+        if(box) box.style.opacity = "1";
+    }
+};

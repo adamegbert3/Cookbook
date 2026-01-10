@@ -73,25 +73,35 @@
         </div>
     </main>
 
-    <div id="plannerModal" class="modal hidden">
-        <div class="modal-content">
-            <h3>📅 Add to Menu</h3>
-            <p style="margin-bottom:15px;">Pick a day:</p>
-            <select id="daySelect" class="form-input" style="margin-bottom:20px;">
-                <option value="Mon">Monday</option>
-                <option value="Tue">Tuesday</option>
-                <option value="Wed">Wednesday</option>
-                <option value="Thu">Thursday</option>
-                <option value="Fri">Friday</option>
-                <option value="Sat">Saturday</option>
-                <option value="Sun">Sunday</option>
-            </select>
-            <div style="display:flex; gap:10px; justify-content:center;">
-                <button onclick="confirmAddToPlan()" class="pill-btn btn-teal" style="flex:1;">Save</button>
-                <button onclick="closePlannerModal()" class="pill-btn btn-slate" style="flex:1;">Cancel</button>
-            </div>
+    <div id="menu-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000;">
+    <div style="background: white; padding: 25px; border-radius: 12px; width: 300px; text-align: center;">
+        <h3 style="margin-top: 0;">📅 Add to Meal Plan</h3>
+        
+        <label style="display: block; text-align: left; margin-bottom: 5px; font-weight: bold;">Select Day:</label>
+        <select id="menu-day" style="width: 100%; padding: 8px; margin-bottom: 15px; border-radius: 6px; border: 1px solid #ccc;">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+        </select>
+
+        <label style="display: block; text-align: left; margin-bottom: 5px; font-weight: bold;">Select Meal:</label>
+        <select id="menu-type" style="width: 100%; padding: 8px; margin-bottom: 20px; border-radius: 6px; border: 1px solid #ccc;">
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Dinner">Dinner</option>
+            <option value="Snack">Snack</option>
+        </select>
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="document.getElementById('menu-modal').style.display='none'" style="flex: 1; padding: 10px; background: #eee; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+            <button id="confirm-add-menu" style="flex: 1; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Add Recipe</button>
         </div>
     </div>
+</div>
 
     <div id="report-modal" class="modal hidden">
         <div class="modal-content">
@@ -137,5 +147,34 @@
         }, 1500); // 1.5 second delay to ensure Firebase data is on screen
     });
     </script>
+    <div id="plannerModal" class="hidden" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 2000;">
+    <div style="background: white; padding: 25px; border-radius: 12px; width: 300px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: #1e3a8a;">📅 Add to Meal Plan</h3>
+        
+        <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">Select Day:</label>
+        <select id="daySelect" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px;">
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+        </select>
+
+        <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">Meal Type:</label>
+        <select id="mealTypeSelect" style="width: 100%; padding: 10px; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 6px;">
+            <option value="Dinner">Dinner</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Breakfast">Breakfast</option>
+            <option value="Snack">Snack</option>
+        </select>
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="closePlannerModal()" style="flex: 1; padding: 10px; background: #f3f4f6; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+            <button onclick="confirmAddToPlan()" style="flex: 1; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Save</button>
+        </div>
+    </div>
+</div>
 </body>
 </html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Shopping List</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f3f4f6; padding: 20px; max-width: 600px; margin: 0 auto; }
+        .list-header { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .add-box { display: flex; gap: 10px; margin-top: 15px; }
+        
+        .day-group { margin-bottom: 20px; }
+        .day-title { font-size: 14px; font-weight: 800; color: #6b7280; text-transform: uppercase; margin-bottom: 10px; }
+        
+        .item-row { 
+            background: white; padding: 12px; margin-bottom: 8px; border-radius: 8px; 
+            display: flex; align-items: center; gap: 10px; cursor: pointer; border: 1px solid #e5e7eb; 
+        }
+        .item-row.checked { opacity: 0.5; background: #f9fafb; text-decoration: line-through; }
+        .checkbox { font-size: 18px; }
+    </style>
+</head>
+<body>
+
+    <div class="list-header">
+        <h1 style="margin:0; color:#1e3a8a;">🛒 Shopping List</h1>
+        <p style="margin:5px 0 0 0; color:#666; font-size:13px;">Items are saved automatically.</p>
+        
+        <div class="add-box">
+            <input type="text" id="custom-item-input" placeholder="Add milk, eggs, etc..." 
+                   style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            <button onclick="addCustomItem()" style="background: #2563eb; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold;">+</button>
+        </div>
+    </div>
+
+    <div id="shopping-container">
+        <p style="text-align:center; color:#999;">Loading your list...</p>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="index.html" style="color: #666; text-decoration: none;">← Back to Cookbook</a>
+    </div>
+
+    <script type="module">
+        import { db, auth } from './scripts/firebase-config.js';
+        import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                loadShoppingList(user.uid);
+            } else {
+                document.getElementById('shopping-container').innerHTML = "<p style='text-align:center;'>Please sign in to see your list.</p>";
+            }
+        });
+
+        // --- 1. LOAD LIST ---
+        function loadShoppingList(uid) {
+            const container = document.getElementById('shopping-container');
+            
+            // Listen to the weekly_plan collection
+            onSnapshot(collection(db, "users", uid, "weekly_plan"), (snapshot) => {
+                container.innerHTML = "";
+                
+                // Get checked items first
+                getDoc(doc(db, "users", uid, "settings", "shopping_state")).then(stateSnap => {
+                    const checkedItems = stateSnap.exists() ? (stateSnap.data().checked || []) : [];
+
+                    if (snapshot.empty) {
+                        container.innerHTML = "<p style='text-align:center; color:#999;'>Your meal plan is empty.</p>";
+                        return;
+                    }
+
+                    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Custom"];
+                    
+                    days.forEach(day => {
+                        const dayDoc = snapshot.docs.find(d => d.id === day);
+                        if (!dayDoc) return; // Skip days with no data
+
+                        let items = [];
+                        
+                        // --- 1. HANDLE CUSTOM ITEMS ---
+                        if (day === "Custom") {
+                            const meals = dayDoc.data().meals || [];
+                            meals.forEach(m => {
+                                // Custom items are stored as "ingredients" inside a fake meal
+                                if (m.ingredients && m.ingredients.length > 0) {
+                                    items.push({ isIngredient: true, text: m.ingredients[0] });
+                                }
+                            });
+                        } 
+                        // --- 2. HANDLE REGULAR MEALS ---
+                        else {
+                            const meals = dayDoc.data().meals || [];
+                            meals.forEach(m => {
+                                items.push({ isHeader: true, text: `${m.name} (${m.type})` });
+                                m.ingredients.forEach(ing => items.push({ isIngredient: true, text: ing }));
+                            });
+                        }
+
+                        // --- 3. RENDER THE GROUP ---
+                        if (items.length > 0) {
+                            let dayTitle = day === "Custom" ? "📝 My Extras" : day;
+                            let dayHtml = `<div class="day-group"><div class="day-title">${dayTitle}</div>`;
+                            
+                            items.forEach(item => {
+                                if (item.isHeader) {
+                                    dayHtml += `<div style="font-size:12px; color:#2563eb; font-weight:bold; margin-top:5px; margin-bottom:2px;">${item.text}</div>`;
+                                } else {
+                                    // Handle ' vs \' in strings for the onclick event
+                                    const safeText = item.text.replace(/'/g, "\\'");
+                                    const isChecked = checkedItems.includes(item.text);
+                                    
+                                    dayHtml += `
+                                        <div class="item-row ${isChecked ? 'checked' : ''}" onclick="toggleCheck('${safeText}', this)">
+                                            <span class="checkbox">${isChecked ? '✅' : '⬜'}</span>
+                                            <span>${item.text}</span>
+                                        </div>`;
+                                }
+                            });
+                            
+                            dayHtml += `</div>`;
+                            container.innerHTML += dayHtml;
+                        }
+                    });
+                });
+            });
+        }
+
+        // --- 2. TOGGLE CHECKMARK (PERSISTENT) ---
+        window.toggleCheck = async function(itemText, element) {
+            const user = auth.currentUser;
+            if (!user) return;
+
+            // Optimistic UI update (Instant feel)
+            const isNowChecked = !element.classList.contains('checked');
+            element.classList.toggle('checked');
+            element.querySelector('.checkbox').innerText = isNowChecked ? '✅' : '⬜';
+
+            // Save to Firestore
+            const stateRef = doc(db, "users", user.uid, "settings", "shopping_state");
+            try {
+                if (isNowChecked) {
+                    await setDoc(stateRef, { checked: arrayUnion(itemText) }, { merge: true });
+                } else {
+                    await updateDoc(stateRef, { checked: arrayRemove(itemText) });
+                }
+            } catch (e) { console.error("Save failed", e); }
+        }
+
+        // --- 3. ADD CUSTOM ITEM ---
+        window.addCustomItem = async function() {
+            const input = document.getElementById('custom-item-input');
+            const text = input.value.trim();
+            if (!text || !auth.currentUser) return;
+
+            // We treat "Custom" as a special day in the database
+            const ref = doc(db, "users", auth.currentUser.uid, "weekly_plan", "Custom");
+            
+            // Add as a "meal" with one ingredient
+            const fakeMeal = {
+                name: "Personal Items",
+                type: "Misc",
+                ingredients: [text]
+            };
+
+            await setDoc(ref, { meals: arrayUnion(fakeMeal) }, { merge: true });
+            input.value = "";
+        }
+    </script>
+</body>
+</html>

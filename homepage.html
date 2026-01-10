@@ -7,6 +7,29 @@
     <link rel="stylesheet" href="styles/recipes.css">
     <script src="scripts/main.js" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <style>
+    /* Default: Stack days vertically on mobile (readable!) */
+    .weekly-grid {
+        display: grid;
+        grid-template-columns: 1fr; /* 1 column (list view) */
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* Tablet: 2 columns */
+    @media (min-width: 480px) {
+        .weekly-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    /* Desktop: The full 7-day row */
+    @media (min-width: 1024px) {
+        .weekly-grid {
+            grid-template-columns: repeat(7, 1fr);
+        }
+    }
+</style>
 </head>
 <body>
     <div class="header-container">
@@ -65,22 +88,56 @@
             </div>
         </div>
 
-        <div id="meal-plan-box">
-            <h3>📅 Weekly Menu</h3>
-            <div class="week-grid">
-                <div class="day-card" data-day="Sun"><strong>Sun</strong><span id="plan-Sun">-</span></div>
-                <div class="day-card" data-day="Mon"><strong>Mon</strong><span id="plan-Mon">-</span></div>
-                <div class="day-card" data-day="Tue"><strong>Tue</strong><span id="plan-Tue">-</span></div>
-                <div class="day-card" data-day="Wed"><strong>Wed</strong><span id="plan-Wed">-</span></div>
-                <div class="day-card" data-day="Thu"><strong>Thu</strong><span id="plan-Thu">-</span></div>
-                <div class="day-card" data-day="Fri"><strong>Fri</strong><span id="plan-Fri">-</span></div>
-                <div class="day-card" data-day="Sat"><strong>Sat</strong><span id="plan-Sat">-</span></div>
-            </div>
-            <div class="menu-footer">
-                <button onclick="clearMealPlan()" class="pill-btn btn-red-outline">🗑️ Clear</button>
-                <button onclick="openShoppingModal()" class="pill-btn btn-teal">🛒 View List</button>
-            </div>
+<div class="widget-card" style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; margin-top: 20px;">
+    <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+        <h3 style="margin: 0; color: #0f766e;">📅 Weekly Menu</h3>
+    </div>
+
+    <div class="weekly-grid">
+        
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">SUN</div>
+            <div id="menu-Sun" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
         </div>
+
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">MON</div>
+            <div id="menu-Mon" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        </div>
+
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">TUE</div>
+            <div id="menu-Tue" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        </div>
+
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">WED</div>
+            <div id="menu-Wed" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        </div>
+
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">THU</div>
+            <div id="menu-Thu" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        </div>
+
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">FRI</div>
+            <div id="menu-Fri" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        </div>
+
+        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
+            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">SAT</div>
+            <div id="menu-Sat" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        </div>
+
+    </div>
+
+    <div style="text-align: center; display: flex; justify-content: center; gap: 10px;">
+        <a href="shopping-list.html" style="background: #0f766e; color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block;">
+            🛒 View Shopping List
+        </a>
+    </div>
+</div>
 
         <div id="search-overlay" class="hidden">
             <div class="search-box-content">

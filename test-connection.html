@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>🔥 Connection Test</title>
+</head>
+<body>
+    <h1>Firebase Connection Test</h1>
+    <p>Check the Console (Right Click > Inspect > Console) for results.</p>
+    <div id="status" style="font-size: 20px; font-weight: bold; color: blue;">⏳ Testing...</div>
+
+    <script type="module">
+        // 1. IMPORT YOUR CONFIG
+        import { db, auth } from './scripts/firebase-config.js'; 
+        import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+
+        const statusDiv = document.getElementById('status');
+
+        console.log("🚀 Starting Test...");
+
+        // 2. CHECK IF IMPORTS WORKED
+        if (!db || !auth) {
+            statusDiv.innerText = "❌ CRITICAL: 'db' or 'auth' is undefined. Check firebase-config.js exports!";
+            statusDiv.style.color = "red";
+            throw new Error("Config broken");
+        }
+
+        console.log("✅ Config Loaded. Checking Auth State...");
+
+        // 3. CHECK AUTH
+        const user = auth.currentUser;
+        console.log("👤 Current User:", user ? user.email : "No User Signed In");
+
+        // 4. TEST DATABASE READ
+        try {
+            // We try to read a dummy document just to see if the connection opens
+            await getDoc(doc(db, "test_collection", "test_doc"));
+            statusDiv.innerText = "✅ SUCCESS: Database is Connected!";
+            statusDiv.style.color = "green";
+        } catch (error) {
+            console.error(error);
+            statusDiv.innerText = "❌ ERROR: " + error.message;
+            statusDiv.style.color = "red";
+        }
+    </script>
+</body>
+</html>
