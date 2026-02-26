@@ -3,21 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Submit a Suggestion</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            html.setAttribute('data-size', settings.fontSize || 'normal');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
 </head>
-<body>
-    <h3>
-        Have a recipe to add to the cookbook?
-    </h3>
-    <h5>
-        <!-- Option 1:  -->
-        Email recipe below:
-        <a href="mailto:adamegbert@icloud.com?subject=Cookbook%20Recipe%20Suggestion%20Submission&body=Please%20include%20the%20recipe%20name,%20author,%20ingredients,%20and%20instructions.">adamegbert@icloud.com</a>
-    </h5>
-    <!-- <h5>
-        Option 2: Submit recipe using form below:
-    </h5> -->
+<body class="login-page">
 
+    <div class="login-card" style="max-width: 600px; text-align: center;">
+        <h1 style="margin-bottom: 10px;">Have a recipe to add?</h1>
+        <p class="subtitle" style="margin-bottom: 30px;">We'd love to add it to the family cookbook!</p>
+        
+        <div style="background: var(--bg-body); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
+            <h3 style="margin-top: 0;">Option 1: Send an Email</h3>
+            <p style="font-size: 14px; color: var(--primary); opacity: 0.8;">Please include the recipe name, author, ingredients, and instructions.</p>
+            <a href="mailto:adamegbert@icloud.com?subject=Cookbook%20Recipe%20Suggestion%20Submission&body=Please%20include%20the%20recipe%20name,%20author,%20ingredients,%20and%20instructions." class="pill-btn btn-teal" style="text-decoration: none; display: inline-block; margin-top: 10px;">
+                ✉️ Email Adam
+            </a>
+        </div>
+
+        <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none;">← Back to Cookbook</a>
+    </div>
 
 </body>
 </html>

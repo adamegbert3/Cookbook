@@ -99,7 +99,7 @@ function renderRecipeHTML(recipe) {
         <h2 class="recipe-chef">From: ${author}</h2>
         <hr class="recipe-divider">
         <h3 class="section-header">Ingredients</h3>
-        <p style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
+        <p class="no-print" style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
         <ul id="ingredient-list">${ingHtml}</ul>
         <h3 class="section-header">Instructions</h3>
         <div id="instructions-container">${instHtml}</div>
@@ -260,6 +260,35 @@ window.submitReport = async function() {
         
     } catch(e) { alert("Error sending report."); }
 }
+
+// ==========================================
+// 4. Sharing
+// ==========================================
+// --- SHARE MODAL LOGIC ---
+window.openShareModal = function() {
+    document.getElementById('share-modal').classList.remove('hidden');
+};
+
+window.closeShareModal = function() {
+    document.getElementById('share-modal').classList.add('hidden');
+};
+
+window.copyRecipeLink = function() {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+        alert("Link copied! They will need an account to view it.");
+    });
+};
+window.triggerPrint = function() {
+    closeShareModal(); // Crucial: Close the modal first!
+    setTimeout(() => { 
+        window.print(); // Wait 300ms for the animation to finish, then print
+    }, 300);
+};
+
+
+
+
 
 // Start
 loadRecipe();

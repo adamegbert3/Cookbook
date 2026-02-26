@@ -1,35 +1,71 @@
 /* ==========================================================================
-   1. VARIABLES & SETUP
+   1. THEME ENGINE & VARIABLES (UPDATED)
    ========================================================================== */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap"); /* Added for Serif option */
+@import url("https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap"); /* Added for Mono option */
 
 :root {
-    --primary: #0f172a;       /* Dark Slate */
+    /* --- 1. DEFAULT (LIGHT) COLORS --- */
+    --primary: #0f172a;       /* Dark Text / Elements */
     --accent-teal: #0d9488;   /* Teal */
     --accent-warm: #f97316;   /* Orange */
-    --bg-body: #f8fafc;       
-    --bg-card: #ffffff;
-    --border: #e2e8f0;
+    --bg-body: #f8fafc;       /* Light Gray Background */
+    --bg-card: #ffffff;       /* White Cards */
+    --border: #e2e8f0;        /* Light Border */
+    --input-bg: #ffffff;      /* White Inputs */
     --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.05);
     --shadow-hover: 0 4px 6px -1px rgba(0,0,0,0.1);
+
+    /* --- 2. DEFAULT FONTS --- */
+    --base-size: 16px;        /* Default Text Size */
+    --font-main: 'Inter', sans-serif;
+    --font-header: 'Amatic SC', cursive;
 }
+
+/* --- DARK MODE OVERRIDES --- */
+/* This activates when the HTML tag has data-theme="dark" */
+[data-theme="dark"] {
+    --primary: #e2e8f0;       /* Text flips to Light Gray */
+    --bg-body: #0f172a;       /* Background becomes Dark Blue/Slate */
+    --bg-card: #1e293b;       /* Cards become slightly lighter Slate */
+    --border: #334155;        /* Darker Borders */
+    --input-bg: #1e293b;      /* Dark Inputs */
+    --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.5); /* Stronger shadows for dark mode */
+    --shadow-hover: 0 4px 6px -1px rgba(0,0,0,0.8);
+}
+
+/* --- FONT SIZE OVERRIDES --- */
+[data-size="large"] { --base-size: 18px; }
+[data-size="xlarge"] { --base-size: 20px; }
+
+/* --- FONT STYLE OVERRIDES --- */
+[data-font="serif"] { --font-main: 'Merriweather', serif; }
+[data-font="mono"] { --font-main: 'Courier Prime', monospace; }
 
 * { box-sizing: border-box; }
 
+/* ==========================================================================
+   2. GLOBAL STYLES
+   ========================================================================== */
 body {
-    font-family: 'Inter', sans-serif;
+    /* ⚠️ This uses the variables we set above */
+    font-family: var(--font-main);
+    font-size: var(--base-size); 
     background-color: var(--bg-body);
     color: var(--primary);
+    
     margin: 0;
     padding-bottom: 50px;
     line-height: 1.6;
+    transition: background-color 0.3s, color 0.3s; /* Smooth Dark Mode Toggle */
 }
 
 h1, h2, h3, h4 {
-    font-family: 'Amatic SC', cursive;
+    font-family: var(--font-header); /* Uses variable now */
     font-weight: 700;
-    color: var(--primary);
+    color: var(--primary); /* Will auto-flip to white in dark mode */
     margin: 0 0 10px 0;
     line-height: 1.2;
 }
@@ -37,52 +73,78 @@ h1, h2, h3, h4 {
 main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 
 /* ==========================================================================
-   2. HEADER
+   3. HEADER
    ========================================================================== */
 .header-container {
-    background: white; padding: 10px 15px; display: flex; align-items: center;
-    justify-content: space-between; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    background: var(--bg-card); /* Changed from 'white' to variable */
+    padding: 10px 15px; display: flex; align-items: center;
+    justify-content: space-between; box-shadow: var(--shadow-sm);
     position: sticky; top: 0; z-index: 100; height: 60px; margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
 }
 .logo-area { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.logo-img { height: 40px; width: auto; }
+.logo-img { 
+    height: 40px; 
+    width: 40px; /* Keep it perfectly square so it rounds evenly */
+    border-radius: 50%; /* This makes it a perfect circle! */
+    object-fit: cover; 
+}
 .header-title h1 { font-size: 1.8rem; margin: 0; white-space: nowrap; }
 .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
 .icon-btn {
-    background: #f1f5f9; border: none; padding: 8px; border-radius: 50%;
+    background: var(--bg-body); /* Changed to variable */
+    border: 1px solid var(--border);
+    padding: 8px; border-radius: 50%;
     cursor: pointer; color: var(--primary); transition: background 0.2s;
     display: flex; align-items: center; justify-content: center;
 }
-.icon-btn:hover { background: var(--accent-teal); color: white; }
-.profile-img { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--accent-teal); object-fit: cover; }
+.icon-btn:hover { background: var(--accent-teal); color: white; border-color: var(--accent-teal); }
+
+.profile-img {
+    width: 38px;  /* Matches the height/width of your icon buttons */
+    height: 38px;
+    border-radius: 50%;
+    object-fit: cover;
+    display: block;
+    border: 2px solid var(--accent-teal); /* Optional: keeps a nice ring around it */
+}
 .admin-pill {
     background: var(--primary); color: #fbbf24; padding: 4px 12px;
     border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-decoration: none;
     display: none;
 }
+/* In dark mode, the admin pill needs a specific fix so it doesn't turn white-on-white */
+[data-theme="dark"] .admin-pill { background: #fbbf24; color: #000; }
+
 .admin-pill.visible { display: inline-block; }
 
 /* ==========================================================================
-   3. RECIPE CARDS (With Hearts!)
+   4. RECIPE CARDS
    ========================================================================== */
 #recipes {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
     gap: 15px; margin-top: 20px;
 }
 .recipe-card {
-    background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-card); 
+    border: 1px solid var(--border); 
+    border-radius: 8px;
     padding: 15px; position: relative; box-shadow: var(--shadow-sm);
     transition: all 0.2s ease; display: flex; flex-direction: column;
     justify-content: space-between; height: 100%; min-height: 140px;
     border-left: 4px solid var(--accent-teal); cursor: pointer;
 }
 .recipe-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-hover); }
-.recipe-card h2 { font-size: 1.6rem; margin: 15px 0 5px 0; } /* Added top margin for Heart space */
-.recipe-author { font-family: 'Inter', sans-serif; font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
+.recipe-card h2 { font-size: 1.6rem; margin: 15px 0 5px 0; } 
+.recipe-author { font-family: var(--font-main); font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
+
 .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
 .tag-pill {
-    background: #f1f5f9; color: #475569; font-size: 0.65rem;
-    padding: 2px 6px; border-radius: 4px; font-weight: 600; font-family: 'Inter', sans-serif;
+    background: var(--bg-body); color: var(--primary); 
+    border: 1px solid var(--border);
+    font-size: 0.65rem;
+    padding: 2px 6px; border-radius: 4px; font-weight: 600; font-family: var(--font-main);
 }
 
 /* Badges & Icons */
@@ -94,61 +156,96 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 }
 .card-heart:hover { transform: scale(1.2); }
 
-/* Card Colors */
-.border-blue { border-left-color: #3b82f6 !important; }
-.border-green { border-left-color: #10b981 !important; }
-.border-yellow { border-left-color: #eab308 !important; }
-.border-red { border-left-color: #ef4444 !important; }
-.border-purple { border-left-color: #8b5cf6 !important; }
-.border-orange { border-left-color: #f97316 !important; }
+/* Card Colors - Mapped to Categories */
+.border-red { border-left-color: #ef4444 !important; }       /* Main Dishes */
+.border-yellow { border-left-color: #eab308 !important; }    /* Desserts */
+.border-blue { border-left-color: #3b82f6 !important; }      /* Appetizers & Snacks */
+.border-orange { border-left-color: #f97316 !important; }    /* Breakfast */
+.border-brown { border-left-color: #b45309 !important; }     /* Breads & Rolls */
+.border-purple { border-left-color: #8b5cf6 !important; }    /* Soups & Salads */
+.border-green { border-left-color: #10b981 !important; }     /* Sides & Veggies */
+.border-teal { border-left-color: #14b8a6 !important; }      /* Sauces & Dressings */
+.border-slate { border-left-color: #475569 !important; }     /* Dutch Oven */
+.border-gray { border-left-color: #9ca3af !important; }      /* Miscellaneous */
 
 /* ==========================================================================
-   4. HOMEPAGE WIDGETS
+   5. HOMEPAGE WIDGETS
    ========================================================================== */
 .buzz-container {
-    background: white; padding: 15px; border-radius: 10px;
+    background: var(--bg-card); padding: 15px; border-radius: 10px;
     box-shadow: var(--shadow-sm); border: 1px solid var(--border);
     border-left: 4px solid var(--accent-teal); margin-bottom: 20px;
 }
 .buzz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .buzz-header h2 { margin: 0; font-size: 1.6rem; color: var(--accent-teal); }
-.buzz-subtext { font-size: 12px; color: #666; font-family: 'Inter', sans-serif; }
+.buzz-subtext { font-size: 12px; color: #666; font-family: var(--font-main); }
 
-.folders { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 20px 0; }
+.folders { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+
 .folders button {
-    background: white; border: 1px solid var(--border); color: var(--primary);
-    padding: 8px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;
-    transition: all 0.2s; font-family: 'Inter', sans-serif;
+    border: none;
+    padding: 8px 16px; 
+    border-radius: 20px; 
+    font-size: 0.85rem; 
+    font-weight: 600; 
+    cursor: pointer;
+    transition: all 0.2s ease; 
+    font-family: var(--font-main);
+    box-shadow: var(--shadow-sm);
+    color: white; /* Default text color is white for good contrast */
 }
-.folders button:hover, .folders button.active-filter {
-    background: var(--primary); color: white; border-color: var(--primary);
+
+/* Category Background Colors */
+.cat-blue { background-color: #3b82f6; }
+.cat-brown { background-color: #b45309; }
+.cat-orange { background-color: #f97316; }
+.cat-yellow { background-color: #eab308; color: #111827 !important; } /* Dark text for yellow so it's readable */
+.cat-slate { background-color: #475569; }
+.cat-red { background-color: #ef4444; }
+.cat-gray { background-color: #9ca3af; }
+.cat-teal { background-color: #14b8a6; }
+.cat-green { background-color: #10b981; }
+.cat-purple { background-color: #8b5cf6; }
+
+/* Hover & Active States */
+.folders button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    filter: brightness(1.1);
+}
+
+.folders button.active-filter {
+    transform: scale(1.05);
+    outline: 3px solid var(--primary); /* Pops a ring around it when selected */
+    outline-offset: 2px;
+    font-weight: 800;
 }
 
 #meal-plan-box, #recent-recipes-box {
-    background: white; border-radius: 12px; padding: 20px;
+    background: var(--bg-card); border-radius: 12px; padding: 20px;
     margin: 20px auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
     text-align: center;
 }
 #meal-plan-box h3, #recent-recipes-box h3 { margin-top: 0; color: var(--accent-teal); }
 .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 15px 0; }
 .day-card {
-    background: #f8fafc; border: 1px solid var(--border);
+    background: var(--bg-body); border: 1px solid var(--border);
     border-radius: 6px; padding: 8px 4px; min-height: 60px;
     font-size: 0.75rem; display: flex; flex-direction: column; justify-content: center;
 }
-.day-card strong { color: var(--accent-teal); margin-bottom: 3px; display: block; font-family: 'Inter', sans-serif;}
+.day-card strong { color: var(--accent-teal); margin-bottom: 3px; display: block; font-family: var(--font-main);}
 .menu-footer { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
 .recent-placeholder { color: #666; font-style: italic; }
 
 /* ==========================================================================
-   5. BUTTONS & UTILITIES
+   6. BUTTONS & UTILITIES
    ========================================================================== */
 .pill-btn {
     padding: 10px 20px; border-radius: 50px; border: none;
     color: white; font-weight: 700; cursor: pointer; font-size: 0.9rem;
     display: inline-flex; align-items: center; gap: 8px;
     transition: transform 0.1s, box-shadow 0.2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-family: 'Inter', sans-serif;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); font-family: var(--font-main);
 }
 .pill-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); }
 .pill-btn:active { transform: scale(0.95); }
@@ -157,79 +254,87 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 .btn-orange { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); }
 .btn-blue { background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); }
 .btn-slate { background: #64748b; font-size: 0.8rem; padding: 6px 12px; }
-.btn-red-outline { background: white; color: #ef4444; border: 1px solid #ef4444; }
-.btn-dark { background: var(--primary); color: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; display: inline-block; }
+.btn-red-outline { background: var(--bg-card); color: #ef4444; border: 1px solid #ef4444; }
+.btn-dark { background: var(--primary); color: var(--bg-card); padding: 10px 20px; border-radius: 50px; text-decoration: none; font-weight: bold; display: inline-block; }
 
 /* ==========================================================================
-   6. LOGIN & SUBMIT PAGES (RESTORED BACKBONE)
+   7. LOGIN & FORM PAGES
    ========================================================================== */
 .login-page {
     display: flex; align-items: center; justify-content: center;
     min-height: 100vh; padding: 20px; background-color: var(--bg-body);
 }
 .login-card {
-    background: white; width: 100%; max-width: 500px; padding: 40px;
+    background: var(--bg-card); width: 100%; max-width: 500px; padding: 40px;
     border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
     border: 1px solid var(--border); text-align: center;
 }
 .login-header { margin-bottom: 30px; }
 .login-header h1 { font-size: 3rem; margin: 0; }
-.subtitle { color: #64748b; font-size: 0.9rem; margin-top: 5px; font-family: 'Inter'; }
+.subtitle { color: #64748b; font-size: 0.9rem; margin-top: 5px; font-family: var(--font-main); }
 
 .input-group { text-align: left; margin-bottom: 20px; }
-.input-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--primary); margin-bottom: 8px; font-family: 'Inter'; }
+.input-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--primary); margin-bottom: 8px; font-family: var(--font-main); }
 
-.form-input {
-    width: 100%; padding: 12px; border: 1px solid var(--border);
-    border-radius: 8px; font-size: 16px; font-family: 'Inter', sans-serif;
+.form-input, input, select, textarea {
+    width: 100%; padding: 12px; 
+    border: 1px solid var(--border);
+    background: var(--input-bg);
+    color: var(--primary);
+    border-radius: 8px; font-size: 16px; font-family: var(--font-main);
     transition: border-color 0.2s;
 }
 .form-input:focus { outline: none; border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
 textarea.form-input { resize: vertical; min-height: 100px; }
-.auth-link { color: var(--accent-teal); text-decoration: none; font-weight: 600; font-size: 0.9rem; font-family: 'Inter'; }
+
+.auth-link { color: var(--accent-teal); text-decoration: none; font-weight: 600; font-size: 0.9rem; font-family: var(--font-main); }
 .auth-link:hover { text-decoration: underline; }
 
 /* ==========================================================================
-   7. MODALS, SEARCH & MOBILE
+   8. MODALS & SEARCH
    ========================================================================== */
 .hidden { display: none !important; }
 #search-overlay, .modal {
-    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9);
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999;
 }
 .modal-content, .search-box-content {
-    background: white; padding: 30px; border-radius: 16px; width: 90%; max-width: 400px;
+    background: var(--bg-card); color: var(--primary);
+    padding: 30px; border-radius: 16px; width: 90%; max-width: 400px;
     text-align: center; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
+    border: 1px solid var(--border);
 }
 #search-form { display: flex; gap: 10px; margin-top: 20px; }
 #searchbar { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
 #search-submit { background: var(--accent-teal); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer;}
-#close-search, .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; }
+#close-search, .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
 
 /* Shopping Modal */
 .shopping-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
 .shopping-list-scroll { max-height: 60vh; overflow-y: auto; text-align: left; margin-bottom: 20px; }
 .shopping-ul { list-style: none; padding: 0; margin: 0; }
-.shop-header { font-weight: 700; margin-top: 15px; color: var(--accent-teal); border-bottom: 2px solid #f1f5f9; padding-bottom: 5px; }
-.shop-item { padding: 8px 0; border-bottom: 1px solid #f9f9f9; cursor: pointer; display: flex; align-items: center; gap: 12px; }
-.shop-item:hover { background-color: #f8fafc; }
+.shop-header { font-weight: 700; margin-top: 15px; color: var(--accent-teal); border-bottom: 2px solid var(--border); padding-bottom: 5px; }
+.shop-item { padding: 8px 0; border-bottom: 1px solid var(--border); cursor: pointer; display: flex; align-items: center; gap: 12px; }
+.shop-item:hover { background-color: var(--bg-body); }
 .check-box { width: 20px; height: 20px; border: 1px solid #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 12px; color: white; }
 .shop-text { font-size: 15px; color: var(--primary); }
-.shop-item.checked .check-box { background-color: var(--success); border-color: var(--success); }
-.shop-item.checked .shop-text { text-decoration: line-through; color: #cbd5e1; }
+.shop-item.checked .check-box { background-color: #10b981; border-color: #10b981; }
+.shop-item.checked .shop-text { text-decoration: line-through; color: #9ca3af; }
 
-/* Announcement & Comment Classes */
-.announce-item { padding: 10px; border-bottom: 1px solid #eee; display: flex; gap: 10px; align-items: center; text-align: left; }
+/* Announcements */
+.announce-item { padding: 10px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: center; text-align: left; }
 .announce-icon { font-size: 18px; }
-.announce-text { font-size: 14px; color: #334155; }
+.announce-text { font-size: 14px; color: var(--primary); }
 .empty-feed { color: #999; font-style: italic; }
+
+/* Comments */
 .comment-row { display: flex; gap: 10px; margin-bottom: 15px; }
-.comment-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0; background: var(--primary); color: white; }
-.comment-bubble { background: #f1f5f9; padding: 10px 14px; border-radius: 0 12px 12px 12px; flex: 1; text-align: left; }
+.comment-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; flex-shrink: 0; background: var(--primary); color: var(--bg-card); }
+.comment-bubble { background: var(--bg-body); border: 1px solid var(--border); padding: 10px 14px; border-radius: 0 12px 12px 12px; flex: 1; text-align: left; }
 .comment-author { font-weight: 700; font-size: 0.8rem; color: var(--primary); margin-bottom: 4px; display: flex; justify-content: space-between; }
-.comment-text { font-size: 0.9rem; color: #334155; line-height: 1.4; }
+.comment-text { font-size: 0.9rem; color: var(--primary); line-height: 1.4; }
 .delete-icon { cursor: pointer; opacity: 0.5; transition: opacity 0.2s; font-size: 14px; }
-.delete-icon:hover { opacity: 1; color: var(--danger); }
+.delete-icon:hover { opacity: 1; color: #ef4444; }
 
 /* Recipe Page */
 .recipe-title-lg { text-align: center; font-size: 3rem; margin-bottom: 5px; color: var(--primary); }
@@ -237,30 +342,13 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 .recipe-divider { border: 0; border-top: 1px solid var(--border); margin: 30px 0; }
 .section-header { color: var(--accent-teal); margin-top: 30px; }
 .instruction-step { margin-bottom: 10px; cursor: pointer; padding: 5px; border-radius: 4px; transition: background 0.1s; }
-.instruction-step:hover { background: #f8fafc; }
+.instruction-step:hover { background: var(--bg-body); }
 .instruction-step.checked { opacity: 0.5; text-decoration: line-through; }
-/* --- RECIPE LIST STYLING --- */
 
-/* 1. Target both Ingredients (ul) and Instructions (ol) */
-ul li, ol li {
-    margin-bottom: 12px; /* The "Happy Medium" spacing */
-    line-height: 1.6;    /* Makes text easier to read */
-    cursor: pointer;     /* Shows a hand icon so users know they can click */
-    transition: opacity 0.2s; /* Smooth fade effect */
-}
-
-/* 2. The "Crossed Out" Look */
-.is-done {
-    text-decoration: line-through;
-    color: #9ca3af; /* Light Gray */
-    opacity: 0.6;
-}
-
-/* Optional: Add a little hover effect so they know it's active */
-ul li:hover, ol li:hover {
-    background-color: #f9fafb;
-    border-radius: 4px;
-}
+/* Lists */
+ul li, ol li { margin-bottom: 12px; line-height: 1.6; cursor: pointer; transition: opacity 0.2s; color: var(--primary); }
+.is-done { text-decoration: line-through; color: #9ca3af; opacity: 0.6; }
+ul li:hover, ol li:hover { background-color: var(--bg-body); border-radius: 4px; }
 
 @media (max-width: 600px) {
     .header-title h1 { display: block; font-size: 1.4rem; }
@@ -268,4 +356,117 @@ ul li:hover, ol li:hover {
     .week-grid { grid-template-columns: repeat(3, 1fr); }
     .day-card:last-child { grid-column: span 3; }
     #recipes { grid-template-columns: 1fr; }
+}
+/* ==========================================================================
+   9. PRINT STYLES (Clean PDF Version)
+   ========================================================================== */
+.print-only { display: none; }
+
+@media print {
+    /* 1. Force Light Mode Colors for Printing */
+    :root, [data-theme="dark"] {
+        --primary: #000000 !important;
+        --bg-body: #ffffff !important;
+        --bg-card: #ffffff !important;
+        --border: #cccccc !important;
+    }
+
+    body, main, .recipe-card, h1, h2, h3, h4, p, li, span, div {
+        color: black !important;
+        background: white !important;
+    }
+
+    /* 2. Hide UI Junk */
+    .header-container, 
+    .kitchen-tools-section, 
+    .comments-section, 
+    .celebration-area, 
+    .admin-pill,
+    .no-print,
+    #share-modal,
+    #report-modal,
+    #plannerModal {
+        display: none !important;
+    }
+
+    /* 3. Show Print-Only elements */
+    .print-only:not(.hidden) { 
+        display: block !important; 
+    }
+
+    /* 4. Format the body for clean paper */
+    body { margin: 0 !important; padding: 0 !important; }
+    main { max-width: 100% !important; margin: 0 !important; }
+    .recipe-divider { border-top: 2px solid #000 !important; }
+}
+/* ==========================================================================
+   10. TOGGLE SWITCH (Global)
+   ========================================================================== */
+.toggle-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    background: var(--bg-card);
+    padding: 10px 20px;
+    border-radius: 30px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+}
+
+.toggle-wrapper:hover {
+    box-shadow: var(--shadow-hover);
+    transform: translateY(-1px);
+}
+
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 54px;
+    height: 30px;
+    flex-shrink: 0;
+}
+
+.switch input { 
+    opacity: 0; 
+    width: 0; 
+    height: 0; 
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #cbd5e1;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 22px;
+    width: 22px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+input:checked + .slider {
+    background-color: var(--accent-teal);
+}
+
+input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+.toggle-label-text {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--primary);
+    font-family: var(--font-main);
 }

@@ -10,6 +10,8 @@ import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/
 
 let allRecipes = []; 
 let userFavorites = []; 
+let isAdmin = false; // <-- ADD THIS
+
 // ⚠️ LIST OF ADMINS (Array of Strings)
 const ADMIN_UIDS = [
     "n5aAU1g1tBY04Ut0HnhqegSgZe92", 
@@ -29,6 +31,9 @@ onAuthStateChanged(auth, async (user) => {
     const adminBtn = document.getElementById('admin-btn');
 
     if (user) {
+        isAdmin = ADMIN_UIDS.includes(user.uid); // <-- ADD THIS LINE
+
+        loadUserSettings(user);
         loadHomepageMenu(user);
         // 1. UI Updates (Only if elements exist)
         if (notSignedMsg) notSignedMsg.classList.add('hidden');
@@ -101,15 +106,20 @@ async function loadAllRecipes() {
 }
 
 function getCategoryClass(category) {
-    if (!category) return ''; 
+    if (!category) return 'border-gray'; 
     const cat = category.toLowerCase();
-    if (cat.includes('appetizer')) return 'border-blue';
-    if (cat.includes('bread')) return 'border-green';
-    if (cat.includes('dessert')) return 'border-yellow';
+    
     if (cat.includes('main')) return 'border-red';
-    if (cat.includes('soup') || cat.includes('salad')) return 'border-purple';
+    if (cat.includes('dessert')) return 'border-yellow';
+    if (cat.includes('appetizer') || cat.includes('snack')) return 'border-blue';
     if (cat.includes('breakfast')) return 'border-orange';
-    return ''; 
+    if (cat.includes('bread') || cat.includes('roll')) return 'border-brown';
+    if (cat.includes('soup') || cat.includes('salad')) return 'border-purple';
+    if (cat.includes('sauce') || cat.includes('dressing') || cat.includes('marinade')) return 'border-teal';
+    if (cat.includes('dutch')) return 'border-slate';
+    if (cat.includes('misc')) return 'border-gray';
+    
+    return 'border-gray'; // Catch-all 
 }
 
 function renderLocalList(list) {
@@ -127,6 +137,12 @@ function renderLocalList(list) {
 
     let html = "";
     list.forEach(item => {
+        // 🚨 CHECK IF HIDDEN
+        const isHidden = item.h === true || item.isHidden === true;
+
+        // 🚨 SKIP RENDERING IF HIDDEN AND NOT AN ADMIN
+        if (isHidden && !isAdmin) return;
+
         // 2. Safety checks
         const recName = item.n || item.name || "Untitled Recipe";
         const recAuth = item.a || item.author || "Family";
@@ -134,20 +150,24 @@ function renderLocalList(list) {
         
         // 3. TAG FIX: Force it to be an Array!
         let recTags = item.t || item.tags || [];
-        // If it's NOT an array (like a String), wrap it in brackets
         if (!Array.isArray(recTags)) {
              recTags = [String(recTags)];
         }
         
         // Category logic
-        const cat = item.c || recTags[0] || ""; 
+        const cat = recTags[0] || item.c || "Misc";
         const colorClass = getCategoryClass(cat);
         const isFav = userFavorites.includes(recId);
         const heartIcon = isFav ? "❤️" : "🤍";
 
+        // 🚨 ADMIN VISUALS: Add the eye icon and dim the card
+        const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
+        const dimStyle = isHidden ? `opacity: 0.6; background-color: #f8fafc;` : "";
+
         html += `
-        <div class="recipe-card ${colorClass}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
+        <div class="recipe-card ${colorClass}" style="${dimStyle}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
             <div class="status-badge">${(item.r || item.reviewed) ? "✅" : ""}</div>
+            ${eyeIcon}
             <button class="card-heart" onclick="toggleHeart(event, '${recId}')">${heartIcon}</button>
             <div class="card-content">
                 <h2>${recName}</h2>
@@ -359,27 +379,64 @@ window.clearMealPlan = function() {
 // 6. NOTES & UTILS
 // ==========================================
 async function loadUserNote() {
+    const noteSection = document.getElementById('notes-section');
     const noteBox = document.getElementById('chefNotes');
-    if (!noteBox) return;
+    const printNotes = document.getElementById('print-chef-notes');
+    
+    if (!noteSection || !noteBox) return;
+    
     const user = auth.currentUser;
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    if (!user || !currentRecipe) return;
+    
+    if (!user || !currentRecipe) {
+        // If not logged in, ensure the whole section is hidden
+        noteSection.classList.add('hidden');
+        return;
+    }
+
+    // Logged in? Show the section
+    noteSection.classList.remove('hidden');
 
     try {
         const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
         const docSnap = await getDoc(noteRef);
-        if (docSnap.exists()) noteBox.value = docSnap.data().text || "";
+        
+        if (docSnap.exists() && docSnap.data().text) {
+            const text = docSnap.data().text;
+            noteBox.value = text;
+            if(printNotes) printNotes.innerText = text;
+            noteSection.classList.remove('no-print'); // Let it print!
+        } else {
+            if(printNotes) printNotes.innerText = "";
+            noteSection.classList.add('no-print'); // Hide from printer if empty
+        }
     } catch (e) { console.error(e); }
 }
 
 window.saveNote = async function() {
+    const noteSection = document.getElementById('notes-section');
     const noteBox = document.getElementById('chefNotes');
+    const printNotes = document.getElementById('print-chef-notes');
+    
     const user = auth.currentUser;
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    
     if (!user || !noteBox || !currentRecipe) return alert("Please log in to save notes.");
+    
+    const textValue = noteBox.value.trim();
+
     try {
         const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
-        await setDoc(noteRef, { text: noteBox.value, updatedAt: serverTimestamp(), recipeName: currentRecipe.name });
+        await setDoc(noteRef, { text: textValue, updatedAt: serverTimestamp(), recipeName: currentRecipe.name || currentRecipe.n });
+        
+        // Sync to print view
+        if(printNotes) printNotes.innerText = textValue;
+        if (textValue && noteSection) {
+            noteSection.classList.remove('no-print');
+        } else if (noteSection) {
+            noteSection.classList.add('no-print');
+        }
+
         const status = document.getElementById('saveStatus');
         if(status) { status.innerText = "Saved!"; setTimeout(() => status.innerText = "", 2000); }
     } catch (e) { alert("Error saving note."); }
@@ -401,21 +458,53 @@ function resetProfileIcon() {
     }
 }
 
+// ==========================================
+// UNIFIED HOMEPAGE FILTERING
+// ==========================================
+let currentCategoryFilter = null;
+
+window.applyHomepageFilters = function() {
+    const searchInput = document.getElementById('searchbar');
+    const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    const showReviewedOnly = document.getElementById('reviewed-toggle') ? document.getElementById('reviewed-toggle').checked : false;
+    
+    let filtered = allRecipes;
+
+    // 1. Filter by Reviewed Status
+    if (showReviewedOnly) {
+        filtered = filtered.filter(r => r.r === true || r.reviewed === true);
+    }
+
+    // 2. Filter by Category
+    if (currentCategoryFilter) {
+        filtered = filtered.filter(r => {
+            const tags = r.t || [];
+            return tags.includes(currentCategoryFilter);
+        });
+    }
+
+    // 3. Filter by Search Term
+    if (term) {
+        filtered = filtered.filter(r => (r.n || "").toLowerCase().includes(term));
+    }
+
+    renderLocalList(filtered);
+};
+
 function setupSearch() {
     const openBtn = document.getElementById('header-search-btn');
     const overlay = document.getElementById('search-overlay');
     const closeBtn = document.getElementById('close-search');
     const form = document.getElementById('search-form');
     const input = document.getElementById('searchbar');
+    
     if (!openBtn) return;
     openBtn.onclick = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
     if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
+    
     if (form) form.onsubmit = (e) => {
         e.preventDefault();
-        const term = input.value.toLowerCase().trim();
-        if (!term) return;
-        const filtered = allRecipes.filter(r => (r.n || "").toLowerCase().includes(term));
-        renderLocalList(filtered);
+        applyHomepageFilters(); // Use the unified filter
         overlay.classList.add('hidden');
         input.value = "";
     }
@@ -425,19 +514,20 @@ function setupCategoryFilters() {
     const buttons = document.querySelectorAll('.folders button');
     buttons.forEach(btn => {
         btn.onclick = () => {
-            const category = btn.innerText.replace("✓ ", "").trim();
+            const category = btn.innerText.trim();
+            
             if (btn.classList.contains('active-filter')) {
+                // Turn off filter
                 btn.classList.remove('active-filter');
-                renderLocalList(allRecipes);
+                currentCategoryFilter = null;
             } else {
+                // Turn on filter
                 buttons.forEach(b => b.classList.remove('active-filter'));
                 btn.classList.add('active-filter');
-                const filtered = allRecipes.filter(r => {
-                    const tags = r.t || [];
-                    return tags.includes(category); 
-                });
-                renderLocalList(filtered);
+                currentCategoryFilter = category;
             }
+            
+            applyHomepageFilters(); // Use the unified filter
         };
     });
 }
@@ -467,10 +557,10 @@ async function loadHomepageMenu(user) {
                         const recipeId = meal.id; 
 
                         html += `
-                        <div style="background: white; margin-top: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <div style="background: var(--bg-card); margin-top: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
                             
                             <a href="recipe.html?id=${recipeId}" style="text-decoration: none; flex-grow: 1; overflow: hidden; margin-right: 8px;">
-                                <span style="font-size: 13px; color: #2563eb; font-weight: 600; text-align: left; line-height: 1.3; display: block; white-space: normal;">
+                                <span style="font-size: 13px; color: var(--primary); font-weight: 600; text-align: left; line-height: 1.3; display: block; white-space: normal;">
                                     ${meal.name}
                                 </span>
                             </a>
@@ -534,3 +624,145 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
         if(box) box.style.opacity = "1";
     }
 };
+// ==========================================
+// 8. SETTINGS & THEME ENGINE (DEBUG VERSION)
+// ==========================================
+
+// Apply settings immediately if found in LocalStorage (prevents flash)
+const cachedSettings = JSON.parse(localStorage.getItem('userSettings'));
+if (cachedSettings) {
+    console.log("🎨 [THEME] Applied cached settings from LocalStorage");
+    applyTheme(cachedSettings);
+}
+
+export async function saveUserSettings(settings) {
+    const user = auth.currentUser;
+    
+    // 1. Check if user is actually logged in
+    if (!user) {
+        console.error("❌ [SETTINGS] Cannot save: No user logged in.");
+        alert("Error: You must be logged in to save settings.");
+        return;
+    }
+
+    console.log("💾 [SETTINGS] Saving for user:", user.uid);
+    console.log("📦 [SETTINGS] Data to save:", settings);
+
+    // 2. Save to LocalStorage (Instant UI update)
+    localStorage.setItem('userSettings', JSON.stringify(settings));
+    applyTheme(settings);
+
+    // 3. Save to Firebase (Persistence)
+    // PATH: users -> {uid} -> settings -> preferences
+    // This puts it exactly in the 'settings' folder circled in your screenshot.
+    try {
+        const docRef = doc(db, "users", user.uid, "settings", "preferences");
+        console.log("📍 [SETTINGS] Writing to Firebase path:", docRef.path);
+        
+        await setDoc(docRef, settings);
+        
+        console.log("✅ [SETTINGS] Firebase Save Success!");
+    } catch (e) {
+        console.error("🔥 [SETTINGS] Firebase Save FAILED:", e);
+        alert("Could not save to cloud. Check console for error.");
+    }
+}
+
+export async function loadUserSettings(user) {
+    if (!user) return;
+
+    console.log("📥 [SETTINGS] Fetching from cloud for:", user.uid);
+
+    try {
+        // MATCHING PATH: users -> {uid} -> settings -> preferences
+        const docRef = doc(db, "users", user.uid, "settings", "preferences");
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            const settings = docSnap.data();
+            console.log("✨ [SETTINGS] Found cloud settings:", settings);
+            
+            // Update LocalStorage and Apply
+            localStorage.setItem('userSettings', JSON.stringify(settings));
+            applyTheme(settings);
+        } else {
+            console.log("⚠️ [SETTINGS] No cloud settings found (using defaults).");
+        }
+    } catch (e) {
+        console.error("❌ [SETTINGS] Load Error:", e);
+    }
+}
+
+function applyTheme(settings) {
+    const html = document.documentElement;
+    
+    // 1. Dark Mode
+    if (settings.theme === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+    } else {
+        html.removeAttribute('data-theme');
+    }
+
+    // 2. Font Size
+    html.setAttribute('data-size', settings.fontSize || 'normal');
+
+    // 3. Font Style
+    html.setAttribute('data-font', settings.fontStyle || 'inter');
+}
+// ==========================================
+// 8. QUICK THEME TOGGLE LOGIC
+// ==========================================
+window.quickToggleTheme = async function() {
+    // 1. Get current settings (or defaults)
+    let settings = JSON.parse(localStorage.getItem('userSettings')) || {
+        theme: 'light',
+        fontSize: 'normal',
+        fontStyle: 'inter'
+    };
+    
+    // 2. Flip the theme
+    const isDark = settings.theme === 'dark';
+    settings.theme = isDark ? 'light' : 'dark';
+    
+    // 3. Apply it instantly to the screen
+    const html = document.documentElement;
+    if (settings.theme === 'dark') {
+        html.setAttribute('data-theme', 'dark');
+    } else {
+        html.removeAttribute('data-theme');
+    }
+    
+    // 4. Update the button icons
+    updateThemeIcons(settings.theme);
+
+    // 5. Save it to LocalStorage immediately
+    localStorage.setItem('userSettings', JSON.stringify(settings));
+
+    // 6. Save it to Firebase in the background (if user is logged in)
+    const user = auth.currentUser;
+    if (user) {
+        try {
+            const docRef = doc(db, "users", user.uid, "settings", "preferences");
+            await setDoc(docRef, settings);
+        } catch (e) { console.error("Could not save theme to cloud:", e); }
+    }
+};
+
+// Helper function to make sure the buttons say the right thing when the page loads
+function updateThemeIcons(theme) {
+    const homeBtn = document.getElementById('homeThemeBtn');
+    const recipeBtn = document.getElementById('recipeThemeBtn');
+    
+    if (homeBtn) {
+        homeBtn.innerText = theme === 'dark' ? '☀️' : '🌙';
+    }
+    if (recipeBtn) {
+        recipeBtn.innerText = theme === 'dark' ? '☀️ Day Mode' : '🌙 Night Mode';
+    }
+}
+
+// Run this once when the page loads to ensure icons match the current theme
+setTimeout(() => {
+    let settings = JSON.parse(localStorage.getItem('userSettings')) || {};
+    updateThemeIcons(settings.theme || 'light');
+}, 500);

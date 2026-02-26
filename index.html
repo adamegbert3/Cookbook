@@ -6,6 +6,8 @@
     <title>Login</title>
     <link rel="stylesheet" href="styles/recipes.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 </head>
 <body class="login-page">
     <div class="login-card">
@@ -37,6 +39,7 @@
         import { auth } from './scripts/firebase-config.js'; 
         import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
+        const loginForm = document.getElementById('login-form'); 
         const loginBtn = document.getElementById('login-btn'); 
         const emailInput = document.getElementById('email');   
         const passInput = document.getElementById('password'); 
@@ -44,31 +47,24 @@
 
         // 1. AUTO-REDIRECT (If the browser remembers you)
         onAuthStateChanged(auth, user => {
-            if (user) {
+            if (user && !loginBtn.disabled) {
                 console.log("✅ User is authenticated:", user.email);
-                // Only redirect if we aren't already trying to login manually
-                if (!loginBtn.disabled) {
-                    window.location.href = "homepage.html"; 
-                }
+                window.location.href = "homepage.html"; 
             }
         });
 
-        // 2. MANUAL LOGIN
-        if (loginBtn) {
-            loginBtn.addEventListener('click', async (e) => {
-                e.preventDefault(); 
+        // 2. MANUAL LOGIN (Using Form Submit instead of Button Click)
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault(); // Stop the page from reloading perfectly
                 
-                const email = emailInput.value;
+                // .trim() removes invisible accidental spaces that crash Firebase!
+                const email = emailInput.value.trim();
                 const password = passInput.value;
                 
                 // Reset Errors
                 if(errorMsg) errorMsg.innerText = "";
                 console.log("🚀 Attempting login for:", email);
-
-                if(!email || !password) {
-                    alert("Please enter both email and password.");
-                    return;
-                }
 
                 // Lock Button
                 const originalText = loginBtn.innerText;
@@ -80,31 +76,33 @@
                     const userCredential = await signInWithEmailAndPassword(auth, email, password);
                     console.log("🎉 Login Successful!", userCredential.user);
                     
-                    // B. FORCE REDIRECT (Don't wait for listener)
+                    // B. FORCE REDIRECT
                     loginBtn.innerText = "Redirecting...";
-                    
-                    // ⚠️ CHECK: Is your main file called 'homepage.html' or 'index.html'?
-                    // If this fails, try changing it to 'index.html'
                     window.location.href = "homepage.html"; 
 
                 } catch (error) {
                     console.error("❌ Login Failed:", error);
                     
                     let message = "Login Failed: " + error.message;
-                    if(error.code === "auth/user-not-found") message = "Account not found.";
-                    if(error.code === "auth/wrong-password") message = "Incorrect password.";
-                    if(error.code === "auth/too-many-requests") message = "Too many attempts. Try again later.";
+                    
+                    // Catch the newest Firebase security error codes
+                    if(error.code === "auth/user-not-found" || error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
+                        message = "Account not found or incorrect password.";
+                    }
+                    if(error.code === "auth/too-many-requests") {
+                        message = "Too many attempts. Try again later.";
+                    }
 
                     if(errorMsg) errorMsg.innerText = message;
                     else alert(message);
                     
-                    // Unlock Button
+                    // Unlock Button so you aren't stuck!
                     loginBtn.innerText = originalText;
                     loginBtn.disabled = false;
                 }
             });
         } else {
-            console.error("❌ CRITICAL: Button id='login-btn' not found.");
+            console.error("❌ CRITICAL: Form id='login-form' not found.");
         }
     </script>
 </body>

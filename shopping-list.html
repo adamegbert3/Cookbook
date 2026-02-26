@@ -4,42 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Shopping List</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            html.setAttribute('data-size', settings.fontSize || 'normal');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f3f4f6; padding: 20px; max-width: 600px; margin: 0 auto; }
-        .list-header { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        body { padding: 20px; max-width: 600px; margin: 0 auto; }
+        
+        /* The main white/dark box at the top */
+        .list-header { 
+            background: var(--bg-card); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: var(--shadow-sm); 
+            border: 1px solid var(--border); 
+            margin-bottom: 20px; 
+        }
+        
         .add-box { display: flex; gap: 10px; margin-top: 15px; }
         
         .day-group { margin-bottom: 20px; }
-        .day-title { font-size: 14px; font-weight: 800; color: #6b7280; text-transform: uppercase; margin-bottom: 10px; }
         
-        .item-row { 
-            background: white; padding: 12px; margin-bottom: 8px; border-radius: 8px; 
-            display: flex; align-items: center; gap: 10px; cursor: pointer; border: 1px solid #e5e7eb; 
+        /* The text that says "MONDAY", "TUESDAY", etc. */
+        .day-title { 
+            font-size: 14px; 
+            font-weight: 800; 
+            color: var(--primary); 
+            opacity: 0.7; 
+            text-transform: uppercase; 
+            margin-bottom: 10px; 
         }
-        .item-row.checked { opacity: 0.5; background: #f9fafb; text-decoration: line-through; }
+        
+        /* Individual ingredient rows */
+        .item-row { 
+            background: var(--bg-card); 
+            padding: 12px; 
+            margin-bottom: 8px; 
+            border-radius: 8px; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            cursor: pointer; 
+            border: 1px solid var(--border); 
+            color: var(--primary);
+        }
+        
+        /* When an item is crossed off */
+        .item-row.checked { 
+            opacity: 0.5; 
+            background: var(--bg-body); 
+            text-decoration: line-through; 
+        }
+        
         .checkbox { font-size: 18px; }
+
+        /* Style the input box cleanly in both modes */
+        #custom-item-input {
+            background: var(--input-bg);
+            color: var(--primary);
+            border: 1px solid var(--border);
+        }
     </style>
 </head>
 <body>
 
     <div class="list-header">
-        <h1 style="margin:0; color:#1e3a8a;">🛒 Shopping List</h1>
-        <p style="margin:5px 0 0 0; color:#666; font-size:13px;">Items are saved automatically.</p>
+        <h1 style="margin:0; color: var(--accent-teal);">🛒 Shopping List</h1>
+        <p style="margin:5px 0 0 0; color: var(--primary); opacity: 0.7; font-size:13px;">Items are saved automatically.</p>
         
         <div class="add-box">
             <input type="text" id="custom-item-input" placeholder="Add milk, eggs, etc..." 
-                   style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
-            <button onclick="addCustomItem()" style="background: #2563eb; color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold;">+</button>
+                   style="flex: 1; padding: 10px; border-radius: 8px;">
+            <button onclick="addCustomItem()" style="background: var(--accent-teal); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold;">+</button>
         </div>
     </div>
 
     <div id="shopping-container">
-        <p style="text-align:center; color:#999;">Loading your list...</p>
+        <p style="text-align:center; color: var(--primary); opacity: 0.6;">Loading your list...</p>
     </div>
 
     <div style="text-align: center; margin-top: 30px;">
-        <a href="index.html" style="color: #666; text-decoration: none;">← Back to Cookbook</a>
+        <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none;">← Back to Cookbook</a>
     </div>
 
     <script type="module">
@@ -51,7 +107,7 @@
             if (user) {
                 loadShoppingList(user.uid);
             } else {
-                document.getElementById('shopping-container').innerHTML = "<p style='text-align:center;'>Please sign in to see your list.</p>";
+                document.getElementById('shopping-container').innerHTML = "<p style='text-align:center; color: var(--primary);'>Please sign in to see your list.</p>";
             }
         });
 
@@ -68,7 +124,7 @@
                     const checkedItems = stateSnap.exists() ? (stateSnap.data().checked || []) : [];
 
                     if (snapshot.empty) {
-                        container.innerHTML = "<p style='text-align:center; color:#999;'>Your meal plan is empty.</p>";
+                        container.innerHTML = "<p style='text-align:center; color: var(--primary); opacity: 0.6;'>Your meal plan is empty.</p>";
                         return;
                     }
 
@@ -106,7 +162,7 @@
                             
                             items.forEach(item => {
                                 if (item.isHeader) {
-                                    dayHtml += `<div style="font-size:12px; color:#2563eb; font-weight:bold; margin-top:5px; margin-bottom:2px;">${item.text}</div>`;
+                                    dayHtml += `<div style="font-size:12px; color: var(--accent-teal); font-weight:bold; margin-top:5px; margin-bottom:2px;">${item.text}</div>`;
                                 } else {
                                     // Handle ' vs \' in strings for the onclick event
                                     const safeText = item.text.replace(/'/g, "\\'");

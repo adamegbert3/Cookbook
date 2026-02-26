@@ -42,20 +42,11 @@ async function loadAdminDashboard() {
         renderDeepStats(allRecipeData);      
         loadAnalytics(allRecipeData);   
 
-        // 2. ACTIVATING SEARCH (This was missing!)
+        // 2. ACTIVATING SEARCH & FILTERS
         const searchInput = document.getElementById('manager-search');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase().trim();
-                
-                // Filter the global list based on Name OR Author
-                const filtered = allRecipeData.filter(r => 
-                    (r.name || "").toLowerCase().includes(term) || 
-                    (r.author || "").toLowerCase().includes(term)
-                );
-                
-                // Re-draw the table with only the matches
-                renderUnifiedManager(filtered);
+                applyAdminFilters(); // Calls the new unified filter
             });
         }
 
@@ -318,9 +309,96 @@ window.openStatsModal = function() { const m = document.getElementById('stats-mo
 window.closeStatsModal = function() { document.getElementById('stats-modal').style.display='none'; };
 window.generateMegaIndex = async function() {
     if(!confirm("Update Homepage?")) return;
+    
     const snap = await getDocs(collection(db, "recipes"));
     const list = [];
-    snap.forEach(d => list.push({id: d.id, n: d.data().name, t: d.data().tags, c: d.data().category}));
-    await setDoc(doc(db, "static_assets", "cookbook_index"), { recipes: list });
-    alert("Updated!");
+    
+    snap.forEach(d => {
+        const data = d.data();
+        list.push({
+            id: d.id, 
+            n: data.name || "Untitled",          
+            a: data.author || "Family",          // 👨‍🍳 ADDED THIS BACK IN!
+            t: data.tags || [],                  
+            c: data.category || "Misc",          
+            r: data.reviewed || false,           
+            h: data.isHidden === true            
+        });
+    });
+    
+    console.log("🚀 SAVING THIS TO FIREBASE INDEX:", list);
+    
+    try {
+        await setDoc(doc(db, "static_assets", "cookbook_index"), { recipes: list });
+        alert("Index Updated! Authors restored."); 
+    } catch (error) {
+        console.error("FIREBASE SAVE ERROR:", error);
+        alert("Error saving: " + error.message);
+    }
+};
+// --- NEW: ADMIN FILTERING LOGIC ---
+let currentAdminCategory = "All";
+
+window.filterAdmin = function(category) {
+    currentAdminCategory = category;
+    applyAdminFilters();
+};
+
+function applyAdminFilters() {
+    const searchInput = document.getElementById('manager-search');
+    const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
+    
+    let filtered = allRecipeData;
+
+    // 1. Filter by Category First
+    if (currentAdminCategory !== "All") {
+        filtered = filtered.filter(r => {
+            let cat = "Misc";
+            if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
+            else if (r.category) cat = r.category;
+            return cat.includes(currentAdminCategory);
+        });
+    }
+
+    // 2. Filter by Search Term Second
+    if (term) {
+        filtered = filtered.filter(r => 
+            (r.name || "").toLowerCase().includes(term) || 
+            (r.author || "").toLowerCase().includes(term)
+        );
+    }
+
+    renderUnifiedManager(filtered);
+};
+// ==========================================
+// DATA BACKUP EXPORT
+// ==========================================
+window.exportRecipes = function() {
+    if (!allRecipeData || allRecipeData.length === 0) {
+        alert("No recipes loaded to export. Please wait a moment and try again.");
+        return;
+    }
+
+    if(!confirm(`Download a backup of all ${allRecipeData.length} recipes?`)) return;
+
+    // 1. Convert the recipe array into a nicely formatted JSON string
+    const dataStr = JSON.stringify(allRecipeData, null, 2);
+    
+    // 2. Create a Blob (a file-like object)
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    
+    // 3. Create a temporary invisible link to trigger the download
+    const a = document.createElement("a");
+    a.href = url;
+    
+    // Name the file with today's date so you know when you backed it up!
+    const date = new Date().toISOString().split('T')[0]; // Gets YYYY-MM-DD
+    a.download = `Family_Cookbook_Backup_${date}.json`;
+    
+    // 4. Click the link and clean up
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 };

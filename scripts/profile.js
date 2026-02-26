@@ -6,17 +6,31 @@ import {
     doc, getDoc, collection, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+// ⚠️ LIST OF ADMINS (Copy your exact list from main.js here)
+const ADMIN_UIDS = [
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92", 
+    "NrY491PYN3MIrqJp4rhu5S86w2R2",
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+];
 
 // STARTUP
 onAuthStateChanged(auth, async (user) => {
     if (user) {
+        // --- NEW: REVEAL ADMIN BUTTON ---
+        if (ADMIN_UIDS.includes(user.uid)) {
+            const adminBtn = document.getElementById('profile-admin-btn');
+            if(adminBtn) {
+                adminBtn.style.display = 'inline-flex';
+                adminBtn.classList.remove('hidden');
+            }
+        }
+
         // 1. Load User Info
         loadUserProfile(user);
         
         // 2. Load Favorites
         loadUserFavorites(user);
     } else {
-        // Not logged in? Kick them back home.
         window.location.href = "index.html";
     }
 });
