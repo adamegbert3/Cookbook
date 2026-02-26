@@ -235,30 +235,62 @@ window.recordCook = async function() {
 // ==========================================
 // 3. REPORTING LOGIC
 // ==========================================
-window.submitReport = async function() {
+window.submitReport = async function(event) {
+    // 🛑 THIS IS THE MAGIC LINE: Stops the page from reloading!
+    if (event) {
+        event.preventDefault(); 
+    }
+
     const reason = document.getElementById('report-reason').value.trim();
     if(!reason) return alert("Please describe the issue.");
     
     const current = JSON.parse(localStorage.getItem("currentRecipeData"));
     
+    const btn = document.querySelector('#report-modal button.btn-teal') || document.activeElement;
+    const originalText = btn.innerText;
+    btn.innerText = "Sending...";
+    
     try {
         const user = auth.currentUser;
+        let reporterName = "Guest";
+        let reporterEmail = "No Email";
+
+        if (user) {
+            reporterEmail = user.email || "No Email";
+            reporterName = reporterEmail.split('@')[0]; 
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists() && userDoc.data().Name) {
+                    reporterName = userDoc.data().Name; 
+                } else if (user.displayName) {
+                    reporterName = user.displayName;
+                }
+            } catch (err) { console.log("Could not fetch profile name for report."); }
+        }
+
         await addDoc(collection(db, "recipe_reports"), {
             recipeId: current.id,
             recipeName: current.name || current.n,
             issue: reason,
-            reporter: user ? (user.displayName || user.email) : "Guest",
+            userName: reporterName,      
+            userEmail: reporterEmail,    
             uid: user ? user.uid : "anonymous",
-            timestamp: serverTimestamp()
+            createdAt: serverTimestamp() 
         });
         
-        alert("Report sent!");
+        alert("Report sent to the Chef!");
         document.getElementById('report-reason').value = "";
         
-        if(window.closeReportModal) window.closeReportModal();
-        else document.getElementById('report-modal').classList.add('hidden');
+        const reportModal = document.getElementById('report-modal');
+        if (reportModal) reportModal.classList.add('hidden');
+        if (window.closeReportModal) window.closeReportModal();
         
-    } catch(e) { alert("Error sending report."); }
+    } catch(e) { 
+        console.error(e);
+        alert("Error sending report. Check your connection."); 
+    } finally {
+        if(btn) btn.innerText = originalText;
+    }
 }
 
 // ==========================================
@@ -285,10 +317,6 @@ window.triggerPrint = function() {
         window.print(); // Wait 300ms for the animation to finish, then print
     }, 300);
 };
-
-
-
-
 
 // Start
 loadRecipe();

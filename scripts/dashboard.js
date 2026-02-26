@@ -20,6 +20,8 @@ onAuthStateChanged(auth, (user) => {
     if (user && ADMIN_UIDS.includes(user.uid)) {
         console.log("Welcome, Chef. Loading Dashboard...");
         loadAdminDashboard(); 
+        // NEW: Fetch the reports!
+        loadReportedIssues();
     } else {
         window.location.href = "index.html"; 
     }
@@ -401,4 +403,81 @@ window.exportRecipes = function() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+};
+// ==========================================
+// REPORTED ISSUES LOGIC
+// ==========================================
+window.loadReportedIssues = async function() {
+    const tbody = document.getElementById('reports-table-body');
+    if (!tbody) return;
+    
+    try {
+        const snap = await getDocs(collection(db, "recipe_reports")); 
+        
+        if (snap.empty) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
+            return;
+        }
+        
+        let html = "";
+        snap.forEach(d => {
+            const data = d.data();
+            
+            // 1. Robust Date Parsing (Fixes the "Unknown" bug)
+            let dateStr = "Unknown";
+            if (data.createdAt) {
+                if (typeof data.createdAt.toDate === 'function') {
+                    dateStr = data.createdAt.toDate().toLocaleDateString();
+                } else if (data.createdAt.seconds) {
+                    dateStr = new Date(data.createdAt.seconds * 1000).toLocaleDateString();
+                } else {
+                    // Fallback for normal string dates
+                    dateStr = new Date(data.createdAt).toLocaleDateString(); 
+                }
+            }
+
+            // 2. Get Reporter Info
+            const reporter = data.userName || data.userEmail || "Anonymous";
+            
+            const recipeId = data.recipeId || "";
+            const recipeName = data.recipeName || "View Recipe";
+            const issue = data.issue || data.message || data.reason || "No details provided";
+            
+            html += `
+                <tr id="report-${d.id}" style="border-bottom: 1px solid var(--border);">
+                    <td style="padding: 10px; color: var(--primary);">${dateStr}</td>
+                    <td style="padding: 10px; font-weight: bold; color: var(--accent-teal);">${reporter}</td>
+                    <td style="padding: 10px;">
+                        <a href="recipe.html?id=${recipeId}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">${recipeName}</a>
+                    </td>
+                    <td style="padding: 10px; color: var(--primary);">${issue}</td>
+                    <td style="padding: 10px;">
+                        <button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Resolve</button>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    } catch (e) {
+        console.error("Error loading reports:", e);
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: red;">Error loading reports.</td></tr>`;
+    }
+};
+
+window.resolveReport = async function(reportId) {
+    if(!confirm("Mark this issue as resolved and remove it from the list?")) return;
+    try {
+        const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js");
+        await deleteDoc(doc(db, "recipe_reports", reportId));
+        
+        const row = document.getElementById(`report-${reportId}`);
+        if(row) row.remove();
+        
+        const tbody = document.getElementById('reports-table-body');
+        if (tbody && tbody.children.length === 0) {
+             tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
+        }
+    } catch (e) {
+        alert("Error resolving report: " + e.message);
+    }
 };
