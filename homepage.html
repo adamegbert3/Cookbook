@@ -30,6 +30,8 @@
         }
     }
 </style>
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 </head>
 <body>
     <div class="header-container">
@@ -41,8 +43,10 @@
         </div>
 
         <div class="header-actions">
-            <a id="admin-btn" href="admin.html" class="admin-pill">👑 Admin</a>
-            
+            <button onclick="quickToggleTheme()" class="icon-btn" id="homeThemeBtn" aria-label="Toggle Theme" style="font-size: 1.1rem;">
+                🌙
+            </button>
+
             <button id="header-search-btn" class="icon-btn" aria-label="Search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
@@ -65,16 +69,27 @@
         </div>
 
         <div class="folders">
-            <button>Appetizers & Snacks</button>
-            <button>Breads & Rolls</button>
-            <button>Breakfast</button>
-            <button>Desserts</button>
-            <button>Dutch Oven</button>
-            <button>Main Dishes</button>
-            <button>Miscellaneous</button>
-            <button>Sauces, Dressings & Marinades</button>
-            <button>Sides, Veggies & Breads</button>
-            <button>Soups & Salads</button>
+            <button class="cat-blue">Appetizers & Snacks</button>
+            <button class="cat-brown">Breads & Rolls</button>
+            <button class="cat-orange">Breakfast</button>
+            <button class="cat-yellow">Desserts</button>
+            <button class="cat-slate">Dutch Oven</button>
+            <button class="cat-red">Main Dishes</button>
+            <button class="cat-gray">Miscellaneous</button>
+            <button class="cat-teal">Sauces, Dressings & Marinades</button>
+            <button class="cat-purple">Soups & Salads</button>
+        </div>
+        <div class="folders">
+            </div>
+
+        <div style="text-align: center; margin: 15px 0 25px 0; display: flex; justify-content: center;">
+            <label class="toggle-wrapper">
+                <div class="switch">
+                    <input type="checkbox" id="reviewed-toggle" onchange="applyHomepageFilters()">
+                    <span class="slider"></span>
+                </div>
+                <span class="toggle-label-text">Show Verified Recipes Only (✅)</span>
+            </label>
         </div>
 
         <div style="text-align: center; margin-bottom: 30px;">
@@ -88,52 +103,52 @@
             </div>
         </div>
 
-<div class="widget-card" style="background: white; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; margin-top: 20px;">
+<div class="widget-card" style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: 20px; box-shadow: var(--shadow-sm);">
     <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
-        <h3 style="margin: 0; color: #0f766e;">📅 Weekly Menu</h3>
+        <h3 style="margin: 0; color: var(--accent-teal);">📅 Weekly Menu</h3>
     </div>
 
     <div class="weekly-grid">
         
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">SUN</div>
-            <div id="menu-Sun" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">SUNDAY</div>
+            <div id="menu-Sun" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">MON</div>
-            <div id="menu-Mon" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">MONDAY</div>
+            <div id="menu-Mon" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">TUE</div>
-            <div id="menu-Tue" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">TUESDAY</div>
+            <div id="menu-Tue" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">WED</div>
-            <div id="menu-Wed" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">WEDNESDAY</div>
+            <div id="menu-Wed" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">THU</div>
-            <div id="menu-Thu" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">THURSDAY</div>
+            <div id="menu-Thu" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">FRI</div>
-            <div id="menu-Fri" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">FRIDAY</div>
+            <div id="menu-Fri" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
-        <div style="background: #f0f9ff; padding: 10px; border-radius: 8px; border: 1px solid #bae6fd;">
-            <div style="font-size: 11px; font-weight: bold; color: #0284c7;">SAT</div>
-            <div id="menu-Sat" style="font-size: 12px; color: #333; margin-top: 5px; min-height: 15px;">-</div>
+        <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">SATURDAY</div>
+            <div id="menu-Sat" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
         </div>
 
     </div>
 
-    <div style="text-align: center; display: flex; justify-content: center; gap: 10px;">
-        <a href="shopping-list.html" style="background: #0f766e; color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block;">
+    <div style="text-align: center; display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+        <a href="shopping-list.html" style="background: var(--accent-teal); color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block;">
             🛒 View Shopping List
         </a>
     </div>

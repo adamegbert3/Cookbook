@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Chef's Admin Panel</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     
 <style>
     /* --- BASE SETTINGS --- */
@@ -129,10 +131,34 @@
         </div>
 
         <div class="pending-card widget-card" style="border-left: 5px solid #2563eb;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap: wrap; gap: 10px;">
                 <h3 style="margin:0; color: #1e3a8a;">🎛️ Master Recipe List</h3>
-                <button id="btn-sync" onclick="syncViewCounts()" style="background: white; border: 1px solid #ccc; color: #555; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
+                <div style="display: flex; gap: 8px;">
+                    <button id="btn-sync" onclick="syncViewCounts()" style="background: white; border: 1px solid #ccc; color: #555; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
+                    <button onclick="generateMegaIndex()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🌐 Update Homepage Index</button>
+                    <button onclick="exportRecipes()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">💾 Backup Recipes</button>
+                </div>
             </div>
+            
+            <div id="admin-filters" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px;">
+                <button onclick="filterAdmin('All')" class="pill-btn btn-dark" style="padding: 4px 10px; font-size: 11px;">All</button>
+                <button onclick="filterAdmin('Appetizers')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Appetizers</button>
+                <button onclick="filterAdmin('Breads')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Breads</button>
+                <button onclick="filterAdmin('Breakfast')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Breakfast</button>
+                <button onclick="filterAdmin('Desserts')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Desserts</button>
+                <button onclick="filterAdmin('Dutch')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Dutch Oven</button>
+                <button onclick="filterAdmin('Main')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Mains</button>
+                <button onclick="filterAdmin('Misc')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Misc</button>
+                <button onclick="filterAdmin('Sauces')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Sauces</button>
+                <button onclick="filterAdmin('Soups')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Soups</button>
+            </div>
+
+            <input type="text" id="manager-search" placeholder="🔍 Search recipes..." style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+
+            <div id="unified-list" style="overflow-x: auto;">
+                <p>Loading list...</p>
+            </div>
+        </div>
             
             <input type="text" id="manager-search" placeholder="🔍 Search recipes..." style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
 
@@ -166,6 +192,6 @@
     </div>
 </div>
 
-<script type="module" src="scripts/dashboard.js"></script>
+<script type="module" src="scripts/dashboard.js?v=3"></script>
 </body>
 </html>

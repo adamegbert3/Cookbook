@@ -6,6 +6,8 @@
     <title>Recipe View</title>
     <link rel="stylesheet" href="styles/recipes.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
 </head>
 <body>
 
@@ -28,18 +30,20 @@
     <main>
         <div id="recipe"></div>
 
-        <div style="background:white; padding:20px; border-radius:12px; margin-top:40px; text-align:center; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="margin-top:0; color:#0f172a;">Kitchen Tools</h3>
+        <div class="kitchen-tools-section" style="background: var(--bg-card); padding:20px; border-radius:12px; margin-top:40px; text-align:center; border:1px solid var(--border); box-shadow: var(--shadow-sm); transition: background 0.3s, border 0.3s;">
+            <h3 style="margin-top:0; color: var(--primary);">Kitchen Tools</h3>
             
             <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+                <button onclick="openShareModal()" class="pill-btn btn-dark">📤 Share or 🖨️ Print</button>
                 <button onclick="saveRecipeOffline()" class="pill-btn btn-teal">📡 Save Offline</button>
                 <button id="cookModeBtn" onclick="toggleCookMode()" class="pill-btn btn-orange">Enable Cook Mode 🍳</button>
                 <button onclick="addToMealPlan()" class="pill-btn btn-blue">📅 Add to Menu</button>
             </div>
 
-            <div style="display:flex; justify-content:center; gap:10px;">
+            <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
                 <button onclick="resizeText(2)" class="pill-btn btn-slate">Text +</button>
                 <button onclick="resizeText(-2)" class="pill-btn btn-slate">Text -</button>
+                <button onclick="quickToggleTheme()" class="pill-btn btn-slate" id="recipeThemeBtn">🌙 Night Mode</button>
             </div>
             
             <div style="margin-top:15px;">
@@ -54,14 +58,19 @@
             <p id="cook-counter" style="color:#64748b; font-size:0.9rem; margin-top:10px;">Loading stats...</p>
         </div>
 
-        <div style="margin-top:40px;">
-            <h3>👨‍🍳 Chef's Notes (Private)</h3>
-            <textarea id="chefNotes" class="form-input" placeholder="e.g. Add extra cinnamon next time..." style="min-height:100px; margin-bottom:10px;"></textarea>
-            <button onclick="saveNote()" class="pill-btn btn-teal">Save Note</button>
-            <span id="saveStatus" style="color:#10b981; margin-left:10px; font-weight:bold;"></span>
+        <div id="notes-section" style="margin-top:40px;" class="hidden">
+            <h3 class="no-print">👨‍🍳 Chef's Notes (Private)</h3>
+            <textarea id="chefNotes" class="form-input no-print" placeholder="e.g. Add extra cinnamon next time..." style="min-height:100px; margin-bottom:10px;"></textarea>
+            <button onclick="saveNote()" class="pill-btn btn-teal no-print">Save Note</button>
+            <span id="saveStatus" style="color:#10b981; margin-left:10px; font-weight:bold;" class="no-print"></span>
+
+            <div class="print-only" style="display: none;">
+                <h3 style="margin-bottom: 5px;">👨‍🍳 Chef's Notes:</h3>
+                <p id="print-chef-notes" style="white-space: pre-wrap; font-style: italic; margin-top: 0;"></p>
+            </div>
         </div>
 
-        <div class="comments-section" style="margin-top:50px;">
+        <div class="comments-section no-print" style="margin-top:50px;">
             <h3>💬 Family Discussion</h3>
             <div id="commentsList" style="max-height:300px; overflow-y:auto; margin-bottom:20px;">
                 <p class="empty-feed">Loading comments...</p>
@@ -174,6 +183,29 @@
             <button onclick="closePlannerModal()" style="flex: 1; padding: 10px; background: #f3f4f6; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
             <button onclick="confirmAddToPlan()" style="flex: 1; padding: 10px; background: #2563eb; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Save</button>
         </div>
+    </div>
+</div>
+<div id="share-modal" class="modal hidden">
+    <div class="modal-content" style="text-align: center;">
+        <button onclick="closeShareModal()" class="close-btn">✕</button>
+        <h2 style="margin-top: 0;">Share this Recipe</h2>
+        <p style="font-size: 14px; color: #666; margin-bottom: 20px;">How would you like to share?</p>
+        
+        <button onclick="trigger.print()" class="pill-btn btn-teal" style="width: 100%; margin-bottom: 10px; justify-content: center;">
+            📄 Save as Clean PDF
+        </button>
+        
+        <button onclick="copyRecipeLink()" class="pill-btn btn-blue" style="width: 100%; margin-bottom: 20px; justify-content: center;">
+            🔗 Copy Recipe Link
+        </button>
+
+        <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
+        
+        <h3 style="margin-bottom: 5px;">Want to invite someone?</h3>
+        <p style="font-size: 12px; color: #666; margin-top: 0;">Send them an invite so they can see all the recipes!</p>
+        <a href="mailto:adamegbert@icloud.com?subject=Cookbook Access Request&body=Hi Adam, please grant access to..." class="pill-btn btn-orange" style="width: 100%; justify-content: center; text-decoration: none;">
+            ✉️ Request Access for a Friend
+        </a>
     </div>
 </div>
 </body>

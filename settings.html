@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Cookbook</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <style>
+        .settings-container {
+            max-width: 600px; margin: 30px auto; padding: 20px;
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 12px; box-shadow: var(--shadow-sm); color: var(--primary);
+        }
+        .setting-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px 0; border-bottom: 1px solid var(--border);
+        }
+        .setting-row:last-child { border-bottom: none; }
+        
+        /* Toggle Switch */
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc; transition: .4s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px;
+            left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent-teal); }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="logo-area">
+            <h1>⚙️ Settings</h1>
+        </div>
+        <div class="header-actions">
+            <a href="homepage.html" class="pill-btn btn-slate">⬅ Back</a>
+        </div>
+    </div>
+
+    <main>
+        <div id="error-box" style="display:none; background:#fee2e2; color:#b91c1c; padding:15px; border-radius:8px; margin-bottom:20px; border:1px solid #fca5a5;">
+            <strong>🚨 CRITICAL ERROR:</strong> <span id="error-msg"></span><br>
+            <small>Check your Console for the exact line number in main.js. If you don't know how, please contact Adam.</small>
+        </div>
+
+        <div class="settings-container">
+            <div class="setting-row">
+                <label>🌙 Dark Mode</label>
+                <label class="switch">
+                    <input type="checkbox" id="darkModeToggle">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="setting-row">
+                <label>🔍 Text Size</label>
+                <select id="fontSizeSelect">
+                    <option value="normal">Normal</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">Extra Large</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>🔤 Font Style</label>
+                <select id="fontStyleSelect">
+                    <option value="inter">Modern (Inter)</option>
+                    <option value="serif">Classic (Serif)</option>
+                    <option value="mono">Coder (Monospace)</option>
+                </select>
+            </div>
+
+            <button id="save-btn" class="btn-dark" style="width:100%; margin-top:20px; text-align:center;">
+                💾 Save Changes
+            </button>
+            
+            <p id="saveMsg" style="text-align:center; color:var(--accent-teal); margin-top:10px; opacity:0; transition:opacity 0.5s;"></p>
+        </div>
+    </main>
+
+<script type="module">
+        console.log("🟦 [SETTINGS] Script starting...");
+
+        // Use an async function instead of top-level await for better browser support/stability
+        async function initSettings() {
+            try {
+                const { auth } = await import('./scripts/firebase-config.js');
+                const { saveUserSettings } = await import('./scripts/main.js'); 
+                const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
+
+                console.log("✅ [SETTINGS] Imports successful!");
+
+                onAuthStateChanged(auth, (user) => {
+                    if(user) {
+                        const settings = JSON.parse(localStorage.getItem('userSettings')) || {};
+                        
+                        if(document.getElementById('darkModeToggle')) 
+                            document.getElementById('darkModeToggle').checked = (settings.theme === 'dark');
+                        if(document.getElementById('fontSizeSelect'))
+                            document.getElementById('fontSizeSelect').value = settings.fontSize || 'normal';
+                        if(document.getElementById('fontStyleSelect'))
+                            document.getElementById('fontStyleSelect').value = settings.fontStyle || 'inter';
+                    }
+                });
+
+                const saveBtn = document.getElementById('save-btn');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', async () => {
+                        const user = auth.currentUser;
+                        if(!user) return alert("Please wait for login to verify or refresh the page.");
+
+                        const newSettings = {
+                            theme: document.getElementById('darkModeToggle').checked ? 'dark' : 'light',
+                            fontSize: document.getElementById('fontSizeSelect').value,
+                            fontStyle: document.getElementById('fontStyleSelect').value
+                        };
+
+                        const msg = document.getElementById('saveMsg');
+                        msg.innerText = "Saving...";
+                        msg.style.opacity = 1;
+
+                        await saveUserSettings(newSettings);
+                        
+                        msg.innerText = "✅ Saved!";
+                        setTimeout(() => msg.style.opacity = 0, 2000);
+                    });
+                }
+            } catch (err) {
+                console.error("🔥 [CRITICAL FAILURE]", err);
+                document.getElementById('error-box').style.display = 'block';
+                document.getElementById('error-msg').innerText = err.message;
+            }
+        }
+
+        initSettings();
+    </script>
+</body>
+</html>
