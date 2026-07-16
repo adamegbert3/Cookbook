@@ -75,6 +75,46 @@ async function logViewToDatabase(recipeData) {
 
 function renderRecipeHTML(recipe) {
     const recipeContainer = document.getElementById("recipe");
+    if (!recipeContainer) return;
+    
+    // 1. Automatically mark opened recipe as "Camping Ready" in localStorage
+    const currentId = recipe.id || recipeId;
+    const campingReady = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+    if (currentId && !campingReady.includes(currentId)) {
+        campingReady.push(currentId);
+        localStorage.setItem('campingReadyIds', JSON.stringify(campingReady));
+    }
+
+    // 2. Check recipe statuses
+    const isReviewed = recipe.r === true || recipe.reviewed === true;
+    const isHidden = recipe.h === true || recipe.isHidden === true;
+    const recTags = Array.isArray(recipe.t || recipe.tags) ? (recipe.t || recipe.tags) : [String(recipe.t || recipe.tags || "")];
+    
+    // 3. Build Status Pills (Notice: Offline tent is commented out for now as requested!)
+    let statusBarHtml = `<div class="recipe-status-bar" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 12px 0 16px 0;">`;
+    
+    // /*
+    // statusBarHtml += `<span class="status-emoji" title="Saved for Offline / Camping" style="background: #fef08a; border: 1px solid #eab308; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; color: #854d0e;">⛺ Saved for Offline</span>`;
+    // */
+
+    if (isReviewed) {
+        statusBarHtml += `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #10b981;">✅ Verified & Reviewed Recipe</span>`;
+    } else {
+        statusBarHtml += `<span style="background: #fef2f2; color: #991b1b; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #f87171;">⚠️ Unreviewed (Needs Verification)</span>`;
+    }
+
+    if (isHidden) {
+        statusBarHtml += `<span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #94a3b8;">👁️ Hidden</span>`;
+    }
+
+    if (recTags.includes("Egbert Favorite")) {
+        statusBarHtml += `<span style="background: #e0f2fe; color: #0369a1; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #38bdf8;">⭐ Egbert Family Favorite</span>`;
+    }
+    if (recTags.includes("Wheeler Favorite")) {
+        statusBarHtml += `<span style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #4ade80;">⭐ Wheeler Family Favorite</span>`;
+    }
+
+    statusBarHtml += `</div>`;
     
     const rawIng = recipe.ingredients || recipe.recipeIngredient;
     const rawInst = recipe.instructions || recipe.recipeInstructions;
@@ -94,9 +134,13 @@ function renderRecipeHTML(recipe) {
         instHtml = `<p style="white-space: pre-wrap;">${rawInst}</p>`;
     }
 
+    // 4. Inject into DOM: Notice statusBarHtml is right under From: ${author}
     recipeContainer.innerHTML = `
         <h1 class="recipe-title-lg">${recipe.name || recipe.n}</h1>
-        <h2 class="recipe-chef">From: ${author}</h2>
+        <h2 class="recipe-chef" style="margin-bottom: 4px;">From: ${author}</h2>
+        
+        ${statusBarHtml}
+        
         <hr class="recipe-divider">
         <h3 class="section-header">Ingredients</h3>
         <p class="no-print" style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
@@ -106,15 +150,15 @@ function renderRecipeHTML(recipe) {
     `;
 
     setTimeout(() => {
-        document.querySelectorAll('#ingredient-list li').forEach(li => {
-            li.addEventListener('click', function() { this.classList.toggle('checked'); });
-        });
-        document.querySelectorAll('.instruction-step').forEach(li => {
+        document.querySelectorAll('#ingredient-list li, .instruction-step').forEach(li => {
             li.addEventListener('click', function() { this.classList.toggle('checked'); });
         });
     }, 100);
 
-    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: recipeId }));
+    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: currentId }));
+    
+    // Trigger Mobile Tools layout setup
+    setupMobileKitchenTools();
 }
 
 // ==========================================
@@ -147,9 +191,41 @@ window.resizeText = function(change) {
     elements.forEach(el => el.style.fontSize = currentSize + 'px');
 }
 
-window.saveRecipeOffline = function() {
-    alert("Page saved to browser cache!");
-}
+// window.saveRecipeOffline = function() {
+//     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+//     const btn = document.querySelector('button[onclick="saveRecipeOffline()"]');
+    
+//     if (!currentRecipe) {
+//         alert("Could not verify recipe data. Try refreshing the page!");
+//         return;
+//     }
+
+//     // 1. Ensure the recipe is safely locked into local storage as a fallback
+//     localStorage.setItem(`offline-backup-${currentRecipe.id}`, JSON.stringify(currentRecipe));
+
+//     // 2. Mark it as camping ready
+//     const campingReady = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+//     if (!campingReady.includes(currentRecipe.id)) {
+//         campingReady.push(currentRecipe.id);
+//         localStorage.setItem('campingReadyIds', JSON.stringify(campingReady));
+//     }
+
+//     // 3. Give the user satisfying visual feedback
+//     if (btn) {
+//         const originalText = btn.innerText;
+//         btn.innerText = "✅ Saved for Offline Cooking!";
+//         btn.style.background = "#10b981"; // Turn green
+//         btn.style.color = "#ffffff";
+        
+//         setTimeout(() => {
+//             btn.innerText = originalText;
+//             btn.style.background = ""; // Reset to original style
+//             btn.style.color = "";
+//         }, 3000);
+//     } else {
+//         alert("✅ Recipe & Ingredients cached for offline cooking!");
+//     }
+// };
 
 // --- MEAL PLANNER LOGIC ---
 window.addToMealPlan = function() {
@@ -179,7 +255,6 @@ window.confirmAddToPlan = async function() {
     const user = auth.currentUser;
     if (!user) return alert("You must be logged in.");
 
-    // Visual Feedback
     const btn = document.querySelector('#plannerModal button[onclick="confirmAddToPlan()"]');
     if(btn) btn.innerText = "Saving...";
 
@@ -236,7 +311,6 @@ window.recordCook = async function() {
 // 3. REPORTING LOGIC
 // ==========================================
 window.submitReport = async function(event) {
-    // 🛑 THIS IS THE MAGIC LINE: Stops the page from reloading!
     if (event) {
         event.preventDefault(); 
     }
@@ -296,7 +370,6 @@ window.submitReport = async function(event) {
 // ==========================================
 // 4. Sharing
 // ==========================================
-// --- SHARE MODAL LOGIC ---
 window.openShareModal = function() {
     document.getElementById('share-modal').classList.remove('hidden');
 };
@@ -312,10 +385,229 @@ window.copyRecipeLink = function() {
     });
 };
 window.triggerPrint = function() {
-    closeShareModal(); // Crucial: Close the modal first!
+    closeShareModal();
     setTimeout(() => { 
-        window.print(); // Wait 300ms for the animation to finish, then print
+        window.print(); 
     }, 300);
+};
+
+// // ==========================================
+// // START THE SERVICE WORKER ON RECIPE PAGES
+// // ==========================================
+// if ('serviceWorker' in navigator) {
+//     window.addEventListener('load', () => {
+//         navigator.serviceWorker.register('./sw.js')
+//             .then((registration) => {
+//                 console.log('👷‍♂️ [SERVICE WORKER] Registered on Recipe Page with scope:', registration.scope);
+//             })
+//             .catch((error) => {
+//                 console.error('❌ [SERVICE WORKER] Registration failed:', error);
+//             });
+//     });
+// }
+
+// ==========================================
+// MOBILE FLOATING KITCHEN TOOLS MODAL
+// ==========================================
+function setupMobileKitchenTools() {
+    // 1. Inject responsive CSS rules if not already present
+    if (!document.getElementById('mobile-tools-style')) {
+        const style = document.createElement('style');
+        style.id = 'mobile-tools-style';
+        style.innerHTML = `
+            /* Floating Action Button (Hidden on Desktop) */
+            #mobile-tool-fab {
+                display: none;
+                position: fixed;
+                bottom: 24px;
+                right: 24px;
+                width: 60px;
+                height: 60px;
+                background-color: #0d9488;
+                color: white;
+                border-radius: 50%;
+                border: none;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                font-size: 26px;
+                cursor: pointer;
+                z-index: 999;
+                align-items: center;
+                justify-content: center;
+                transition: transform 0.2s, background-color 0.2s;
+            }
+            #mobile-tool-fab:active {
+                transform: scale(0.92);
+            }
+            
+            /* Modal Backdrop & Container */
+            #mobile-tools-modal {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 1000;
+                align-items: flex-end;
+                justify-content: center;
+            }
+            #mobile-tools-content {
+                background: #1e293b;
+                width: 100%;
+                max-width: 500px;
+                border-top-left-radius: 20px;
+                border-top-right-radius: 20px;
+                padding: 24px;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+                animation: slideUp 0.3s ease-out;
+            }
+            @keyframes slideUp {
+                from { transform: translateY(100%); }
+                to { transform: translateY(0); }
+            }
+
+            /* 🚀 THE GRID UPGRADE: 2 clean equal columns with uniform height! */
+            #mobile-tools-body {
+                display: grid;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 12px;
+            }
+
+            /* 🚀 UNIFORM PILL STYLING: Forces every button to identical dimensions */
+            .mobile-tool-pill {
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                width: 100% !important;
+                height: 48px !important;
+                margin: 0 !important;
+                padding: 0 12px !important;
+                border-radius: 24px !important;
+                font-size: 0.95rem !important;
+                font-weight: 600 !important;
+                text-align: center;
+                box-sizing: border-box;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Make wide buttons (like Report Issue or Cook Mode) span across both columns! */
+            .mobile-tool-pill-wide {
+                grid-column: span 2;
+            }
+
+            /* Mobile Media Query Switch */
+            @media (max-width: 768px) {
+                .kitchen-tools-inline {
+                    display: none !important;
+                }
+                #mobile-tool-fab {
+                    display: flex;
+                }
+                /* Extra breathing room at the bottom so the comment Post button clears the FAB */
+                body {
+                    padding-bottom: 90px !important;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    // 2. FOOLPROOF CONTAINER FINDER
+    const sampleBtn = document.getElementById('cookModeBtn') || document.querySelector('button[onclick*="toggleCookMode"]');
+    let toolsSection = null;
+    
+    if (sampleBtn) {
+        toolsSection = sampleBtn.closest('div[style*="background"], .kitchen-tools, div[class*="tools"], div[class*="card"], div');
+        if (toolsSection && toolsSection.parentElement && (toolsSection.parentElement.innerText.includes('KITCHEN TOOLS') || toolsSection.parentElement.querySelectorAll('button').length > 4)) {
+            toolsSection = toolsSection.parentElement;
+        }
+    }
+
+    if (toolsSection && !toolsSection.classList.contains('kitchen-tools-inline')) {
+        toolsSection.classList.add('kitchen-tools-inline');
+    }
+
+    // 3. Create Floating Button
+    if (!document.getElementById('mobile-tool-fab')) {
+        const fab = document.createElement('button');
+        fab.id = 'mobile-tool-fab';
+        fab.innerHTML = '🛠️';
+        fab.title = 'Kitchen Tools';
+        fab.onclick = openMobileToolsModal;
+        document.body.appendChild(fab);
+    }
+
+    // 4. Create Modal Structure
+    if (!document.getElementById('mobile-tools-modal')) {
+        const modal = document.createElement('div');
+        modal.id = 'mobile-tools-modal';
+        modal.onclick = (e) => { if (e.target === modal) closeMobileToolsModal(); };
+        modal.innerHTML = `
+            <div id="mobile-tools-content">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="color: white; margin: 0; font-size: 1.2rem;">🛠️ Kitchen Tools</h3>
+                    <button onclick="closeMobileToolsModal()" style="background: none; border: none; color: #94a3b8; font-size: 24px; cursor: pointer;">&times;</button>
+                </div>
+                <div id="mobile-tools-body"></div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+}
+
+window.openMobileToolsModal = function() {
+    const modal = document.getElementById('mobile-tools-modal');
+    const modalBody = document.getElementById('mobile-tools-body');
+    
+    let inlineTools = document.querySelector('.kitchen-tools-inline');
+    if (!inlineTools) {
+        const sampleBtn = document.getElementById('cookModeBtn') || document.querySelector('button[onclick*="toggleCookMode"]');
+        if (sampleBtn) inlineTools = sampleBtn.parentElement;
+    }
+    
+    if (modal && inlineTools) {
+        const allToolButtons = Array.from(inlineTools.querySelectorAll('button'));
+        modalBody.innerHTML = '';
+        
+        // 🚀 SORT ORDER: Text +/-, Day Mode & Cook Mode, Share & Menu, Report
+        const getOrderScore = (text) => {
+            if (text.includes('Text +')) return 1;
+            if (text.includes('Text -')) return 2;
+            if (text.includes('Day') || text.includes('Night')) return 3;
+            if (text.includes('Cook Mode')) return 4;
+            if (text.includes('Share') || text.includes('Print')) return 5;
+            if (text.includes('Menu')) return 6;
+            if (text.includes('Report')) return 7;
+            return 10;
+        };
+
+        allToolButtons
+            .filter(btn => !btn.innerText.includes('Save Offline') && btn.id !== 'mobile-tool-fab')
+            .sort((a, b) => getOrderScore(a.innerText) - getOrderScore(b.innerText))
+            .forEach(btn => {
+                const clone = btn.cloneNode(true);
+                clone.classList.add('mobile-tool-pill');
+                
+                // 🚀 THE FIX: Only Report Issue stretches across both columns now!
+                if (clone.innerText.includes('Report')) {
+                    clone.classList.add('mobile-tool-pill-wide');
+                }
+                
+                modalBody.appendChild(clone);
+            });
+        
+        modal.style.display = 'flex';
+    } else {
+        alert("Could not load kitchen tools. Please check console for errors.");
+    }
+};
+
+window.closeMobileToolsModal = function() {
+    const modal = document.getElementById('mobile-tools-modal');
+    if (modal) modal.style.display = 'none';
 };
 
 // Start

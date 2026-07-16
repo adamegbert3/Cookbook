@@ -37,7 +37,8 @@
 
     <script type="module">
         import { auth } from './scripts/firebase-config.js'; 
-        import { signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        // 🚨 NEW IMPORTS: We are bringing in the Persistence tools!
+        import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
         const loginForm = document.getElementById('login-form'); 
         const loginBtn = document.getElementById('login-btn'); 
@@ -45,64 +46,54 @@
         const passInput = document.getElementById('password'); 
         const errorMsg = document.getElementById('error-message');
 
-        // 1. AUTO-REDIRECT (If the browser remembers you)
+        // 1. AUTO-REDIRECT
         onAuthStateChanged(auth, user => {
             if (user && !loginBtn.disabled) {
-                console.log("✅ User is authenticated:", user.email);
                 window.location.href = "homepage.html"; 
             }
         });
 
-        // 2. MANUAL LOGIN (Using Form Submit instead of Button Click)
+        // 2. BULLETPROOF LOGIN
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); // Stop the page from reloading perfectly
+                e.preventDefault(); 
                 
-                // .trim() removes invisible accidental spaces that crash Firebase!
                 const email = emailInput.value.trim();
                 const password = passInput.value;
                 
-                // Reset Errors
                 if(errorMsg) errorMsg.innerText = "";
-                console.log("🚀 Attempting login for:", email);
 
-                // Lock Button
                 const originalText = loginBtn.innerText;
                 loginBtn.innerText = "Signing in...";
                 loginBtn.disabled = true;
 
                 try {
-                    // A. PERFORM LOGIN
-                    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                    console.log("🎉 Login Successful!", userCredential.user);
+                    // 🚨 NEW: Force the browser to remember this login permanently!
+                    await setPersistence(auth, browserLocalPersistence);
                     
-                    // B. FORCE REDIRECT
+                    // Perform Login
+                    await signInWithEmailAndPassword(auth, email, password);
+                    
                     loginBtn.innerText = "Redirecting...";
                     window.location.href = "homepage.html"; 
 
                 } catch (error) {
                     console.error("❌ Login Failed:", error);
-                    
                     let message = "Login Failed: " + error.message;
                     
-                    // Catch the newest Firebase security error codes
                     if(error.code === "auth/user-not-found" || error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
                         message = "Account not found or incorrect password.";
-                    }
-                    if(error.code === "auth/too-many-requests") {
-                        message = "Too many attempts. Try again later.";
+                    } else if (error.code === "auth/network-request-failed") {
+                        message = "Network error. Please check your Wi-Fi/Data.";
                     }
 
                     if(errorMsg) errorMsg.innerText = message;
-                    else alert(message);
                     
-                    // Unlock Button so you aren't stuck!
+                    // Unlock Button so it never gets stuck!
                     loginBtn.innerText = originalText;
                     loginBtn.disabled = false;
                 }
             });
-        } else {
-            console.error("❌ CRITICAL: Form id='login-form' not found.");
         }
     </script>
 </body>
