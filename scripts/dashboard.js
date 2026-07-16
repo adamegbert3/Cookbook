@@ -1,7 +1,8 @@
 import { db, auth } from './firebase-config.js'; 
 import { 
     collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc, 
-    query, orderBy, limit, where, serverTimestamp 
+    query, orderBy, limit, where, serverTimestamp, 
+    arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
@@ -17,43 +18,65 @@ let currentActivityLimit = 50;
 let allRecipeData = []; 
 
 onAuthStateChanged(auth, (user) => {
-    if (user && ADMIN_UIDS.includes(user.uid)) {
-        console.log("Welcome, Chef. Loading Dashboard...");
-        loadAdminDashboard(); 
-        // NEW: Fetch the reports!
-        loadReportedIssues();
+    console.log("🔐 [AUTH STATE CHANGED] Fired!");
+    
+    if (user) {
+        console.log("👤 [AUTH SUCCESS] Logged in as:", user.email);
+        console.log("🆔 [AUTH UID]:", user.uid);
+        console.log("📋 [ADMIN LIST]:", ADMIN_UIDS);
+        
+        const isAdmin = ADMIN_UIDS.includes(user.uid);
+        console.log("🛡️ [IS ADMIN?]:", isAdmin);
+
+        if (isAdmin) {
+            console.log("👨‍🍳 Welcome, Chef! Initializing Dashboard...");
+            loadAdminDashboard(); 
+            loadReportedIssues();
+        } else {
+            console.warn("⚠️ [ACCESS DENIED] User is logged in, but UID is not in ADMIN_UIDS!");
+            // Comment out the redirect temporarily so you can read the console!
+            // window.location.href = "index.html"; 
+        }
     } else {
-        window.location.href = "index.html"; 
+        console.error("❌ [AUTH FAIlED] No user detected. Acting as logged out.");
+        // Comment out the redirect temporarily so we can debug!
+        // window.location.href = "index.html"; 
     }
 });
 
 async function loadAdminDashboard() {
-    console.log("📥 Downloading Database...");
+    console.log("📥 [DASHBOARD] Starting database fetch...");
     loadPendingRecipes(); 
     loadReports();
 
     try {
+        console.log("⏳ [FIRESTORE] Querying 'recipes' collection...");
         const querySnapshot = await getDocs(collection(db, "recipes"));
-        allRecipeData = []; 
-        querySnapshot.forEach(doc => allRecipeData.push({ id: doc.id, ...doc.data() }));
         
-        console.log(`✅ Loaded ${allRecipeData.length} recipes.`);
+        console.log(`✅ [FIRESTORE SUCCESS] Snapshot received! Empty? ${querySnapshot.empty}`);
+        console.log(`📊 [FIRESTORE COUNT] Found ${querySnapshot.size} documents.`);
 
-        // 1. Initial Render
+        allRecipeData = []; 
+        querySnapshot.forEach(doc => {
+            allRecipeData.push({ id: doc.id, ...doc.data() });
+        });
+        
+        console.log("🚀 [RENDER] Passing data to renderUnifiedManager...");
         renderUnifiedManager(allRecipeData);      
         renderDeepStats(allRecipeData);      
         loadAnalytics(allRecipeData);   
 
-        // 2. ACTIVATING SEARCH & FILTERS
+        // Activating Search
         const searchInput = document.getElementById('manager-search');
         if (searchInput) {
             searchInput.addEventListener('input', (e) => {
-                applyAdminFilters(); // Calls the new unified filter
+                applyAdminFilters();
             });
         }
-
     } catch (error) {
-        console.error("Dashboard Error:", error);
+        console.error("🔥 [DASHBOARD CRITICAL ERROR]:", error);
+        console.error("Error Code:", error.code);
+        console.error("Error Message:", error.message);
     }
 }
 
@@ -72,6 +95,9 @@ function renderUnifiedManager(recipes) {
         if (aRev !== bRev) return aRev ? 1 : -1;
         return (a.name || "").localeCompare(b.name || "");
     });
+
+    // 🚀 THE SPEED FIX: Limit the table to 50 rows initially
+    const recipesToRender = recipes.slice(0, 50);
 
     let html = `
     <div class="table-container">
@@ -114,9 +140,20 @@ function renderUnifiedManager(recipes) {
         // COLUMN 5: BADGE ONLY
         html += `<td style="text-align: center;">${badge}</td>`;
         
-        // COLUMN 6: BUTTONS ONLY
+        // Check existing tags to style our quick-buttons automatically
+        const currentTags = r.tags || [];
+        const isEgb = currentTags.includes("Egbert Favorite");
+        const isWhl = currentTags.includes("Wheeler Favorite");
+
+        // COLUMN 6: BUTTONS ONLY (Now with Hall of Fame Toggles!)
         html += `<td>
-                    <div style="display: flex; gap: 5px; justify-content: flex-end;">
+                    <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
+                        <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" style="background: ${isEgb ? '#0284c7' : '#f0f9ff'}; color: ${isEgb ? '#ffffff' : '#0369a1'}; border: 1px solid #bae6fd; font-weight: 800;" title="Toggle Egbert Favorite">
+                            ${isEgb ? '★ Egb' : '☆ Egb'}
+                        </button>
+                        <button onclick="quickTag('${r.id}', 'Wheeler Favorite', ${isWhl})" class="btn-action" style="background: ${isWhl ? '#16a34a' : '#f0fdf4'}; color: ${isWhl ? '#ffffff' : '#15803d'}; border: 1px solid #bbf7d0; font-weight: 800;" title="Toggle Wheeler Favorite">
+                            ${isWhl ? '★ Whl' : '☆ Whl'}
+                        </button>
                         <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
                         <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
                         <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️</button>
@@ -148,6 +185,39 @@ window.toggleVisibility = async function(id, currentStatus) {
         if(recipe) recipe.isHidden = newStatus;
         renderUnifiedManager(allRecipeData); 
     } catch (error) { alert("Could not update visibility."); }
+};
+// ==========================================
+// QUICK-TAG HALL OF FAME TOGGLE
+// ==========================================
+window.quickTag = async function(id, tagString, currentlyHasTag) {
+    try {
+        const docRef = doc(db, "recipes", id);
+        
+        // 1. Update Firestore in the background
+        if (currentlyHasTag) {
+            await updateDoc(docRef, { tags: arrayRemove(tagString) });
+        } else {
+            await updateDoc(docRef, { tags: arrayUnion(tagString) });
+        }
+
+        // 2. Update local memory so we don't have to re-download the whole database!
+        const recipe = allRecipeData.find(r => r.id === id);
+        if (recipe) {
+            if (!recipe.tags) recipe.tags = [];
+            if (currentlyHasTag) {
+                recipe.tags = recipe.tags.filter(t => t !== tagString);
+            } else {
+                recipe.tags.push(tagString);
+            }
+        }
+
+        // 3. Re-render the table instantly to show the new button color
+        renderUnifiedManager(allRecipeData);
+        
+    } catch (error) {
+        console.error("Error updating tag:", error);
+        alert("Could not update tag: " + error.message);
+    }
 };
 
 window.syncViewCounts = async function() {

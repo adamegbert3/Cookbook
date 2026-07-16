@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 // 1. ADD THIS LINE:
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { getFirestore, enableIndexedDbPersistence} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA7ILMR7YRqydfCMi-wnQ7QAXTZIGlYP6o",
@@ -15,5 +15,17 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-// 2. ADD THIS LINE:
 export const db = getFirestore(app);
+
+// enableIndexedDbPersistence(db)
+//     .then(() => {
+//         console.log("💾 [FIRESTORE OFFLINE] IndexedDB Persistence successfully enabled!");
+//     })
+//     .catch((err) => {
+//         console.error("⚠️ [FIRESTORE OFFLINE ERROR]:", err.code);
+//         if (err.code == 'failed-precondition') {
+//             console.warn("👉 Reason: Multiple tabs open. Close other tabs of this app!");
+//         } else if (err.code == 'unimplemented') {
+//             console.warn("👉 Reason: This browser doesn't support offline storage.");
+//         }
+//     });

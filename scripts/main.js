@@ -25,24 +25,31 @@ console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
 // 2. AUTH & STARTUP
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
-    // Define elements safely
     const notSignedMsg = document.getElementById("notsigned");
     const recipeGrid = document.getElementById('recipes');
     const adminBtn = document.getElementById('admin-btn');
 
     if (user) {
-        isAdmin = ADMIN_UIDS.includes(user.uid); // <-- ADD THIS LINE
+        isAdmin = ADMIN_UIDS.includes(user.uid);
 
-        loadUserSettings(user);
-        loadHomepageMenu(user);
-        // 1. UI Updates (Only if elements exist)
+        // 1. UI Updates
         if (notSignedMsg) notSignedMsg.classList.add('hidden');
         if (recipeGrid) recipeGrid.style.display = 'grid';
-        if (ADMIN_UIDS.includes(user.uid) && adminBtn) {
+        if (isAdmin && adminBtn) {
             adminBtn.classList.add('visible');
         }
         
-        // 2. Load User Data (Favorites & Profile)
+        // 2. Load Content First (Don't block UI!)
+        loadAllRecipes(); 
+        if (document.getElementById('family-feed')) loadFamilyFeed();
+        if (document.getElementById('commentsList')) loadComments();
+        if (document.getElementById('plan-Mon')) loadMealPlan();
+        if (document.getElementById('chefNotes')) loadUserNote();
+
+        // 3. Load User Preferences & Profile in background
+        loadUserSettings(user);
+        loadHomepageMenu(user);
+        
         try {
             const userSnap = await getDoc(doc(db, "users", user.uid));
             let userName = user.displayName || user.email.split('@')[0];
@@ -54,24 +61,16 @@ onAuthStateChanged(auth, async (user) => {
             updateProfileIcon(userName); 
         } catch (err) { console.error("Profile Error:", err); }
 
-        // 3. Load Content
-        loadAllRecipes(); 
-        
-        // Page Specific Loaders (Check if elements exist first)
-        if (document.getElementById('family-feed')) loadFamilyFeed();
-        if (document.getElementById('commentsList')) loadComments();
-        if (document.getElementById('plan-Mon')) loadMealPlan();
-        if (document.getElementById('chefNotes')) loadUserNote();
-
     } else {
-        // Guest Handling
-        // If on a "Private" page (like Recipe View), kick them out
-        if (document.getElementById('chefNotes')) {
-            window.location.href = "index.html"; // Go to Login
+        // --- 🚨 UPGRADED GUEST HANDLING (The Bouncer) ---
+        const currentPage = window.location.pathname.split('/').pop().toLowerCase();
+        const privatePages = ['profile.html', 'admin.html', 'submit.html', 'shopping-list.html', 'recipe.html'];
+        
+        if (privatePages.includes(currentPage) || document.getElementById('chefNotes')) {
+            window.location.href = "index.html"; 
             return;
         }
 
-        // If on Homepage, show "Not Signed In" message
         if (notSignedMsg) notSignedMsg.classList.remove('hidden');
         if (recipeGrid) recipeGrid.style.display = 'none';
         
@@ -84,7 +83,7 @@ onAuthStateChanged(auth, async (user) => {
 // ==========================================
 async function loadAllRecipes() {
     const container = document.getElementById('recipes');
-    if(!container) return; // Stop if not on homepage
+    if(!container) return; 
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Opening Cookbook...</p>';
 
@@ -100,9 +99,9 @@ async function loadAllRecipes() {
             container.innerHTML = "<p style='text-align:center;'>Index missing.</p>";
         }
     } catch (e) { 
-    console.error("Recipe Load Error:", e); // <--- This prints the real error to the console!
-    container.innerHTML = "<p>Error loading recipes.</p>"; 
-}
+        console.error("Recipe Load Error:", e);
+        container.innerHTML = "<p>Error loading recipes.</p>"; 
+    }
 }
 
 function getCategoryClass(category) {
@@ -119,7 +118,7 @@ function getCategoryClass(category) {
     if (cat.includes('dutch')) return 'border-slate';
     if (cat.includes('misc')) return 'border-gray';
     
-    return 'border-gray'; // Catch-all 
+    return 'border-gray'; 
 }
 
 function renderLocalList(list) {
@@ -135,30 +134,54 @@ function renderLocalList(list) {
         return nameA.localeCompare(nameB);
     });
 
+    // Retrieve camping checklist ONCE outside the loop
+    const offlineChecklist = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+
     let html = "";
+    
+    // 🚀 NO LIMITS: Render every recipe in the array!
     list.forEach(item => {
-        // 🚨 CHECK IF HIDDEN
         const isHidden = item.h === true || item.isHidden === true;
 
-        // 🚨 SKIP RENDERING IF HIDDEN AND NOT AN ADMIN
+        // SKIP RENDERING IF HIDDEN AND NOT AN ADMIN
         if (isHidden && !isAdmin) return;
 
-        // 2. Safety checks
         const recName = item.n || item.name || "Untitled Recipe";
         const recAuth = item.a || item.author || "Family";
         const recId   = item.id;
         
-        // 3. TAG FIX: Force it to be an Array!
         let recTags = item.t || item.tags || [];
         if (!Array.isArray(recTags)) {
              recTags = [String(recTags)];
         }
         
-        // Category logic
         const cat = recTags[0] || item.c || "Misc";
         const colorClass = getCategoryClass(cat);
         const isFav = userFavorites.includes(recId);
         const heartIcon = isFav ? "❤️" : "🤍";
+
+        const isEgbert = recTags.includes("Egbert Favorite");
+        const isWheeler = recTags.includes("Wheeler Favorite");
+        const isOfflineReady = offlineChecklist.includes(recId);
+
+        // --- 🏆 CLEAN EMOJI BADGES (Dashboard Cards) ---
+        let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 4px; flex-wrap: wrap;">`;
+        
+        // if (isOfflineReady) {
+        //     legacyBadges += `<span style="background: #fef08a; border: 1px solid #eab308; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Camping Ready">⛺</span>`;
+        // }
+        if (item.r || item.reviewed) {
+            legacyBadges += `<span style="background: #d1fae5; border: 1px solid #10b981; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Verified Recipe">✅</span>`;
+        }
+        // Expanded to Full Name!
+        if (isEgbert) {
+            legacyBadges += `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;" title="Egbert Favorite">⭐ Egbert</span>`;
+        }
+        // Expanded to Full Name!
+        if (isWheeler) {
+            legacyBadges += `<span style="background: #dcfce7; color: #15803d; border: 1px solid #4ade80; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;" title="Wheeler Favorite">⭐ Wheeler</span>`;
+        }
+        legacyBadges += `</div>`;
 
         // 🚨 ADMIN VISUALS: Add the eye icon and dim the card
         const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
@@ -166,14 +189,20 @@ function renderLocalList(list) {
 
         html += `
         <div class="recipe-card ${colorClass}" style="${dimStyle}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
-            <div class="status-badge">${(item.r || item.reviewed) ? "✅" : ""}</div>
+            
             ${eyeIcon}
             <button class="card-heart" onclick="toggleHeart(event, '${recId}')">${heartIcon}</button>
             <div class="card-content">
                 <h2>${recName}</h2>
                 <div class="recipe-author">From: ${recAuth}</div>
+                
+                ${legacyBadges}
+
                 <div class="tag-container">
-                    ${recTags.map(t => `<span class="tag-pill">${t}</span>`).join('')}
+                    ${recTags
+                        .filter(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite")
+                        .map(t => `<span class="tag-pill">${t}</span>`)
+                        .join('')}
                 </div>
             </div>
         </div>`;
@@ -256,7 +285,7 @@ function loadComments() {
             const init = (d.author||"G").charAt(0).toUpperCase();
             
             let deleteBtn = "";
-            if (user && (user.uid === d.uid || user.uid === MY_ADMIN_ID)) {
+            if (user && (user.uid === d.uid || isAdmin)) {
                 deleteBtn = `<span onclick="deleteComment('${docSnap.id}')" class="delete-icon" title="Delete">🗑️</span>`;
             }
 
@@ -389,12 +418,10 @@ async function loadUserNote() {
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
     
     if (!user || !currentRecipe) {
-        // If not logged in, ensure the whole section is hidden
         noteSection.classList.add('hidden');
         return;
     }
 
-    // Logged in? Show the section
     noteSection.classList.remove('hidden');
 
     try {
@@ -405,10 +432,10 @@ async function loadUserNote() {
             const text = docSnap.data().text;
             noteBox.value = text;
             if(printNotes) printNotes.innerText = text;
-            noteSection.classList.remove('no-print'); // Let it print!
+            noteSection.classList.remove('no-print'); 
         } else {
             if(printNotes) printNotes.innerText = "";
-            noteSection.classList.add('no-print'); // Hide from printer if empty
+            noteSection.classList.add('no-print'); 
         }
     } catch (e) { console.error(e); }
 }
@@ -429,7 +456,6 @@ window.saveNote = async function() {
         const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
         await setDoc(noteRef, { text: textValue, updatedAt: serverTimestamp(), recipeName: currentRecipe.name || currentRecipe.n });
         
-        // Sync to print view
         if(printNotes) printNotes.innerText = textValue;
         if (textValue && noteSection) {
             noteSection.classList.remove('no-print');
@@ -462,6 +488,7 @@ function resetProfileIcon() {
 // UNIFIED HOMEPAGE FILTERING
 // ==========================================
 let currentCategoryFilter = null;
+let currentFavFilter = null; // 🚀 NEW: Tracks favorites independently!
 
 window.applyHomepageFilters = function() {
     const searchInput = document.getElementById('searchbar');
@@ -475,7 +502,7 @@ window.applyHomepageFilters = function() {
         filtered = filtered.filter(r => r.r === true || r.reviewed === true);
     }
 
-    // 2. Filter by Category
+    // 2. Filter by Dish Type Category
     if (currentCategoryFilter) {
         filtered = filtered.filter(r => {
             const tags = r.t || [];
@@ -483,7 +510,15 @@ window.applyHomepageFilters = function() {
         });
     }
 
-    // 3. Filter by Search Term
+    // 3. 🚀 Filter by Family Favorite (Stacks with Dish Type!)
+    if (currentFavFilter) {
+        filtered = filtered.filter(r => {
+            const tags = r.t || [];
+            return tags.includes(currentFavFilter);
+        });
+    }
+
+    // 4. Filter by Search Term
     if (term) {
         filtered = filtered.filter(r => (r.n || "").toLowerCase().includes(term));
     }
@@ -504,7 +539,7 @@ function setupSearch() {
     
     if (form) form.onsubmit = (e) => {
         e.preventDefault();
-        applyHomepageFilters(); // Use the unified filter
+        applyHomepageFilters(); 
         overlay.classList.add('hidden');
         input.value = "";
     }
@@ -514,29 +549,50 @@ function setupCategoryFilters() {
     const buttons = document.querySelectorAll('.folders button');
     buttons.forEach(btn => {
         btn.onclick = () => {
-            const category = btn.innerText.trim();
+            const tag = btn.innerText.trim();
+            const isFavoriteBtn = tag === "Egbert Favorite" || tag === "Wheeler Favorite";
             
-            if (btn.classList.contains('active-filter')) {
-                // Turn off filter
-                btn.classList.remove('active-filter');
-                currentCategoryFilter = null;
+            if (isFavoriteBtn) {
+                // Handle Favorite buttons independently
+                if (btn.classList.contains('active-filter')) {
+                    btn.classList.remove('active-filter');
+                    currentFavFilter = null;
+                } else {
+                    buttons.forEach(b => {
+                        if (b.innerText.trim() === "Egbert Favorite" || b.innerText.trim() === "Wheeler Favorite") {
+                            b.classList.remove('active-filter');
+                        }
+                    });
+                    btn.classList.add('active-filter');
+                    currentFavFilter = tag;
+                }
             } else {
-                // Turn on filter
-                buttons.forEach(b => b.classList.remove('active-filter'));
-                btn.classList.add('active-filter');
-                currentCategoryFilter = category;
+                // Handle Dish Type categories independently
+                if (btn.classList.contains('active-filter')) {
+                    btn.classList.remove('active-filter');
+                    currentCategoryFilter = null;
+                } else {
+                    buttons.forEach(b => {
+                        const btnText = b.innerText.trim();
+                        if (btnText !== "Egbert Favorite" && btnText !== "Wheeler Favorite") {
+                            b.classList.remove('active-filter');
+                        }
+                    });
+                    btn.classList.add('active-filter');
+                    currentCategoryFilter = tag;
+                }
             }
             
-            applyHomepageFilters(); // Use the unified filter
+            applyHomepageFilters(); 
         };
     });
 }
 
 setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
+
 // ==========================================
 // 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)
 // ==========================================
-
 async function loadHomepageMenu(user) {
     try {
         const querySnapshot = await getDocs(collection(db, "users", user.uid, "weekly_plan"));
@@ -583,7 +639,6 @@ async function loadHomepageMenu(user) {
     }
 }
 
-// 🗑️ THIS IS THE MISSING FUNCTION!
 window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
     const user = auth.currentUser;
     if (!user) return;
@@ -593,7 +648,6 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
     const shortDay = dayFull.substring(0, 3);
     const box = document.getElementById(`menu-${shortDay}`);
     
-    // Visual Feedback
     if(box) box.style.opacity = "0.5";
 
     try {
@@ -603,7 +657,6 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
         if (docSnap.exists()) {
             const currentMeals = docSnap.data().meals || [];
             
-            // Filter out the meal we want to delete
             const newMeals = currentMeals.filter(m => {
                 if (uniqueId !== 0 && m.addedAt) {
                     return m.addedAt !== uniqueId;
@@ -611,10 +664,7 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
                 return m.name !== mealName;
             });
 
-            // Update Database
             await updateDoc(docRef, { meals: newMeals });
-            
-            // Reload UI
             loadHomepageMenu(user);
             if(box) box.style.opacity = "1";
         }
@@ -624,11 +674,10 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
         if(box) box.style.opacity = "1";
     }
 };
-// ==========================================
-// 8. SETTINGS & THEME ENGINE (DEBUG VERSION)
-// ==========================================
 
-// Apply settings immediately if found in LocalStorage (prevents flash)
+// ==========================================
+// 8. SETTINGS & THEME ENGINE
+// ==========================================
 const cachedSettings = JSON.parse(localStorage.getItem('userSettings'));
 if (cachedSettings) {
     console.log("🎨 [THEME] Applied cached settings from LocalStorage");
@@ -637,30 +686,18 @@ if (cachedSettings) {
 
 export async function saveUserSettings(settings) {
     const user = auth.currentUser;
-    
-    // 1. Check if user is actually logged in
     if (!user) {
         console.error("❌ [SETTINGS] Cannot save: No user logged in.");
         alert("Error: You must be logged in to save settings.");
         return;
     }
 
-    console.log("💾 [SETTINGS] Saving for user:", user.uid);
-    console.log("📦 [SETTINGS] Data to save:", settings);
-
-    // 2. Save to LocalStorage (Instant UI update)
     localStorage.setItem('userSettings', JSON.stringify(settings));
     applyTheme(settings);
 
-    // 3. Save to Firebase (Persistence)
-    // PATH: users -> {uid} -> settings -> preferences
-    // This puts it exactly in the 'settings' folder circled in your screenshot.
     try {
         const docRef = doc(db, "users", user.uid, "settings", "preferences");
-        console.log("📍 [SETTINGS] Writing to Firebase path:", docRef.path);
-        
         await setDoc(docRef, settings);
-        
         console.log("✅ [SETTINGS] Firebase Save Success!");
     } catch (e) {
         console.error("🔥 [SETTINGS] Firebase Save FAILED:", e);
@@ -670,23 +707,14 @@ export async function saveUserSettings(settings) {
 
 export async function loadUserSettings(user) {
     if (!user) return;
-
-    console.log("📥 [SETTINGS] Fetching from cloud for:", user.uid);
-
     try {
-        // MATCHING PATH: users -> {uid} -> settings -> preferences
         const docRef = doc(db, "users", user.uid, "settings", "preferences");
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const settings = docSnap.data();
-            console.log("✨ [SETTINGS] Found cloud settings:", settings);
-            
-            // Update LocalStorage and Apply
             localStorage.setItem('userSettings', JSON.stringify(settings));
             applyTheme(settings);
-        } else {
-            console.log("⚠️ [SETTINGS] No cloud settings found (using defaults).");
         }
     } catch (e) {
         console.error("❌ [SETTINGS] Load Error:", e);
@@ -695,36 +723,25 @@ export async function loadUserSettings(user) {
 
 function applyTheme(settings) {
     const html = document.documentElement;
-    
-    // 1. Dark Mode
     if (settings.theme === 'dark') {
         html.setAttribute('data-theme', 'dark');
     } else {
         html.removeAttribute('data-theme');
     }
-
-    // 2. Font Size
     html.setAttribute('data-size', settings.fontSize || 'normal');
-
-    // 3. Font Style
     html.setAttribute('data-font', settings.fontStyle || 'inter');
 }
-// ==========================================
-// 8. QUICK THEME TOGGLE LOGIC
-// ==========================================
+
 window.quickToggleTheme = async function() {
-    // 1. Get current settings (or defaults)
     let settings = JSON.parse(localStorage.getItem('userSettings')) || {
         theme: 'light',
         fontSize: 'normal',
         fontStyle: 'inter'
     };
     
-    // 2. Flip the theme
     const isDark = settings.theme === 'dark';
     settings.theme = isDark ? 'light' : 'dark';
     
-    // 3. Apply it instantly to the screen
     const html = document.documentElement;
     if (settings.theme === 'dark') {
         html.setAttribute('data-theme', 'dark');
@@ -732,13 +749,9 @@ window.quickToggleTheme = async function() {
         html.removeAttribute('data-theme');
     }
     
-    // 4. Update the button icons
     updateThemeIcons(settings.theme);
-
-    // 5. Save it to LocalStorage immediately
     localStorage.setItem('userSettings', JSON.stringify(settings));
 
-    // 6. Save it to Firebase in the background (if user is logged in)
     const user = auth.currentUser;
     if (user) {
         try {
@@ -748,7 +761,6 @@ window.quickToggleTheme = async function() {
     }
 };
 
-// Helper function to make sure the buttons say the right thing when the page loads
 function updateThemeIcons(theme) {
     const homeBtn = document.getElementById('homeThemeBtn');
     const recipeBtn = document.getElementById('recipeThemeBtn');
@@ -761,8 +773,48 @@ function updateThemeIcons(theme) {
     }
 }
 
-// Run this once when the page loads to ensure icons match the current theme
 setTimeout(() => {
     let settings = JSON.parse(localStorage.getItem('userSettings')) || {};
     updateThemeIcons(settings.theme || 'light');
 }, 500);
+
+// // ==========================================
+// // 9. ⛺ BULK CAMPING SYNC ENGINE
+// // ==========================================
+// window.prepForCamping = async function(event) {
+//     const btn = event ? event.target : document.querySelector('button[onclick*="prepForCamping"]');
+//     let originalText = "⛺ Prep for Camping (Sync All)";
+    
+//     if (btn) {
+//         originalText = btn.innerHTML;
+//         btn.innerHTML = "⏳ Downloading Cookbook...";
+//         btn.disabled = true;
+//     }
+
+//     try {
+//         console.log("⛺ Fetching all recipes for offline storage...");
+//         const querySnapshot = await getDocs(collection(db, "recipes"));
+        
+//         const offlineIds = [];
+//         querySnapshot.forEach((doc) => {
+//             offlineIds.push(doc.id); 
+//         });
+
+//         localStorage.setItem('campingReadyIds', JSON.stringify(offlineIds));
+
+//         console.log(`✅ Stashed ${offlineIds.length} recipes offline!`);
+//         if (btn) {
+//             btn.innerHTML = `⛺ All ${offlineIds.length} Recipes Ready for Camping!`;
+//             btn.style.backgroundColor = "#15803d"; 
+//         }
+        
+//         renderLocalList(allRecipes);
+//     } catch (error) {
+//         console.error("❌ Camping Sync Failed:", error);
+//         alert("Could not download recipes. Make sure you are online!");
+//         if (btn) {
+//             btn.innerHTML = originalText;
+//             btn.disabled = false;
+//         }
+//     }
+// };

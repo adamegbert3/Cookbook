@@ -44,17 +44,29 @@
         </select>
 
         <label>Ingredients (One per line)</label>
-        <textarea id="e-ingredients" rows="8"></textarea>
-
-        <div style="display: flex; justify-content: space-between; align-items: flex-end;">
-            <label style="margin-top: 15px;">Instructions (One per line)</label>
-            <button onclick="autoSplitInstructions()" style="background: #fbbf24; color: black; border: 1px solid #d97706; font-size: 11px; padding: 4px 8px; cursor: pointer; border-radius: 4px; margin-bottom: 5px;">
-                🪄 Split Sentences
-            </button>
+       <textarea id="e-instructions" rows="8"></textarea>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
+            <label style="margin: 0; font-weight: 600; color: #0369a1; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <input type="checkbox" id="e-fav-egbert" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Egbert Favorite
+            </label>
+            <label style="margin: 0; font-weight: 600; color: #15803d; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <input type="checkbox" id="e-fav-wheeler" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Wheeler Favorite
+            </label>
         </div>
-        <textarea id="e-instructions" rows="8"></textarea>
+
         <div style="background: #fffbeb; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
             <input type="checkbox" id="e-reviewed" style="width: 20px; height: 20px; margin: 0;">
+            <div>
+                <label for="e-reviewed" style="margin: 0; font-weight: bold; color: #92400e; cursor: pointer;">Mark as Verified / Reviewed</label>
+                <div style="font-size: 12px; color: #b45309;">Check this box to remove the "Needs Review" warning.</div>
+            </div>
+        </div>
+
+        <button class="btn-save" onclick="saveChanges()">💾 Update Recipe</button>
+        <p id="status-msg"></p>
+    </div>
             <div>
                 <label for="e-reviewed" style="margin: 0; font-weight: bold; color: #92400e; cursor: pointer;">Mark as Verified / Reviewed</label>
                 <div style="font-size: 12px; color: #b45309;">Check this box to remove the "Needs Review" warning.</div>
@@ -63,6 +75,7 @@
         <button class="btn-save" onclick="saveChanges()">💾 Update Recipe</button>
         <p id="status-msg"></p>
     </div>
+    
 
     <script type="module">
         import { db, auth } from './scripts/firebase-config.js'; 
@@ -118,8 +131,13 @@
                     document.getElementById('e-name').value = data.name || "";
                     document.getElementById('e-author').value = data.author || "";
 
-                    // --- LOAD REVIEW STATUS (NEW!) ---
+                    // --- LOAD REVIEW STATUS ---
                     document.getElementById('e-reviewed').checked = data.reviewed === true;
+
+                    // --- LOAD FAVORITE STATUS (This belongs here in loadRecipe!) ---
+                    const tagsList = data.tags || [];
+                    document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
+                    document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
 
                     // --- HANDLE ARRAYS ---
                     let ingText = "";
@@ -157,6 +175,61 @@
             
             // GET CHECKBOX STATUS
             const isReviewed = document.getElementById('e-reviewed').checked;
+            
+            // --- THIS IS PART C: BUILD THE TAGS ARRAY ---
+            const updatedTags = [cat];
+            if (document.getElementById('e-fav-egbert').checked) updatedTags.push("Egbert Favorite");
+            if (document.getElementById('e-fav-wheeler').checked) updatedTags.push("Wheeler Favorite");
+
+            try {
+                await updateDoc(doc(db, "recipes", recipeId), {
+                    name: document.getElementById('e-name').value,
+                    author: document.getElementById('e-author').value,
+                    category: cat,
+                    tags: updatedTags, // <-- Notice how we use our new updatedTags array here instead of [cat]!
+                    ingredients: ingArray,
+                    recipeIngredient: ingArray,
+                    instructions: instArray,
+                    recipeInstructions: instArray,
+                    
+                    // SAVE VERIFICATION STATUS
+                    reviewed: isReviewed,
+                    
+                    lastUpdated: serverTimestamp()
+                });
+
+                status.innerText = "✅ Saved Successfully!";
+                status.style.color = "green";
+                btn.innerText = "💾 Update Recipe";
+                btn.disabled = false;
+                
+            } catch (error) {
+                console.error(error);
+                status.innerText = "❌ Error: " + error.message;
+                status.style.color = "red";
+                btn.disabled = false;
+            }
+        };
+
+        // 3. Save Changes
+        window.saveChanges = async function() {
+            if(!recipeId) return;
+            const btn = document.querySelector('.btn-save');
+            const status = document.getElementById('status-msg');
+            
+            btn.disabled = true;
+            btn.innerText = "Saving...";
+
+            const ingArray = document.getElementById('e-ingredients').value.split('\n').filter(line => line.trim() !== '');
+            const instArray = document.getElementById('e-instructions').value.split('\n').filter(line => line.trim() !== '');
+            const cat = document.getElementById('e-category').value;
+            
+            // GET CHECKBOX STATUS
+            const isReviewed = document.getElementById('e-reviewed').checked;
+            // --- LOAD FAVORITE STATUS ---
+            const tagsList = data.tags || [];
+            document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
+            document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
 
             try {
                 await updateDoc(doc(db, "recipes", recipeId), {
