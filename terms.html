@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms & Privacy | Family Cookbook</title>
+    
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        // Apply user's saved theme instantly to prevent flickering
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            html.setAttribute('data-size', settings.fontSize || 'normal');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+    
+    <style>
+        .policy-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--shadow-sm);
+        }
+        .policy-section h2 {
+            font-size: 2.2rem;
+            color: var(--accent-teal, #0d9488);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .policy-section h3 {
+            font-size: 1.4rem;
+            color: var(--primary);
+            margin-top: 25px;
+            margin-bottom: 10px;
+        }
+        .policy-section p, .policy-section li {
+            color: var(--primary);
+            opacity: 0.9;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+        .policy-section ul {
+            padding-left: 20px;
+        }
+        .nav-pill {
+            padding: 8px 18px;
+            border-radius: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: inline-block;
+        }
+        .nav-pill:hover {
+            background: var(--accent-teal, #0d9488);
+            color: white;
+            border-color: var(--accent-teal, #0d9488);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border);">
+        <a href="javascript:history.back()" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 14px; font-size: 14px;">← Go Back</a>
+        <h1 style="margin: 0; font-size: 2rem; color: var(--accent-teal, #0d9488);">House Rules & Privacy</h1>
+        <div style="width: 70px;"></div> </div>
+
+    <div style="max-width: 850px; margin: 30px auto; padding: 0 20px;">
+        
+        <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 30px; flex-wrap: wrap;">
+            <a href="#terms" class="nav-pill">📜 Terms of Use</a>
+            <a href="#privacy" class="nav-pill">🔒 Privacy Policy</a>
+            <a href="#comments" class="nav-pill">💬 Comment Rules</a>
+        </div>
+
+        <div id="terms" class="policy-section">
+            <h2>Terms of Use</h2>
+            <p><strong>Last Updated:</strong> July 2026</p>
+            <p>Welcome to our family cookbook! By accessing our site, sharing recipes, or joining the discussion in the comments, you agree to follow these simple rules. Our goal is to maintain a friendly, inspiring, and helpful kitchen environment for everyone.</p>
+
+            <h3>1. Purpose of the Cookbook</h3>
+            <p>This application is designed to preserve family recipes, share culinary ideas, and build a positive community around cooking. You are welcome to view, print, and cook any recipes found here for personal use.</p>
+
+            <h3>2. Your Account & Contributions</h3>
+            <p>When you create an account to post comments or submit dishes, you are responsible for keeping your login credentials secure. You retain ownership of the original recipes and stories you share, but by posting them here, you grant us permission to display and share them within the cookbook community.</p>
+
+            <h3 id="comments">3. Community Rules & Comment Section</h3>
+            <p>We want this kitchen to be safe and welcoming for cooks of all ages—from grandparents to younger family members learning their first recipes. By posting, you agree to:</p>
+            <ul>
+                <li><strong>Keep it Clean & Family-Friendly:</strong> Strictly no profanity, vulgarity, explicit jokes, or inappropriate language in comments, author names, or recipe notes.</li>
+                <li><strong>Be Respectful & Encouraging:</strong> We love constructive cooking tips (e.g., <em>"I baked mine for 5 extra minutes and it was perfect!"</em>), but bullying, harassment, hate speech, or insulting another chef's creation will not be tolerated.</li>
+                <li><strong>No Spam:</strong> Do not use the comment section or recipe submissions to post advertisements, promotional links, or irrelevant content.</li>
+            </ul>
+
+            <h3>4. Moderation & Removal</h3>
+            <p>To keep the community enjoyable, site administrators reserve the right to edit or remove any recipe, comment, or account that violates these family-friendly guidelines, without prior warning.</p>
+        </div>
+
+        <div id="privacy" class="policy-section">
+            <h2>Privacy Policy</h2>
+            <p>We respect your privacy and believe in being completely transparent about how our cookbook works behind the scenes.</p>
+
+            <h3>1. What Information We Collect</h3>
+            <ul>
+                <li><strong>Account Details:</strong> If you sign in, we save your basic profile information such as your display name, email address, and account creation date.</li>
+                <li><strong>Cookbook Activity:</strong> To make the app fun and interactive, we track things like total recipe views, "I Made This!" cook counts, weekly meal planner selections, and saved favorite recipes.</li>
+                <li><strong>User Content:</strong> We store the public comments, reviews, and private chef notes that you choose to submit.</li>
+            </ul>
+
+            <h3>2. How We Use Your Data</h3>
+            <p>Your data is used solely to operate and improve your experience—such as loading your custom favorites grid, displaying global cook counters, and ensuring our comment section remains safe and well-moderated.</p>
+
+            <h3>3. No Selling of Personal Data</h3>
+            <p><strong>We will never sell, rent, or trade your personal information or email address to third-party advertisers.</strong> Your data stays right here in the kitchen.</p>
+
+            <h3>4. Public vs. Private Information</h3>
+            <p>Please remember that comments you post on recipes and your display name will be visible to other members of the cookbook.</p>
+        </div>
+
+        <div style="text-align: center; margin: 40px 0; color: #64748b; font-size: 0.9rem;">
+            <p>Thank you for being a part of our culinary family and keeping our kitchen clean! 🍳</p>
+        </div>
+
+    </div>
+
+</body>
+</html>
