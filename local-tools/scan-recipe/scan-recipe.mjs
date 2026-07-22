@@ -19,19 +19,28 @@ const CATEGORIES = [
     'Main Dishes', 'Miscellaneous', 'Sauces, Dressings & Marinades', 'Soups & Salads'
 ];
 
+// A single photo can contain more than one recipe (e.g. a cookbook spread
+// with two recipes on facing pages), so every image is scanned as "find
+// ALL the recipes in here" and always returns an array — never assume
+// one photo == one recipe.
 const PROMPT = `You are reading a photo of a handwritten or printed recipe card/cookbook page.
-Extract the recipe and respond with ONLY raw JSON (no markdown fences, no commentary) in exactly this shape:
 
-{
-  "name": "Recipe title",
-  "author": "Person's name if credited on the card, otherwise an empty string",
-  "category": "One of: ${CATEGORIES.join(' | ')}",
-  "ingredients": ["one ingredient per array item, as written"],
-  "instructions": ["one step per array item, in order"],
-  "notes": "Any extra notes/tips on the card, or an empty string"
-}
+This photo may contain a SINGLE recipe, or it may contain MULTIPLE SEPARATE recipes (e.g. two recipes side by side on a cookbook spread). Carefully identify each distinct recipe present.
 
-If the image is unreadable or not a recipe, respond with {"error": "reason here"}.`;
+Respond with ONLY raw JSON (no markdown fences, no commentary): a JSON ARRAY containing one object per distinct recipe found, in this shape:
+
+[
+  {
+    "name": "Recipe title",
+    "author": "Person's name if credited on the card, otherwise an empty string",
+    "category": "One of: ${CATEGORIES.join(' | ')}",
+    "ingredients": ["one ingredient per array item, as written"],
+    "instructions": ["one step per array item, in order"],
+    "notes": "Any extra notes/tips on the card, or an empty string"
+  }
+]
+
+If nothing readable/recipe-like is present, respond with an empty array: []`;
 
 function toBase64(filePath) {
     return readFileSync(filePath).toString('base64');
@@ -61,8 +70,10 @@ async function scanImage(filePath) {
 
     // Strip markdown code fences if the model added them anyway
     const cleaned = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+    const parsed = JSON.parse(cleaned);
 
-    return JSON.parse(cleaned);
+    // Be defensive: models don't always follow "always return an array" perfectly
+    return Array.isArray(parsed) ? parsed : [parsed];
 }
 
 async function main() {
@@ -88,27 +99,28 @@ async function main() {
         process.stdout.write(`  ${label} ... `);
 
         try {
-            const recipe = await scanImage(file);
+            const found = await scanImage(file);
+            const valid = found.filter(r => r && !r.error && (r.name || (r.ingredients && r.ingredients.length)));
 
-            if (recipe.error) {
-                console.log(`skipped (${recipe.error})`);
+            if (valid.length === 0) {
+                console.log('skipped (no recipe found)');
                 continue;
             }
 
-            if (!CATEGORIES.includes(recipe.category)) {
-                recipe.category = 'Miscellaneous';
-            }
-
-            results.push({
-                name: recipe.name || 'Untitled',
-                author: recipe.author || '',
-                tags: [recipe.category],
-                ingredients: recipe.ingredients || [],
-                instructions: recipe.instructions || [],
-                notes: recipe.notes || ''
+            valid.forEach(recipe => {
+                results.push({
+                    name: recipe.name || 'Untitled',
+                    author: recipe.author || '',
+                    tags: [CATEGORIES.includes(recipe.category) ? recipe.category : 'Miscellaneous'],
+                    ingredients: recipe.ingredients || [],
+                    instructions: recipe.instructions || [],
+                    notes: recipe.notes || ''
+                });
             });
 
-            console.log(`done ("${recipe.name}")`);
+            console.log(valid.length > 1
+                ? `done (${valid.length} recipes: ${valid.map(r => `"${r.name}"`).join(', ')})`
+                : `done ("${valid[0].name}")`);
         } catch (err) {
             console.log(`failed (${err.message})`);
         }

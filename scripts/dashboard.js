@@ -704,7 +704,7 @@ function fileToBase64(file) {
     });
 }
 
-const MAX_PDF_PAGES = 5; // safety cap so one huge PDF can't hang the browser/model
+const MAX_PDF_PAGES = 10; // safety cap so one huge PDF can't hang the browser/model — bump if you regularly scan longer multi-recipe documents
 
 async function pdfFileToImages(file) {
     if (!window.pdfjsLib) throw new Error("PDF support didn't load — check your internet connection and reload the page.");
@@ -724,6 +724,7 @@ async function pdfFileToImages(file) {
         images.push(canvas.toDataURL('image/jpeg', 0.9).split(',')[1]);
     }
 
+    images.truncated = pdf.numPages > MAX_PDF_PAGES ? pdf.numPages : null;
     return images;
 }
 
@@ -735,21 +736,36 @@ function getOllamaBaseUrl() {
     return saved.replace(/\/$/, ''); // strip trailing slash
 }
 
+// One file can contain anywhere from 0 to many recipes: a single photo
+// might catch two recipes side by side on a cookbook spread, a multi-page
+// PDF might be one recipe that spans every page, or it might be several
+// separate recipes with no way to know the count ahead of time. So every
+// file is scanned as "find ALL the recipes in here" and always returns an
+// array, rather than assuming one file == one recipe.
 async function scanOneFile(file) {
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
     const images = isPdf ? await pdfFileToImages(file) : [await fileToBase64(file)];
+    const truncatedAt = images.truncated || null; // set by pdfFileToImages if the PDF had more pages than MAX_PDF_PAGES
 
-    const prompt = `You are reading ${images.length > 1 ? 'multiple pages of' : 'a photo of'} a handwritten or printed recipe card/cookbook page.
-Extract the recipe and respond with ONLY raw JSON (no markdown fences, no commentary) in exactly this shape:
-{
-  "name": "Recipe title",
-  "author": "Person's name if credited on the card, otherwise an empty string",
-  "category": "One of: ${SCAN_CATEGORIES.join(' | ')}",
-  "ingredients": ["one ingredient per array item, as written"],
-  "instructions": ["one step per array item, in order"],
-  "notes": "Any extra notes/tips on the card, or an empty string"
-}
-If the image is unreadable or not a recipe, respond with {"error": "reason here"}.`;
+    const prompt = `You are reading ${images.length > 1 ? `${images.length} pages/photos of a recipe document` : 'a photo of a recipe card/cookbook page'}.
+
+This may contain a SINGLE recipe (possibly spread across all the pages/photos given), or it may contain MULTIPLE SEPARATE recipes (even within one page/photo, like a cookbook spread). Carefully figure out how many distinct recipes are actually present:
+- If ingredients/instructions clearly continue from one page to the next, that's still ONE recipe — combine its content across those pages.
+- If a new title/ingredient list starts partway through, that's a NEW, separate recipe.
+
+Respond with ONLY raw JSON (no markdown fences, no commentary): a JSON ARRAY containing one object per distinct recipe found, in this shape:
+[
+  {
+    "name": "Recipe title",
+    "author": "Person's name if credited on the card, otherwise an empty string",
+    "category": "One of: ${SCAN_CATEGORIES.join(' | ')}",
+    "ingredients": ["one ingredient per array item, as written"],
+    "instructions": ["one step per array item, in order"],
+    "notes": "Any extra notes/tips on the card, or an empty string"
+  }
+]
+
+If nothing readable/recipe-like is present, respond with an empty array: []`;
 
     const res = await fetch(`${getOllamaBaseUrl()}/api/generate`, {
         method: 'POST',
@@ -768,19 +784,24 @@ If the image is unreadable or not a recipe, respond with {"error": "reason here"
     const data = await res.json();
     const raw = (data.response || '').trim();
     const cleaned = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
-    const recipe = JSON.parse(cleaned);
+    const parsed = JSON.parse(cleaned);
 
-    if (recipe.error) throw new Error(recipe.error);
-    if (!SCAN_CATEGORIES.includes(recipe.category)) recipe.category = 'Miscellaneous';
+    // Be defensive: models don't always follow "always return an array"
+    // instructions perfectly, so accept a bare object too.
+    const recipes = Array.isArray(parsed) ? parsed : [parsed];
 
-    return {
-        name: recipe.name || 'Untitled',
-        author: recipe.author || '',
-        tags: [recipe.category],
-        ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || [],
-        notes: recipe.notes || ''
-    };
+    const formatted = recipes
+        .filter(r => r && !r.error && (r.name || (r.ingredients && r.ingredients.length)))
+        .map(r => ({
+            name: r.name || 'Untitled',
+            author: r.author || '',
+            tags: [SCAN_CATEGORIES.includes(r.category) ? r.category : 'Miscellaneous'],
+            ingredients: r.ingredients || [],
+            instructions: r.instructions || [],
+            notes: r.notes || ''
+        }));
+
+    return { recipes: formatted, truncatedAt };
 }
 
 window.scanRecipePhoto = async function() {
@@ -797,14 +818,24 @@ window.scanRecipePhoto = async function() {
 
     const results = [];
     const failures = [];
+    const warnings = [];
 
-    // Scan one at a time — local models handle one request at a time much
-    // more reliably than several fired off in parallel.
+    // Scan one file at a time — local models handle one request at a time
+    // much more reliably than several fired off in parallel.
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
         statusEl.innerText = `⏳ Scanning ${i + 1} of ${files.length}: ${file.name}...`;
         try {
-            results.push(await scanOneFile(file));
+            const { recipes: found, truncatedAt } = await scanOneFile(file);
+            if (found.length === 0) {
+                failures.push(`${file.name} (no recipe found)`);
+            } else {
+                results.push(...found);
+                if (found.length > 1) console.log(`${file.name}: found ${found.length} recipes in one file.`);
+            }
+            if (truncatedAt) {
+                warnings.push(`${file.name} has ${truncatedAt} pages, only the first ${MAX_PDF_PAGES} were scanned — split it if recipes are missing.`);
+            }
         } catch (error) {
             console.error(`Scan failed for ${file.name}:`, error);
             failures.push(`${file.name} (${error.message})`);
@@ -818,8 +849,9 @@ window.scanRecipePhoto = async function() {
         resultBox.style.display = 'block';
     }
 
-    let summary = `✅ Scanned ${results.length} of ${files.length} file(s).`;
-    if (failures.length > 0) summary += ` Failed: ${failures.join(', ')}.`;
+    let summary = `✅ Found ${results.length} recipe(s) across ${files.length} file(s).`;
+    if (warnings.length > 0) summary += ` ⚠️ ${warnings.join(' ')}`;
+    if (failures.length > 0) summary += ` Issues: ${failures.join(', ')}.`;
     if (results.length === 0) summary = "❌ Nothing could be scanned — is Ollama running on this computer with OLLAMA_ORIGINS=* ollama serve?";
     statusEl.innerText = summary;
 };

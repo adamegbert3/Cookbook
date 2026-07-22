@@ -30,12 +30,24 @@ the terminal tool is handy for scanning a big folder of files at once.
 
 1. Go to the **admin dashboard** → **📷 Scan Recipe Photos & PDFs**.
 2. Click the file picker and select one photo, one PDF, or **select several
-   files at once** — each file becomes its own recipe.
+   files at once**.
 3. Click **🔍 Scan File(s)**. It scans them one at a time (you'll see
-   progress: "Scanning 2 of 5..."), and PDFs are read page-by-page (up to 5
+   progress: "Scanning 2 of 5..."), and PDFs are read page-by-page (up to 10
    pages) automatically — no extra steps.
 4. When it's done, review the JSON it found, then click
    **⬇️ Send to Speed Upload Station** and **🚀 Launch Recipes**.
+
+**A file isn't assumed to be exactly one recipe.** The scanner looks at the
+actual content and figures out how many recipes are really there:
+- One photo/PDF with one recipe → one recipe out.
+- One PDF where a recipe's ingredients/instructions continue across several
+  pages → still counted as one recipe, combined from all those pages.
+- One photo or PDF page with two+ recipes on it (e.g. a cookbook spread) →
+  each one comes out as its own separate recipe.
+
+A PDF longer than 10 pages only has its first 10 read (a safety limit so
+one huge file can't hang your browser); if you're missing recipes from a
+long document, split it into smaller PDFs first.
 
 ### Scanning from your phone (Ollama stays on the computer)
 
@@ -112,6 +124,5 @@ perfect.
   and skip it — retake the photo and try again.
 - Prefer typed/printed recipes over cursive handwriting when possible; messy
   handwriting is the main source of mistakes.
-- For multi-page PDFs, only the first 5 pages are read (a safety limit so
-  one huge file can't hang your browser) — split anything longer into
-  smaller PDFs first.
+- If a multi-recipe file only turns up some of the recipes, try splitting
+  it into smaller files — the model does better focused on less at once.
