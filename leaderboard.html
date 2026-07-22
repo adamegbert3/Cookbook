@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leaderboard | Family Cookbook</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="logo-area">
+            <a href="homepage.html">
+                <img src="images/logo.jpg" alt="Logo" class="logo-img">
+            </a>
+            <div class="header-title">
+                <h1>🏆 Leaderboard</h1>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="homepage.html">
+                <button class="pill-btn btn-slate">← Back</button>
+            </a>
+        </div>
+    </div>
+
+    <main>
+        <div style="text-align:center; margin-bottom: 30px;">
+            <h2 style="font-family: var(--font-header); font-size: 2.5rem; color: var(--accent-teal); margin-bottom: 5px;">Top Home Chefs</h2>
+            <p style="color: var(--primary); opacity: 0.7;">Ranked by how many different recipes each person has marked "🎉 I Made This!"</p>
+        </div>
+
+        <div id="leaderboard-list" style="max-width: 600px; margin: 0 auto;">
+            <p style="text-align:center; color:#94a3b8;">Loading leaderboard...</p>
+        </div>
+    </main>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="terms.html" style="color: #64748b; font-size: 13px; text-decoration: underline;">Terms of Use & Privacy Policy</a>
+    </div>
+
+    <script type="module" src="scripts/leaderboard.js"></script>
+</body>
+</html>

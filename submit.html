@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
 </head>
 <body class="login-page">
     <div class="login-card" style="max-width: 700px; text-align: left;">
@@ -55,6 +56,11 @@
             <div class="input-group">
                 <label>Chef's Notes (Optional)</label>
                 <textarea id="notes" class="form-input" rows="2" placeholder="Best served warm..."></textarea>
+            </div>
+
+            <div class="input-group">
+                <label>PDF / Google Drive Link (Optional)</label>
+                <input type="url" id="driveLink" class="form-input" placeholder="https://drive.google.com/...">
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px;">

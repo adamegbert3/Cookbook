@@ -1,0 +1,13 @@
+{
+  "name": "cookbook-add-user",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local CLI to create a new Cookbook family member without touching the Firebase Console.",
+  "scripts": {
+    "start": "node add-user.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

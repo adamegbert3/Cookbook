@@ -3,8 +3,12 @@
    ========================================================================== */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Amatic+SC:wght@700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap"); /* Added for Serif option */
-@import url("https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap"); /* Added for Mono option */
+@import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap"); /* Serif option */
+@import url("https://fonts.googleapis.com/css2?family=Courier+Prime&display=swap"); /* Mono option */
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap"); /* Elegant option */
+@import url("https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap"); /* Friendly option */
+@import url("https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&display=swap"); /* Cozy option */
+@import url("https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&display=swap"); /* Handwritten option */
 
 :root {
     /* --- 1. DEFAULT (LIGHT) COLORS --- */
@@ -36,13 +40,13 @@
     --shadow-hover: 0 4px 6px -1px rgba(0,0,0,0.8);
 }
 
-/* --- FONT SIZE OVERRIDES --- */
-[data-size="large"] { --base-size: 18px; }
-[data-size="xlarge"] { --base-size: 20px; }
-
 /* --- FONT STYLE OVERRIDES --- */
 [data-font="serif"] { --font-main: 'Merriweather', serif; }
 [data-font="mono"] { --font-main: 'Courier Prime', monospace; }
+[data-font="elegant"] { --font-main: 'Playfair Display', serif; }
+[data-font="friendly"] { --font-main: 'Quicksand', sans-serif; }
+[data-font="cozy"] { --font-main: 'Nunito', sans-serif; }
+[data-font="handwritten"] { --font-main: 'Caveat', cursive; }
 
 * { box-sizing: border-box; }
 
@@ -469,4 +473,210 @@ input:checked + .slider:before {
     font-size: 15px;
     color: var(--primary);
     font-family: var(--font-main);
+}
+
+/* ==========================================================================
+   11. STEP INGREDIENTS (Inline ingredients toggle)
+   ========================================================================== */
+.step-ingredients {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    cursor: default;
+}
+.hide-step-ingredients .step-ingredients { display: none !important; }
+
+.ing-chip {
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    color: var(--accent-teal);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+}
+.ing-chip-empty {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    font-style: italic;
+}
+
+/* Recipe scale (0.5x/1x/2x/3x) and altitude buttons */
+.scale-btn { padding: 6px 14px; font-size: 0.8rem; opacity: 0.65; }
+.scale-btn.scale-active { opacity: 1; background: var(--accent-teal); color: white; }
+.altitude-badge { font-size: 0.8em; cursor: help; opacity: 0.8; }
+
+/* Substitution hints under an ingredient line */
+.sub-hint {
+    font-size: 0.75rem;
+    color: var(--accent-teal);
+    opacity: 0.85;
+    margin-top: 2px;
+    font-style: italic;
+}
+
+/* Visual feedback for the Stay Awake toggle button */
+.cook-mode-active {
+    filter: brightness(1.15);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* ==========================================================================
+   12. FULLSCREEN COOK MODE
+   ========================================================================== */
+#cook-mode-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: var(--bg-body);
+    z-index: 5000;
+    flex-direction: column;
+    touch-action: pan-y;
+}
+
+.cook-mode-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.cook-mode-close {
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    font-size: 1.1rem;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+.cook-mode-title {
+    font-family: var(--font-header);
+    font-size: 1.6rem;
+    color: var(--primary);
+    flex: 1;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.cook-mode-ing-toggle { padding: 6px 14px; }
+.cook-mode-ing-toggle .switch { width: 42px; height: 24px; }
+.cook-mode-ing-toggle .slider:before { height: 16px; width: 16px; }
+.cook-mode-ing-toggle input:checked + .slider:before { transform: translateX(18px); }
+.cook-mode-ing-toggle .toggle-label-text { font-size: 12px; }
+
+.cook-mode-progress {
+    height: 6px;
+    background: var(--border);
+    flex-shrink: 0;
+}
+.cook-mode-progress-bar {
+    height: 100%;
+    background: var(--accent-teal);
+    transition: width 0.25s ease;
+    width: 0%;
+}
+
+.cook-mode-body {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 30px 24px;
+}
+.cook-mode-step-count {
+    color: var(--accent-teal);
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    margin-bottom: 18px;
+}
+.cook-mode-step-text {
+    font-size: 1.6rem;
+    line-height: 1.5;
+    color: var(--primary);
+    max-width: 640px;
+}
+.cook-mode-step-ing {
+    margin-top: 26px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    max-width: 640px;
+}
+.cook-mode-step-ing .ing-chip { font-size: 0.9rem; padding: 6px 14px; }
+
+.cook-mode-nav {
+    display: flex;
+    gap: 10px;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-card);
+    flex-shrink: 0;
+}
+.cook-mode-nav-btn {
+    flex: 1;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent-teal);
+    color: white;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+}
+.cook-mode-nav-btn:disabled {
+    background: var(--border);
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+/* ==========================================================================
+   13. LEADERBOARD
+   ========================================================================== */
+.leaderboard-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow-sm);
+}
+.leaderboard-row.leaderboard-top {
+    border-left: 4px solid var(--accent-warm);
+}
+.leaderboard-rank {
+    font-size: 1.3rem;
+    font-weight: 800;
+    width: 36px;
+    text-align: center;
+    color: var(--primary);
+    flex-shrink: 0;
+}
+.leaderboard-name {
+    flex: 1;
+    font-weight: 700;
+    font-size: 1.05rem;
+    color: var(--primary);
+}
+.leaderboard-count {
+    font-weight: 700;
+    color: var(--accent-teal);
+    font-size: 0.95rem;
+    white-space: nowrap;
 }

@@ -1,23 +1,29 @@
-const CACHE_NAME = 'cookbook-v2-offline';
+const CACHE_NAME = 'cookbook-v3-offline';
 
-// 1. Expand the list of core files to cache immediately upon installing
+// Core app shell files to cache immediately on install
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/homepage.html',
   '/recipe.html',
+  '/edit-recipe.html',
+  '/admin.html',
+  '/leaderboard.html',
+  '/print.html',
   '/shopping-list.html',
   '/profile.html',
   '/submit.html',
   '/settings.html',
-  '/admin.html',
+  '/suggestions.html',
+  '/terms.html',
   '/styles/recipes.css',
   '/scripts/main.js',
-  '/scripts/login.js',
   '/scripts/recipePage.js',
   '/scripts/dashboard.js',
   '/scripts/profile.js',
   '/scripts/submit.js',
+  '/scripts/leaderboard.js',
+  '/scripts/print.js',
   '/scripts/firebase-config.js',
   '/images/logo.jpg',
   '/images/favicon.png',
@@ -26,18 +32,18 @@ const ASSETS_TO_CACHE = [
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
 
-// Install Event: Cache all core app shell files
+// Install Event: Cache the app shell
 self.addEventListener('install', (event) => {
   self.skipWaiting(); // Force this new service worker to activate immediately
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching complete app shell');
+      console.log('[Service Worker] Caching app shell');
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
 });
 
-// Activate Event: Clean up old caches if you change CACHE_NAME in the future
+// Activate Event: Clean up old caches from previous versions
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -57,22 +63,22 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // 🚨 CRITICAL BYPASS: Ignore ALL Firebase and Google APIs.
-  // If the Service Worker tries to cache Auth checks, it crashes Firebase Auth!
+  // CRITICAL BYPASS: Ignore all Firebase/Google API traffic (Auth + Firestore).
+  // Firestore's own offline persistence handles caching recipe data; the
+  // Service Worker only needs to own the app shell (HTML/CSS/JS/images).
   if (
-    event.request.method !== 'GET' || 
-    url.includes('googleapis.com') || 
+    event.request.method !== 'GET' ||
+    url.includes('googleapis.com') ||
     url.includes('firebaseio.com') ||
     url.includes('identitytoolkit') ||
     url.includes('securetoken') ||
     url.includes('gstatic.com')
   ) {
-    return; // Let Firebase SDK handle this directly!
+    return;
   }
 
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      // 1. Fetch from network in the background to keep cache fresh
       const fetchPromise = fetch(event.request).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseToCache = networkResponse.clone();
@@ -81,27 +87,11 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
-      }).catch((err) => {
-        // Network failed (user is offline) -> silently ignore fetch error
-        console.log('[Service Worker] Offline mode: using cache for', event.request.url);
+      }).catch(() => {
+        console.log('[Service Worker] Offline: serving from cache for', event.request.url);
       });
 
-      // 2. Return cached response instantly if we have it, otherwise wait for network
       return cachedResponse || fetchPromise;
     })
   );
 });
-// ==========================================
-// 10. START THE SERVICE WORKER (OFFLINE ENGINE)
-// ==========================================
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-            .then((registration) => {
-                console.log('👷‍♂️ [SERVICE WORKER] Registered successfully with scope:', registration.scope);
-            })
-            .catch((error) => {
-                console.error('❌ [SERVICE WORKER] Registration failed:', error);
-            });
-    });
-}

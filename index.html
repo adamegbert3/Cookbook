@@ -8,6 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+    <!-- Start connecting to Firebase early so sign-in has less network latency to pay for -->
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
 </head>
 <body class="login-page">
     <div class="login-card">
@@ -40,58 +45,79 @@
         // 🚨 NEW IMPORTS: We are bringing in the Persistence tools!
         import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-        const loginForm = document.getElementById('login-form'); 
-        const loginBtn = document.getElementById('login-btn'); 
-        const emailInput = document.getElementById('email');   
-        const passInput = document.getElementById('password'); 
+        const loginForm = document.getElementById('login-form');
+        const loginBtn = document.getElementById('login-btn');
+        const emailInput = document.getElementById('email');
+        const passInput = document.getElementById('password');
         const errorMsg = document.getElementById('error-message');
+        const originalBtnText = loginBtn.innerText;
 
-        // 1. AUTO-REDIRECT
+        // Never let a slow/flaky connection leave the button stuck forever —
+        // race the real request against a timeout so the user always gets
+        // either a redirect or a retry-able error within a few seconds.
+        function withTimeout(promise, ms, timeoutMessage) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error(timeoutMessage), { code: 'timeout' })), ms))
+            ]);
+        }
+
+        let loginAttempt = 0;
+
+        function resetLoginButton() {
+            loginBtn.innerText = originalBtnText;
+            loginBtn.disabled = false;
+        }
+
+        // 1. AUTO-REDIRECT (for already-logged-in sessions restored on page load)
         onAuthStateChanged(auth, user => {
             if (user && !loginBtn.disabled) {
-                window.location.href = "homepage.html"; 
+                window.location.href = "homepage.html";
             }
         });
 
-        // 2. BULLETPROOF LOGIN
+        // 2. BULLETPROOF LOGIN (with a timeout so it can never hang forever)
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); 
-                
+                e.preventDefault();
+
                 const email = emailInput.value.trim();
                 const password = passInput.value;
-                
+                const thisAttempt = ++loginAttempt;
+
                 if(errorMsg) errorMsg.innerText = "";
 
-                const originalText = loginBtn.innerText;
                 loginBtn.innerText = "Signing in...";
                 loginBtn.disabled = true;
 
                 try {
-                    // 🚨 NEW: Force the browser to remember this login permanently!
-                    await setPersistence(auth, browserLocalPersistence);
-                    
+                    await withTimeout(setPersistence(auth, browserLocalPersistence), 15000, "Connection is slow. Please try again.");
+
                     // Perform Login
-                    await signInWithEmailAndPassword(auth, email, password);
-                    
+                    await withTimeout(signInWithEmailAndPassword(auth, email, password), 15000, "That's taking too long — check your connection and try again.");
+
+                    // A newer attempt already took over (rare double-submit race) — let it finish instead.
+                    if (thisAttempt !== loginAttempt) return;
+
                     loginBtn.innerText = "Redirecting...";
-                    window.location.href = "homepage.html"; 
+                    window.location.href = "homepage.html";
 
                 } catch (error) {
+                    if (thisAttempt !== loginAttempt) return;
+
                     console.error("❌ Login Failed:", error);
                     let message = "Login Failed: " + error.message;
-                    
+
                     if(error.code === "auth/user-not-found" || error.code === "auth/invalid-credential" || error.code === "auth/wrong-password") {
                         message = "Account not found or incorrect password.";
-                    } else if (error.code === "auth/network-request-failed") {
-                        message = "Network error. Please check your Wi-Fi/Data.";
+                    } else if (error.code === "auth/network-request-failed" || error.code === "timeout") {
+                        message = "Connection trouble — please check your Wi-Fi/data and tap Sign In again.";
                     }
 
                     if(errorMsg) errorMsg.innerText = message;
-                    
+
                     // Unlock Button so it never gets stuck!
-                    loginBtn.innerText = originalText;
-                    loginBtn.disabled = false;
+                    resetLoginButton();
                 }
             });
         }

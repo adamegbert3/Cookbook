@@ -7,13 +7,16 @@
     <link rel="stylesheet" href="styles/recipes.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-    
+    <link rel="manifest" href="offline_features/manifest.json">
+
     <script>
         const settings = JSON.parse(localStorage.getItem('userSettings'));
         if (settings) {
             const html = document.documentElement;
             if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
-            html.setAttribute('data-size', settings.fontSize || 'normal');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>

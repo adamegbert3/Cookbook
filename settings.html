@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="styles/recipes.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
     <style>
         .settings-container {
             max-width: 600px; margin: 30px auto; padding: 20px;
@@ -62,11 +63,11 @@
 
             <div class="setting-row">
                 <label>🔍 Text Size</label>
-                <select id="fontSizeSelect">
-                    <option value="normal">Normal</option>
-                    <option value="large">Large</option>
-                    <option value="xlarge">Extra Large</option>
-                </select>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <button type="button" id="fontSizeMinus" class="pill-btn btn-slate" style="padding:6px 14px; font-size:1rem;">−</button>
+                    <span id="fontSizeValue" style="min-width:44px; text-align:center; font-weight:800; color:var(--primary);">16px</span>
+                    <button type="button" id="fontSizePlus" class="pill-btn btn-slate" style="padding:6px 14px; font-size:1rem;">+</button>
+                </div>
             </div>
 
             <div class="setting-row">
@@ -74,6 +75,10 @@
                 <select id="fontStyleSelect">
                     <option value="inter">Modern (Inter)</option>
                     <option value="serif">Classic (Serif)</option>
+                    <option value="elegant">Elegant (Playfair Display)</option>
+                    <option value="friendly">Friendly (Quicksand)</option>
+                    <option value="cozy">Cozy (Nunito)</option>
+                    <option value="handwritten">Handwritten (Caveat)</option>
                     <option value="mono">Coder (Monospace)</option>
                 </select>
             </div>
@@ -93,19 +98,40 @@
         async function initSettings() {
             try {
                 const { auth } = await import('./scripts/firebase-config.js');
-                const { saveUserSettings } = await import('./scripts/main.js'); 
+                const { saveUserSettings, resolveFontSizePx } = await import('./scripts/main.js');
                 const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
 
                 console.log("✅ [SETTINGS] Imports successful!");
 
+                const MIN_FONT_PX = 12;
+                const MAX_FONT_PX = 28;
+                let currentFontPx = 16;
+
+                function renderFontSizeValue() {
+                    document.getElementById('fontSizeValue').innerText = currentFontPx + 'px';
+                    // Live preview, even before saving
+                    document.documentElement.style.setProperty('--base-size', currentFontPx + 'px');
+                }
+
+                document.getElementById('fontSizeMinus').addEventListener('click', () => {
+                    currentFontPx = Math.max(MIN_FONT_PX, currentFontPx - 1);
+                    renderFontSizeValue();
+                });
+                document.getElementById('fontSizePlus').addEventListener('click', () => {
+                    currentFontPx = Math.min(MAX_FONT_PX, currentFontPx + 1);
+                    renderFontSizeValue();
+                });
+
                 onAuthStateChanged(auth, (user) => {
                     if(user) {
                         const settings = JSON.parse(localStorage.getItem('userSettings')) || {};
-                        
-                        if(document.getElementById('darkModeToggle')) 
+
+                        if(document.getElementById('darkModeToggle'))
                             document.getElementById('darkModeToggle').checked = (settings.theme === 'dark');
-                        if(document.getElementById('fontSizeSelect'))
-                            document.getElementById('fontSizeSelect').value = settings.fontSize || 'normal';
+
+                        currentFontPx = resolveFontSizePx(settings.fontSize);
+                        renderFontSizeValue();
+
                         if(document.getElementById('fontStyleSelect'))
                             document.getElementById('fontStyleSelect').value = settings.fontStyle || 'inter';
                     }
@@ -119,7 +145,7 @@
 
                         const newSettings = {
                             theme: document.getElementById('darkModeToggle').checked ? 'dark' : 'light',
-                            fontSize: document.getElementById('fontSizeSelect').value,
+                            fontSize: currentFontPx,
                             fontStyle: document.getElementById('fontStyleSelect').value
                         };
 
@@ -128,7 +154,7 @@
                         msg.style.opacity = 1;
 
                         await saveUserSettings(newSettings);
-                        
+
                         msg.innerText = "✅ Saved!";
                         setTimeout(() => msg.style.opacity = 0, 2000);
                     });
