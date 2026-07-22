@@ -37,6 +37,18 @@ enableIndexedDbPersistence(db).catch((err) => {
 const isLocalDev = ['localhost', '127.0.0.1'].includes(window.location.hostname);
 
 if ('serviceWorker' in navigator && !isLocalDev) {
+    // When a new deploy ships a new sw.js, the new worker takes over
+    // (self.clients.claim() in sw.js) but the ALREADY-OPEN page is still
+    // running old JS in memory. Reload once, automatically, so a fresh
+    // deploy actually reaches people instead of needing a manual hard
+    // refresh — this is the standard "auto-update" pattern for PWAs.
+    let hasReloadedForUpdate = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (hasReloadedForUpdate) return;
+        hasReloadedForUpdate = true;
+        window.location.reload();
+    });
+
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
             .then((registration) => console.log('[Offline] Service worker active, scope:', registration.scope))

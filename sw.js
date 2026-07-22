@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cookbook-v3-offline';
+const CACHE_NAME = 'cookbook-v4-offline';
 
 // Core app shell files to cache immediately on install
 const ASSETS_TO_CACHE = [
@@ -43,7 +43,10 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Event: Clean up old caches from previous versions
+// Activate Event: Clean up old caches from previous versions, and take
+// control of any already-open tabs immediately (without clients.claim(),
+// an already-open tab keeps being served by the OLD service worker — and
+// therefore its OLD cached files — until it's fully closed and reopened).
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -55,7 +58,7 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 

@@ -110,9 +110,11 @@ async function loadAllRecipes() {
         }
     } catch (e) {
         console.error("Recipe Load Error:", e);
+        const reason = e.code || e.message || "unknown error";
         container.innerHTML = `
             <div style="text-align:center; width:100%;">
                 <p>Connection trouble loading recipes.</p>
+                <p style="font-size:11px; color:#94a3b8;">(${reason})</p>
                 <button onclick="loadAllRecipes()" class="pill-btn btn-teal">🔄 Retry</button>
             </div>`;
     }
