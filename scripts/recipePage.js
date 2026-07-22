@@ -232,7 +232,23 @@ async function loadRecipe() {
                 recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
             }
         }
-    } catch (error) { console.error(error); }
+    } catch (error) {
+        console.error("Recipe load failed:", error);
+
+        // Fall back to the locally cached copy if we have one (offline / rules trouble)
+        if (localData && localData.id === recipeId && (localData.ingredients || localData.recipeIngredient)) {
+            renderRecipeHTML(localData);
+            return;
+        }
+
+        const reason = error.code || error.message || "unknown error";
+        recipeContainer.innerHTML = `
+            <div style="text-align:center; padding: 40px 20px;">
+                <h2>Couldn't load this recipe.</h2>
+                <p style="font-size:12px; color:#94a3b8;">(${reason})</p>
+                <button onclick="location.reload()" class="pill-btn btn-teal">🔄 Try Again</button>
+            </div>`;
+    }
 }
 
 // ==========================================
@@ -1137,5 +1153,14 @@ window.closeMobileToolsModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
-// Start
-loadRecipe();
+// Start — but wait for Firebase Auth to finish restoring the session first.
+// The very first Firestore read used to fire before the auth token was
+// attached, so under login-required security rules it got denied even for
+// a signed-in user (the "works on the second refresh" symptom). Waiting on
+// the first onAuthStateChanged tick closes that race for good.
+const authReady = new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, () => { unsubscribe(); resolve(); });
+    // Never hang the page if auth itself stalls
+    setTimeout(resolve, 3000);
+});
+authReady.then(loadRecipe);

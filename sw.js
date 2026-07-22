@@ -1,6 +1,6 @@
-const CACHE_NAME = 'cookbook-v4-offline';
+const CACHE_NAME = 'cookbook-v5-offline';
 
-// Core app shell files to cache immediately on install
+// Core app shell files to pre-cache on install so the site opens offline
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -24,29 +24,32 @@ const ASSETS_TO_CACHE = [
   '/scripts/submit.js',
   '/scripts/leaderboard.js',
   '/scripts/print.js',
+  '/scripts/ingredient-utils.js',
   '/scripts/firebase-config.js',
   '/images/logo.jpg',
   '/images/favicon.png',
-  '/images/apple-touch-icon.png',
-  'https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&display=swap',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+  '/images/apple-touch-icon.png'
 ];
 
-// Install Event: Cache the app shell
+// Install Event: Cache the app shell. Each asset is cached individually so
+// one bad URL can't fail the whole install (cache.addAll is all-or-nothing,
+// and a failed install would leave an old service worker in charge forever).
 self.addEventListener('install', (event) => {
-  self.skipWaiting(); // Force this new service worker to activate immediately
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching app shell');
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        ASSETS_TO_CACHE.map((url) =>
+          cache.add(url).catch((err) => console.warn('[Service Worker] Could not pre-cache', url, err))
+        )
+      )
+    )
   );
 });
 
-// Activate Event: Clean up old caches from previous versions, and take
-// control of any already-open tabs immediately (without clients.claim(),
-// an already-open tab keeps being served by the OLD service worker — and
-// therefore its OLD cached files — until it's fully closed and reopened).
+// Activate Event: Clean up old caches and take control of open tabs
+// immediately (without clients.claim(), an already-open tab keeps being
+// served by the OLD service worker until it's fully closed and reopened).
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -62,13 +65,22 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event: Stale-While-Revalidate Strategy
+// Fetch Event: NETWORK-FIRST, cache as offline fallback.
+//
+// This replaced the old stale-while-revalidate strategy on purpose: that
+// strategy serves the cached (old) copy instantly and only refreshes the
+// cache in the background, which meant every deploy showed up one visit
+// late — and different files could come from different deploys at once,
+// producing impossible-to-reproduce bugs on the live site that never
+// happened locally. Network-first guarantees fresh code whenever online;
+// the cache only steps in when the network is actually unreachable
+// (camping mode), which is the only time we want it.
 self.addEventListener('fetch', (event) => {
   const url = event.request.url;
 
-  // CRITICAL BYPASS: Ignore all Firebase/Google API traffic (Auth + Firestore).
-  // Firestore's own offline persistence handles caching recipe data; the
-  // Service Worker only needs to own the app shell (HTML/CSS/JS/images).
+  // CRITICAL BYPASS: never touch Firebase/Google API traffic (Auth + Firestore).
+  // Firestore's own offline persistence handles recipe data; the Service
+  // Worker only owns the app shell (HTML/CSS/JS/images).
   if (
     event.request.method !== 'GET' ||
     url.includes('googleapis.com') ||
@@ -81,20 +93,22 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
           const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseToCache));
         }
         return networkResponse;
-      }).catch(() => {
-        console.log('[Service Worker] Offline: serving from cache for', event.request.url);
-      });
-
-      return cachedResponse || fetchPromise;
-    })
+      })
+      .catch(() => {
+        console.log('[Service Worker] Offline: serving from cache for', url);
+        return caches.match(event.request).then((cached) => {
+          if (cached) return cached;
+          // Offline navigation to an uncached page: fall back to the homepage shell
+          if (event.request.mode === 'navigate') return caches.match('/homepage.html');
+          return Response.error();
+        });
+      })
   );
 });

@@ -105,21 +105,77 @@ async function loadAllRecipes() {
             allRecipes = data.recipes || [];
             renderLocalList(allRecipes);
             updateOfflineStatusLine();
-        } else {
-            container.innerHTML = "<p style='text-align:center;'>Index missing.</p>";
+            return;
         }
+
+        // Index doc doesn't exist (never generated, or deleted) — fall
+        // through to reading the recipes collection directly instead of
+        // showing a dead end.
+        console.warn("Homepage index missing — falling back to full collection read.");
+        await loadAllRecipesDirect(container);
     } catch (e) {
-        console.error("Recipe Load Error:", e);
-        const reason = e.code || e.message || "unknown error";
-        container.innerHTML = `
-            <div style="text-align:center; width:100%;">
-                <p>Connection trouble loading recipes.</p>
-                <p style="font-size:11px; color:#94a3b8;">(${reason})</p>
-                <button onclick="loadAllRecipes()" class="pill-btn btn-teal">🔄 Retry</button>
-            </div>`;
+        console.error("Recipe Load Error (index):", e);
+        // The index read failed — try the recipes collection directly
+        // before giving up. If the direct read also fails, THAT error is
+        // shown, since it's the more informative one.
+        try {
+            await loadAllRecipesDirect(container);
+        } catch (e2) {
+            console.error("Recipe Load Error (direct):", e2);
+            const reason = e2.code || e2.message || e.code || e.message || "unknown error";
+            container.innerHTML = `
+                <div style="text-align:center; width:100%;">
+                    <p>Connection trouble loading recipes.</p>
+                    <p style="font-size:11px; color:#94a3b8;">(${reason})</p>
+                    <button onclick="loadAllRecipes()" class="pill-btn btn-teal">🔄 Retry</button>
+                    <button onclick="emergencyCacheReset()" class="pill-btn btn-slate">🧹 Fix & Reload</button>
+                    <p style="font-size:11px; color:#94a3b8; margin-top:8px;">"Fix & Reload" clears this device's cached copy of the site and fetches everything fresh.</p>
+                </div>`;
+        }
     }
 }
 window.loadAllRecipes = loadAllRecipes;
+
+// Fallback path: read the recipes collection directly and reshape it to the
+// same compact form the index uses, so the rest of the page works unchanged.
+async function loadAllRecipesDirect(container) {
+    const snap = await withTimeout(getDocs(collection(db, "recipes")), 20000, "Taking too long to load.");
+
+    allRecipes = [];
+    snap.forEach(d => {
+        const data = d.data();
+        const ingredients = data.ingredients || data.recipeIngredient || [];
+        allRecipes.push({
+            id: d.id,
+            n: data.name || "Untitled",
+            a: data.author || "Family",
+            t: data.tags || [],
+            c: data.category || "Misc",
+            r: data.reviewed || false,
+            h: data.isHidden === true,
+            ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
+        });
+    });
+
+    renderLocalList(allRecipes);
+    updateOfflineStatusLine();
+}
+
+// One-click recovery: wipe this device's service worker + cached site files
+// and reload fresh from the network. Fixes "stuck on an old broken version".
+window.emergencyCacheReset = async function() {
+    try {
+        if ('serviceWorker' in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+        }
+        if (window.caches) {
+            const names = await caches.keys();
+            await Promise.all(names.map(n => caches.delete(n)));
+        }
+    } catch (e) { console.error("Cache reset error:", e); }
+    window.location.reload();
+};
 
 function updateOfflineStatusLine() {
     const line = document.getElementById('offline-status-line');
