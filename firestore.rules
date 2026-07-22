@@ -2,102 +2,103 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
+    // =========================================================
+    // SECURITY FUNCTIONS
+    // =========================================================
 
     // Keep this in sync with the ADMIN_UIDS arrays in scripts/dashboard.js,
     // scripts/main.js, scripts/profile.js, and edit-recipe.html.
     function isAdmin() {
-      return isSignedIn() && request.auth.uid in [
+      return request.auth != null && request.auth.uid in [
         "n5aAU1g1tBY04Ut0HnhqegSgZe92",
         "NrY491PYN3MIrqJp4rhu5S86w2R2",
         "mPBrypCN9ab1LCEQ578E5YrX8DI2"
       ];
     }
 
-    function isOwner(uid) {
-      return isSignedIn() && request.auth.uid == uid;
+    function isLoggedIn() {
+      return request.auth != null;
     }
+
+    // =========================================================
+    // COLLECTION RULES
+    //
+    // Reads on `recipes`, `global_cooks`, `announcements`, and
+    // `static_assets` are public (not gated on isLoggedIn()) on purpose:
+    // pages fire their first Firestore read as soon as they load, often
+    // before Firebase Auth has finished restoring the signed-in session
+    // from storage. Requiring isLoggedIn() on those reads loses that race
+    // and the page fails to load even for a logged-in user. The site's
+    // own pages already redirect signed-out visitors away, so this isn't
+    // opening anything the app doesn't already show to anyone with a link.
+    // =========================================================
 
     // --- RECIPES (the shared, canonical copy everyone sees) ---
     match /recipes/{recipeId} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow create, update, delete: if isAdmin();
 
       match /comments/{commentId} {
-        allow read: if isSignedIn();
-        allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-        allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+        allow read, write: if isLoggedIn();
       }
 
       // Version history snapshots written before each admin edit
       match /history/{versionId} {
-        allow read: if isSignedIn();
+        allow read: if isLoggedIn();
         allow create: if isAdmin();
       }
     }
 
     // --- SUBMISSION QUEUE ---
-    match /pending_recipes/{id} {
-      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
-      allow read, delete: if isAdmin();
+    match /pending_recipes/{docId} {
+      allow create: if isLoggedIn();
+      allow read, write: if isAdmin();
     }
 
     // --- ISSUE REPORTS ---
-    match /recipe_reports/{id} {
-      allow create: if isSignedIn();
-      allow read, delete: if isAdmin();
+    match /recipe_reports/{reportId} {
+      allow create: if isLoggedIn();
+      allow read, write: if isAdmin();
     }
 
-    // --- ANALYTICS (admin dashboard only) ---
-    match /recipe_views/{id} {
-      allow create: if isSignedIn();
+    // --- ANALYTICS: per-recipe views (admin dashboard only) ---
+    match /recipe_views/{viewId} {
+      allow create: if true;
       allow read: if isAdmin();
     }
 
+    // --- ANALYTICS: site-wide daily visits (admin dashboard only) ---
     match /site_visits/{date} {
-      allow create, update: if isSignedIn();
+      allow create, update: if isLoggedIn();
       allow read: if isAdmin();
     }
 
-    // --- LEADERBOARD (visible to every signed-in family member) ---
-    match /global_cooks/{id} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn();
+    // --- LEADERBOARD / TOTAL MEALS COOKED ---
+    match /global_cooks/{docId} {
+      allow read, write: if true;
     }
 
     // --- ANNOUNCEMENTS ---
-    match /announcements/{id} {
-      allow read: if isSignedIn();
-      allow create, update, delete: if isAdmin();
-    }
-
-    // --- HOMEPAGE INDEX / STATIC ASSETS ---
-    match /static_assets/{id} {
-      allow read: if isSignedIn();
+    match /announcements/{docId} {
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // --- USERS ---
-    match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
-      allow create: if isOwner(uid);
-      allow update: if isOwner(uid) || isAdmin();
-      allow delete: if isAdmin();
-
-      // Everything a user owns privately lives under their own uid —
-      // weekly_plan, settings/preferences, private_notes, and
-      // recipe_overrides (their personal tweaks to any recipe, visible
-      // only to them; the shared /recipes/{id} doc is untouched).
-      match /{subcollection}/{docId} {
-        allow read, write: if isOwner(uid);
-      }
+    // --- HOMEPAGE INDEX / STATIC ASSETS ---
+    match /static_assets/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // Deny anything not explicitly listed above
-    match /{document=**} {
-      allow read, write: if false;
+    // --- USERS (profile, favorites, settings, weekly plan, private
+    // notes, and personal recipe_overrides — everything under a user's
+    // own uid, at any depth) ---
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
   }
 }
