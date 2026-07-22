@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Recipes | Family Cookbook</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+    <style>
+        .print-pick-list { max-width: 900px; margin: 0 auto; }
+        .print-pick-card {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            padding: 18px 20px; margin-bottom: 16px; box-shadow: var(--shadow-sm);
+        }
+        .print-pick-card h3 { margin: 0 0 10px 0; display: flex; align-items: center; justify-content: space-between; font-size: 1.2rem; color: var(--accent-teal); }
+        .print-pick-card h3 button { font-size: 11px; padding: 4px 10px; }
+        .print-pick-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 14px; color: var(--primary); }
+        .print-pick-row input { width: 18px; height: 18px; }
+        .print-toolbar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin: 20px 0 30px 0; }
+        #print-output { display: none; }
+        .print-recipe-block { page-break-after: always; margin-bottom: 40px; }
+        .print-recipe-block:last-child { page-break-after: auto; }
+        @media print {
+            .no-print { display: none !important; }
+            #print-output { display: block !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-container no-print">
+        <div class="logo-area">
+            <a href="homepage.html">
+                <img src="images/logo.jpg" alt="Logo" class="logo-img">
+            </a>
+            <div class="header-title">
+                <h1>🖨️ Print Recipes</h1>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="homepage.html">
+                <button class="pill-btn btn-slate">← Back</button>
+            </a>
+        </div>
+    </div>
+
+    <main class="no-print">
+        <p style="text-align:center; color: var(--primary); opacity: 0.7; max-width: 600px; margin: 0 auto 20px auto;">
+            Pick individual recipes, whole categories, or the entire cookbook, then print or save as a PDF.
+        </p>
+
+        <div class="print-toolbar">
+            <button class="pill-btn btn-dark" onclick="selectAll(true)">☑️ Select Everything</button>
+            <button class="pill-btn btn-slate" onclick="selectAll(false)">☐ Clear Selection</button>
+            <button class="pill-btn btn-teal" onclick="printSelected()">🖨️ Print Selected</button>
+        </div>
+
+        <div id="print-pick-list" class="print-pick-list">
+            <p style="text-align:center;">Loading recipes...</p>
+        </div>
+    </main>
+
+    <div id="print-output"></div>
+
+    <script type="module" src="scripts/print.js"></script>
+</body>
+</html>

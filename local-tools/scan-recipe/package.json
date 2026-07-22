@@ -1,0 +1,10 @@
+{
+  "name": "cookbook-scan-recipe",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Scan a photo of a recipe card using a free local Ollama vision model and output JSON ready for the Cookbook admin bulk upload box.",
+  "scripts": {
+    "start": "node scan-recipe.mjs"
+  }
+}

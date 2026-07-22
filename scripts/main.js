@@ -43,7 +43,6 @@ onAuthStateChanged(auth, async (user) => {
         loadAllRecipes(); 
         if (document.getElementById('family-feed')) loadFamilyFeed();
         if (document.getElementById('commentsList')) loadComments();
-        if (document.getElementById('plan-Mon')) loadMealPlan();
         if (document.getElementById('chefNotes')) loadUserNote();
 
         // 3. Load User Preferences & Profile in background
@@ -81,27 +80,55 @@ onAuthStateChanged(auth, async (user) => {
 // ==========================================
 // 3. RECIPE LOADER
 // ==========================================
+// Races the real request against a timeout so a flaky connection can never
+// leave the page stuck on "Opening Cookbook..." forever with no way out
+// short of a manual refresh.
+function withTimeout(promise, ms, timeoutMessage) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(timeoutMessage)), ms))
+    ]);
+}
+
 async function loadAllRecipes() {
     const container = document.getElementById('recipes');
-    if(!container) return; 
+    if(!container) return;
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Opening Cookbook...</p>';
 
     try {
         const docRef = doc(db, "static_assets", "cookbook_index");
-        const docSnap = await getDoc(docRef);
+        const docSnap = await withTimeout(getDoc(docRef), 15000, "Taking too long to load.");
 
         if (docSnap.exists()) {
             const data = docSnap.data();
             allRecipes = data.recipes || [];
-            renderLocalList(allRecipes); 
+            renderLocalList(allRecipes);
+            updateOfflineStatusLine();
         } else {
             container.innerHTML = "<p style='text-align:center;'>Index missing.</p>";
         }
-    } catch (e) { 
+    } catch (e) {
         console.error("Recipe Load Error:", e);
-        container.innerHTML = "<p>Error loading recipes.</p>"; 
+        container.innerHTML = `
+            <div style="text-align:center; width:100%;">
+                <p>Connection trouble loading recipes.</p>
+                <button onclick="loadAllRecipes()" class="pill-btn btn-teal">🔄 Retry</button>
+            </div>`;
     }
+}
+window.loadAllRecipes = loadAllRecipes;
+
+function updateOfflineStatusLine() {
+    const line = document.getElementById('offline-status-line');
+    if (!line) return;
+
+    const readyIds = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+    const readyCount = allRecipes.filter(r => readyIds.includes(r.id)).length;
+
+    line.innerText = readyCount > 0
+        ? `⛺ ${readyCount} of ${allRecipes.length} recipes ready offline on this device.`
+        : `Do this before you lose signal — recipes you've already opened stay available too.`;
 }
 
 function getCategoryClass(category) {
@@ -121,81 +148,57 @@ function getCategoryClass(category) {
     return 'border-gray'; 
 }
 
-function renderLocalList(list) {
-    const container = document.getElementById('recipes');
-    if(!container) return;
+let offlineChecklist = [];
 
-    container.innerHTML = "";
+function buildRecipeCardHtml(item) {
+    const isHidden = item.h === true || item.isHidden === true;
 
-    // 1. Sort safely
-    list.sort((a, b) => {
-        const nameA = (a.n || a.name || "Untitled").toLowerCase();
-        const nameB = (b.n || b.name || "Untitled").toLowerCase();
-        return nameA.localeCompare(nameB);
-    });
+    const recName = item.n || item.name || "Untitled Recipe";
+    const recAuth = item.a || item.author || "Family";
+    const recId   = item.id;
+    const isOfflineReady = offlineChecklist.includes(recId);
 
-    // Retrieve camping checklist ONCE outside the loop
-    const offlineChecklist = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+    let recTags = item.t || item.tags || [];
+    if (!Array.isArray(recTags)) {
+         recTags = [String(recTags)];
+    }
 
-    let html = "";
-    
-    // 🚀 NO LIMITS: Render every recipe in the array!
-    list.forEach(item => {
-        const isHidden = item.h === true || item.isHidden === true;
+    const cat = recTags[0] || item.c || "Misc";
+    const colorClass = getCategoryClass(cat);
+    const isFav = userFavorites.includes(recId);
+    const heartIcon = isFav ? "❤️" : "🤍";
 
-        // SKIP RENDERING IF HIDDEN AND NOT AN ADMIN
-        if (isHidden && !isAdmin) return;
+    const isEgbert = recTags.includes("Egbert Favorite");
+    const isWheeler = recTags.includes("Wheeler Favorite");
 
-        const recName = item.n || item.name || "Untitled Recipe";
-        const recAuth = item.a || item.author || "Family";
-        const recId   = item.id;
-        
-        let recTags = item.t || item.tags || [];
-        if (!Array.isArray(recTags)) {
-             recTags = [String(recTags)];
-        }
-        
-        const cat = recTags[0] || item.c || "Misc";
-        const colorClass = getCategoryClass(cat);
-        const isFav = userFavorites.includes(recId);
-        const heartIcon = isFav ? "❤️" : "🤍";
+    // --- 🏆 CLEAN EMOJI BADGES (Dashboard Cards) ---
+    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 4px; flex-wrap: wrap;">`;
+    if (isOfflineReady) {
+        legacyBadges += `<span style="background: #fef08a; border: 1px solid #eab308; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Available offline on this device">⛺</span>`;
+    }
+    if (item.r || item.reviewed) {
+        legacyBadges += `<span style="background: #d1fae5; border: 1px solid #10b981; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Verified Recipe">✅</span>`;
+    }
+    if (isEgbert) {
+        legacyBadges += `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;" title="Egbert Favorite">⭐ Egbert</span>`;
+    }
+    if (isWheeler) {
+        legacyBadges += `<span style="background: #dcfce7; color: #15803d; border: 1px solid #4ade80; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;" title="Wheeler Favorite">⭐ Wheeler</span>`;
+    }
+    legacyBadges += `</div>`;
 
-        const isEgbert = recTags.includes("Egbert Favorite");
-        const isWheeler = recTags.includes("Wheeler Favorite");
-        const isOfflineReady = offlineChecklist.includes(recId);
+    // 🚨 ADMIN VISUALS: Add the eye icon and dim the card
+    const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
+    const dimStyle = isHidden ? `opacity: 0.6; background-color: #f8fafc;` : "";
 
-        // --- 🏆 CLEAN EMOJI BADGES (Dashboard Cards) ---
-        let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 4px; flex-wrap: wrap;">`;
-        
-        // if (isOfflineReady) {
-        //     legacyBadges += `<span style="background: #fef08a; border: 1px solid #eab308; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Camping Ready">⛺</span>`;
-        // }
-        if (item.r || item.reviewed) {
-            legacyBadges += `<span style="background: #d1fae5; border: 1px solid #10b981; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Verified Recipe">✅</span>`;
-        }
-        // Expanded to Full Name!
-        if (isEgbert) {
-            legacyBadges += `<span style="background: #e0f2fe; color: #0369a1; border: 1px solid #38bdf8; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;" title="Egbert Favorite">⭐ Egbert</span>`;
-        }
-        // Expanded to Full Name!
-        if (isWheeler) {
-            legacyBadges += `<span style="background: #dcfce7; color: #15803d; border: 1px solid #4ade80; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;" title="Wheeler Favorite">⭐ Wheeler</span>`;
-        }
-        legacyBadges += `</div>`;
-
-        // 🚨 ADMIN VISUALS: Add the eye icon and dim the card
-        const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
-        const dimStyle = isHidden ? `opacity: 0.6; background-color: #f8fafc;` : "";
-
-        html += `
+    return `
         <div class="recipe-card ${colorClass}" style="${dimStyle}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
-            
             ${eyeIcon}
             <button class="card-heart" onclick="toggleHeart(event, '${recId}')">${heartIcon}</button>
             <div class="card-content">
                 <h2>${recName}</h2>
                 <div class="recipe-author">From: ${recAuth}</div>
-                
+
                 ${legacyBadges}
 
                 <div class="tag-container">
@@ -206,9 +209,62 @@ function renderLocalList(list) {
                 </div>
             </div>
         </div>`;
+}
+
+// --- Lazy-loaded / paginated rendering (renders a batch at a time as the user scrolls) ---
+const RECIPE_BATCH_SIZE = 24;
+let lazyRenderQueue = [];
+let lazyRenderObserver = null;
+
+function renderLocalList(list) {
+    const container = document.getElementById('recipes');
+    if(!container) return;
+
+    offlineChecklist = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+
+    // 1. Sort safely
+    list.sort((a, b) => {
+        const nameA = (a.n || a.name || "Untitled").toLowerCase();
+        const nameB = (b.n || b.name || "Untitled").toLowerCase();
+        return nameA.localeCompare(nameB);
     });
-    
-    container.innerHTML = html || "<p style='text-align:center'>No recipes found.</p>";
+
+    // 2. Skip hidden recipes up front (unless admin) so pagination counts are accurate
+    lazyRenderQueue = list.filter(item => isAdmin || !(item.h === true || item.isHidden === true));
+
+    if (lazyRenderObserver) { lazyRenderObserver.disconnect(); lazyRenderObserver = null; }
+
+    if (lazyRenderQueue.length === 0) {
+        container.innerHTML = "<p style='text-align:center'>No recipes found.</p>";
+        return;
+    }
+
+    container.innerHTML = "";
+    renderNextRecipeBatch(container);
+}
+
+function renderNextRecipeBatch(container) {
+    const batch = lazyRenderQueue.splice(0, RECIPE_BATCH_SIZE);
+    container.insertAdjacentHTML('beforeend', batch.map(buildRecipeCardHtml).join(''));
+
+    const oldSentinel = document.getElementById('recipes-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+
+    if (lazyRenderQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'recipes-sentinel';
+    sentinel.style.cssText = 'grid-column: 1 / -1; height: 1px;';
+    container.appendChild(sentinel);
+
+    lazyRenderObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            lazyRenderObserver.disconnect();
+            renderNextRecipeBatch(container);
+        }
+    }, { rootMargin: '300px' });
+
+    lazyRenderObserver.observe(sentinel);
 }
 
 window.goToRecipe = function(id, name) {
@@ -327,84 +383,6 @@ window.postComment = async function() {
 }
 
 // ==========================================
-// 5. SHOPPING & MEAL PLAN
-// ==========================================
-window.openShoppingModal = function() {
-    const modal = document.getElementById('shoppingModal');
-    if(modal) {
-        modal.classList.remove('hidden');
-        generateFromPlan();
-    }
-}
-window.closeShoppingModal = function() {
-    document.getElementById('shoppingModal').classList.add('hidden');
-}
-
-window.generateFromPlan = async function() {
-    const listEl = document.getElementById('shopping-ul');
-    const status = document.getElementById('shopping-status');
-    const container = document.getElementById('shopping-list-container');
-    if(!listEl) return;
-
-    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-    const recipeNames = Object.values(plan);
-
-    if(recipeNames.length === 0) {
-        status.innerText = "Weekly Menu is empty.";
-        container.classList.add('hidden');
-        return;
-    }
-
-    status.innerText = "Loading ingredients...";
-    container.classList.add('hidden');
-    listEl.innerHTML = "";
-
-    try {
-        const q = query(collection(db, "recipes")); 
-        const snap = await getDocs(q);
-        
-        snap.forEach(doc => {
-            const data = doc.data();
-            if (recipeNames.includes(data.name)) {
-                listEl.innerHTML += `<li class="shop-header">${data.name}</li>`;
-                const ings = data.ingredients || data.recipeIngredient || [];
-                if(Array.isArray(ings)) {
-                    ings.forEach((i) => {
-                        listEl.innerHTML += `
-                        <li class="shop-item" onclick="this.classList.toggle('checked')">
-                            <div class="check-box">✓</div>
-                            <span class="shop-text">${i}</span>
-                        </li>`;
-                    });
-                }
-            }
-        });
-        status.style.display = 'none';
-        container.classList.remove('hidden');
-        container.style.display = 'block';
-    } catch(e) { status.innerText = "Error loading list."; }
-}
-
-window.copyShoppingList = function() {
-    const list = document.getElementById('shopping-ul').innerText;
-    navigator.clipboard.writeText(list).then(() => alert("Copied to clipboard!"));
-}
-
-function loadMealPlan() {
-    const plan = JSON.parse(localStorage.getItem('mealPlan')) || {};
-    ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach(day => {
-        const el = document.getElementById(`plan-${day}`);
-        if(el && plan[day]) {
-            el.innerText = plan[day];
-            if(el.parentElement) el.parentElement.classList.add('active');
-        }
-    });
-}
-window.clearMealPlan = function() {
-    if(confirm("Clear Menu?")) { localStorage.removeItem('mealPlan'); window.location.reload(); }
-}
-
-// ==========================================
 // 6. NOTES & UTILS
 // ==========================================
 async function loadUserNote() {
@@ -518,9 +496,12 @@ window.applyHomepageFilters = function() {
         });
     }
 
-    // 4. Filter by Search Term
+    // 4. Filter by Search Term (matches recipe name OR ingredients)
     if (term) {
-        filtered = filtered.filter(r => (r.n || "").toLowerCase().includes(term));
+        filtered = filtered.filter(r =>
+            (r.n || "").toLowerCase().includes(term) ||
+            (r.ing || "").includes(term)
+        );
     }
 
     renderLocalList(filtered);
@@ -721,6 +702,15 @@ export async function loadUserSettings(user) {
     }
 }
 
+// Font size is stored as a plain point value now (e.g. 16), but older
+// accounts may still have the original 'normal'/'large'/'xlarge' presets —
+// map those to numbers so everyone lands on the same continuous scale.
+export function resolveFontSizePx(fontSize) {
+    if (typeof fontSize === 'number') return fontSize;
+    const legacyMap = { normal: 16, large: 18, xlarge: 20 };
+    return legacyMap[fontSize] || 16;
+}
+
 function applyTheme(settings) {
     const html = document.documentElement;
     if (settings.theme === 'dark') {
@@ -728,7 +718,7 @@ function applyTheme(settings) {
     } else {
         html.removeAttribute('data-theme');
     }
-    html.setAttribute('data-size', settings.fontSize || 'normal');
+    html.style.setProperty('--base-size', resolveFontSizePx(settings.fontSize) + 'px');
     html.setAttribute('data-font', settings.fontStyle || 'inter');
 }
 
@@ -778,43 +768,45 @@ setTimeout(() => {
     updateThemeIcons(settings.theme || 'light');
 }, 500);
 
-// // ==========================================
-// // 9. ⛺ BULK CAMPING SYNC ENGINE
-// // ==========================================
-// window.prepForCamping = async function(event) {
-//     const btn = event ? event.target : document.querySelector('button[onclick*="prepForCamping"]');
-//     let originalText = "⛺ Prep for Camping (Sync All)";
-    
-//     if (btn) {
-//         originalText = btn.innerHTML;
-//         btn.innerHTML = "⏳ Downloading Cookbook...";
-//         btn.disabled = true;
-//     }
+// ==========================================
+// 9. ⛺ DOWNLOAD ALL RECIPES FOR OFFLINE (e.g. camping/no-signal use)
+// Firestore's IndexedDB persistence (enabled in firebase-config.js) caches
+// every document it reads, so simply reading all recipes here is what
+// actually makes them available with no connection afterward.
+// ==========================================
+window.downloadAllForOffline = async function(event) {
+    const btn = event ? event.currentTarget : document.querySelector('button[onclick*="downloadAllForOffline"]');
+    let originalText = "⛺ Download All Recipes for Offline";
 
-//     try {
-//         console.log("⛺ Fetching all recipes for offline storage...");
-//         const querySnapshot = await getDocs(collection(db, "recipes"));
-        
-//         const offlineIds = [];
-//         querySnapshot.forEach((doc) => {
-//             offlineIds.push(doc.id); 
-//         });
+    if (btn) {
+        originalText = btn.innerHTML;
+        btn.innerHTML = "⏳ Downloading Cookbook...";
+        btn.disabled = true;
+    }
 
-//         localStorage.setItem('campingReadyIds', JSON.stringify(offlineIds));
+    try {
+        console.log("⛺ Fetching all recipes so they're cached for offline use...");
+        const querySnapshot = await getDocs(collection(db, "recipes"));
 
-//         console.log(`✅ Stashed ${offlineIds.length} recipes offline!`);
-//         if (btn) {
-//             btn.innerHTML = `⛺ All ${offlineIds.length} Recipes Ready for Camping!`;
-//             btn.style.backgroundColor = "#15803d"; 
-//         }
-        
-//         renderLocalList(allRecipes);
-//     } catch (error) {
-//         console.error("❌ Camping Sync Failed:", error);
-//         alert("Could not download recipes. Make sure you are online!");
-//         if (btn) {
-//             btn.innerHTML = originalText;
-//             btn.disabled = false;
-//         }
-//     }
-// };
+        const offlineIds = [];
+        querySnapshot.forEach((doc) => { offlineIds.push(doc.id); });
+
+        localStorage.setItem('campingReadyIds', JSON.stringify(offlineIds));
+
+        console.log(`✅ ${offlineIds.length} recipes are now cached for offline use.`);
+        if (btn) {
+            btn.innerHTML = `⛺ All ${offlineIds.length} Recipes Ready Offline!`;
+            btn.style.backgroundColor = "#15803d";
+        }
+
+        renderLocalList(allRecipes);
+        updateOfflineStatusLine();
+    } catch (error) {
+        console.error("❌ Offline download failed:", error);
+        alert("Could not download recipes. Make sure you're online first, then try again.");
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
+};

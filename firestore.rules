@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Keep this in sync with the ADMIN_UIDS arrays in scripts/dashboard.js,
+    // scripts/main.js, scripts/profile.js, and edit-recipe.html.
+    function isAdmin() {
+      return isSignedIn() && request.auth.uid in [
+        "n5aAU1g1tBY04Ut0HnhqegSgZe92",
+        "NrY491PYN3MIrqJp4rhu5S86w2R2",
+        "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+      ];
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // --- RECIPES (the shared, canonical copy everyone sees) ---
+    match /recipes/{recipeId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+
+      match /comments/{commentId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+        allow delete: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      }
+
+      // Version history snapshots written before each admin edit
+      match /history/{versionId} {
+        allow read: if isSignedIn();
+        allow create: if isAdmin();
+      }
+    }
+
+    // --- SUBMISSION QUEUE ---
+    match /pending_recipes/{id} {
+      allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid;
+      allow read, delete: if isAdmin();
+    }
+
+    // --- ISSUE REPORTS ---
+    match /recipe_reports/{id} {
+      allow create: if isSignedIn();
+      allow read, delete: if isAdmin();
+    }
+
+    // --- ANALYTICS (admin dashboard only) ---
+    match /recipe_views/{id} {
+      allow create: if isSignedIn();
+      allow read: if isAdmin();
+    }
+
+    match /site_visits/{date} {
+      allow create, update: if isSignedIn();
+      allow read: if isAdmin();
+    }
+
+    // --- LEADERBOARD (visible to every signed-in family member) ---
+    match /global_cooks/{id} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+    }
+
+    // --- ANNOUNCEMENTS ---
+    match /announcements/{id} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // --- HOMEPAGE INDEX / STATIC ASSETS ---
+    match /static_assets/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // --- USERS ---
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
+
+      // Everything a user owns privately lives under their own uid —
+      // weekly_plan, settings/preferences, private_notes, and
+      // recipe_overrides (their personal tweaks to any recipe, visible
+      // only to them; the shared /recipes/{id} doc is untouched).
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(uid);
+      }
+    }
+
+    // Deny anything not explicitly listed above
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

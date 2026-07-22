@@ -1,10 +1,199 @@
 import { db, auth } from './firebase-config.js';
-import { 
-    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion 
+import {
+    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { saveUserSettings, resolveFontSizePx } from './main.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
+
+// ==========================================
+// INGREDIENT <-> STEP MATCHING (simple keyword heuristic, no AI needed)
+// ==========================================
+const INGREDIENT_STOPWORDS = new Set([
+    'cup', 'cups', 'tbsp', 'tbsps', 'tablespoon', 'tablespoons', 'tsp', 'tsps', 'teaspoon', 'teaspoons',
+    'oz', 'ounce', 'ounces', 'lb', 'lbs', 'pound', 'pounds', 'gram', 'grams', 'kg', 'ml', 'liter', 'liters',
+    'clove', 'cloves', 'pinch', 'dash', 'slice', 'slices', 'can', 'cans', 'package', 'packages', 'box', 'boxes',
+    'bag', 'bags', 'jar', 'jars', 'stick', 'sticks', 'large', 'small', 'medium', 'fresh', 'freshly', 'ground',
+    'room', 'temperature', 'chopped', 'diced', 'minced', 'sliced', 'melted', 'softened', 'divided', 'optional',
+    'plus', 'more', 'taste', 'about', 'approximately', 'each', 'and', 'or', 'the', 'for', 'with', 'into', 'of', 'to', 'a', 'an'
+]);
+
+function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function extractKeywords(text) {
+    return (text || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !INGREDIENT_STOPWORDS.has(w) && isNaN(Number(w)));
+}
+
+function matchIngredientsForStep(stepText, ingredientsArr) {
+    if (!Array.isArray(ingredientsArr) || ingredientsArr.length === 0) return [];
+    const stepLower = (stepText || '').toLowerCase();
+    return ingredientsArr.filter(ing => {
+        const keywords = extractKeywords(ing);
+        return keywords.some(kw => new RegExp(`\\b${escapeRegex(kw)}\\b`).test(stepLower));
+    });
+}
+
+function stepIngredientsHtml(matched) {
+    if (!matched || matched.length === 0) return "";
+    return `<div class="step-ingredients">${matched.map(i => `<span class="ing-chip">🧂 ${i}</span>`).join('')}</div>`;
+}
+
+// ==========================================
+// RECIPE SCALING (0.5x / 1x / 2x / 3x)
+// ==========================================
+const UNICODE_FRACTIONS = { '¼': 0.25, '½': 0.5, '¾': 0.75, '⅓': 1 / 3, '⅔': 2 / 3, '⅛': 0.125, '⅜': 0.375, '⅝': 0.625, '⅞': 0.875 };
+const NICE_FRACTIONS = [[0, ''], [1 / 8, '1/8'], [1 / 4, '1/4'], [1 / 3, '1/3'], [3 / 8, '3/8'], [1 / 2, '1/2'], [5 / 8, '5/8'], [2 / 3, '2/3'], [3 / 4, '3/4'], [7 / 8, '7/8'], [1, '']];
+
+function parseLeadingQuantity(line) {
+    // Mixed number: "1 1/2 cups"
+    let m = line.match(/^(\d+)\s+(\d+)\/(\d+)/);
+    if (m) return { value: Number(m[1]) + Number(m[2]) / Number(m[3]), raw: m[0] };
+
+    // Simple fraction: "1/2 cup"
+    m = line.match(/^(\d+)\/(\d+)/);
+    if (m) return { value: Number(m[1]) / Number(m[2]), raw: m[0] };
+
+    // Range: "2-3 cups"
+    m = line.match(/^(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)/);
+    if (m) return { value: [Number(m[1]), Number(m[2])], raw: m[0], isRange: true };
+
+    // Whole number or decimal: "2 cups" / "1.5 tsp"
+    m = line.match(/^(\d+(?:\.\d+)?)/);
+    if (m) return { value: Number(m[1]), raw: m[0] };
+
+    // Unicode fraction, optionally preceded by a whole number: "1½ cups" / "½ cup"
+    m = line.match(/^(\d+\s*)?([¼½¾⅓⅔⅛⅜⅝⅞])/);
+    if (m) {
+        const whole = m[1] ? Number(m[1].trim()) : 0;
+        return { value: whole + UNICODE_FRACTIONS[m[2]], raw: m[0] };
+    }
+
+    return null;
+}
+
+function formatQuantity(value) {
+    if (value <= 0) return '0';
+
+    const whole = Math.floor(value);
+    const frac = value - whole;
+
+    let best = NICE_FRACTIONS[0];
+    let bestDiff = Infinity;
+    for (const entry of NICE_FRACTIONS) {
+        const diff = Math.abs(frac - entry[0]);
+        if (diff < bestDiff) { bestDiff = diff; best = entry; }
+    }
+
+    if (bestDiff > 0.05) {
+        // Not close to a common cooking fraction — just show a clean decimal
+        return String(Math.round(value * 100) / 100);
+    }
+
+    let wholePart = whole;
+    let fracLabel = best[1];
+    if (best[0] === 1) { wholePart += 1; fracLabel = ''; }
+
+    if (wholePart === 0 && fracLabel) return fracLabel;
+    if (fracLabel) return `${wholePart} ${fracLabel}`;
+    return String(wholePart);
+}
+
+function scaleIngredientLine(line, factor) {
+    if (factor === 1 || typeof line !== 'string') return line;
+
+    const parsed = parseLeadingQuantity(line);
+    if (!parsed) return line; // No leading quantity (e.g. "Salt to taste") — leave untouched
+
+    const rest = line.slice(parsed.raw.length);
+
+    if (parsed.isRange) {
+        return `${formatQuantity(parsed.value[0] * factor)}-${formatQuantity(parsed.value[1] * factor)}${rest}`;
+    }
+    return `${formatQuantity(parsed.value * factor)}${rest}`;
+}
+
+// ==========================================
+// HIGH-ALTITUDE BAKING ADJUSTMENT (estimate, based on standard
+// 3,000-5,000 / 5,000-7,000 / 7,000+ ft guidance — every recipe reacts
+// differently, so this is a starting point, not a guarantee)
+// ==========================================
+const ALTITUDE_LABELS = { '3000': '3,000-5,000 ft', '5000': '5,000-7,000 ft', '7000': '7,000+ ft' };
+const ALTITUDE_FACTORS = {
+    '3000': { leavening: 0.875, sugar: 0.9375, liquid: 1.094 },
+    '5000': { leavening: 0.75, sugar: 0.906, liquid: 1.1875 },
+    '7000': { leavening: 0.625, sugar: 0.844, liquid: 1.219 }
+};
+const LEAVENING_KEYWORDS = ['baking powder', 'baking soda', 'yeast'];
+const SUGAR_KEYWORDS = ['sugar', 'honey', 'corn syrup', 'molasses'];
+const LIQUID_KEYWORDS = ['water', 'milk', 'buttermilk', 'cream'];
+
+function classifyIngredientForAltitude(line) {
+    const lower = line.toLowerCase();
+    if (LEAVENING_KEYWORDS.some(k => lower.includes(k))) return 'leavening';
+    if (SUGAR_KEYWORDS.some(k => lower.includes(k))) return 'sugar';
+    if (LIQUID_KEYWORDS.some(k => lower.includes(k))) return 'liquid';
+    return null;
+}
+
+// ==========================================
+// SUBSTITUTION HINTS (common swaps, shown when an ingredient matches)
+// ==========================================
+const SUBSTITUTIONS = {
+    'buttermilk': '1 cup milk + 1 tbsp lemon juice or vinegar (let sit 5 min)',
+    'sour cream': 'plain yogurt, or 1 cup milk + 1 tbsp vinegar',
+    'heavy cream': '3/4 cup milk + 1/4 cup melted butter (won’t whip, but works for cooking/baking)',
+    'self-rising flour': '1 cup flour + 1 1/2 tsp baking powder + 1/4 tsp salt',
+    'cake flour': '1 cup flour minus 2 tbsp, plus 2 tbsp cornstarch',
+    'cornstarch': 'double the amount of flour',
+    'brown sugar': '1 cup white sugar + 1 tbsp molasses',
+    'honey': 'equal amount of maple syrup or corn syrup',
+    'molasses': 'honey or dark corn syrup',
+    'shortening': 'equal amount of butter (texture will be slightly different)',
+    'vegetable oil': 'equal amount of melted butter or applesauce (in baking)',
+    'white wine': 'chicken broth + a splash of vinegar',
+    'red wine': 'beef broth + a splash of vinegar',
+    'garlic clove': '1/8 tsp garlic powder per clove',
+    'yeast': '1 tsp baking powder + 1/4 tsp baking soda (won’t rise the same — best for quick breads)',
+    'mayonnaise': 'plain yogurt or sour cream',
+    'ketchup': 'tomato paste + a splash of vinegar and a pinch of sugar',
+    'breadcrumbs': 'crushed crackers or crushed cereal',
+    'parmesan': 'any hard, salty grating cheese (romano, asiago)',
+    'cream cheese': 'mascarpone or full-fat Greek yogurt',
+    'evaporated milk': 'whole milk, simmered until slightly reduced',
+    'lemon juice': 'white vinegar (use half the amount)',
+    'eggs': '1/4 cup unsweetened applesauce per egg, or 1 tbsp ground flaxseed + 3 tbsp water per egg',
+    'egg': '1/4 cup unsweetened applesauce, or 1 tbsp ground flaxseed + 3 tbsp water (let sit 5 min)'
+};
+const SUBSTITUTION_KEYS = Object.keys(SUBSTITUTIONS).sort((a, b) => b.length - a.length);
+
+function findSubstitution(line) {
+    const lower = String(line || '').toLowerCase();
+    for (const key of SUBSTITUTION_KEYS) {
+        if (new RegExp(`\\b${escapeRegex(key)}\\b`).test(lower)) {
+            return { key, sub: SUBSTITUTIONS[key] };
+        }
+    }
+    return null;
+}
+
+function applyAltitudeAdjustment(line, elevationBand) {
+    if (!elevationBand || typeof line !== 'string') return line;
+
+    const category = classifyIngredientForAltitude(line);
+    if (!category) return line;
+
+    const factor = ALTITUDE_FACTORS[elevationBand][category];
+    const adjusted = scaleIngredientLine(line, factor);
+    return `${adjusted} <span class="altitude-badge" title="Estimated adjustment for ${ALTITUDE_LABELS[elevationBand]}">🏔️</span>`;
+}
 
 // ==========================================
 // 1. LOAD RECIPE LOGIC
@@ -30,10 +219,12 @@ async function loadRecipe() {
 
         if (docSnap.exists()) {
             const fullData = { id: recipeId, ...docSnap.data() };
+            originalRecipeData = fullData;
             localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
             renderRecipeHTML(fullData);
-            loadCookStats(); 
+            loadCookStats();
             logViewToDatabase(fullData);
+            applyPersonalizationIfAny(fullData);
         } else {
             if(localData && localData.id === recipeId) {
                 renderRecipeHTML(localData);
@@ -43,6 +234,125 @@ async function loadRecipe() {
         }
     } catch (error) { console.error(error); }
 }
+
+// ==========================================
+// PERSONAL RECIPE OVERRIDES ("make it yours")
+// Anyone can tweak any recipe (add more sugar, skip an ingredient, etc.).
+// The change is saved only under that person's own account and never
+// touches the shared recipe everyone else sees.
+// ==========================================
+let originalRecipeData = null;
+
+function applyPersonalizationIfAny(baseRecipe) {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        unsubscribe();
+        if (!user) return;
+
+        try {
+            const overrideSnap = await getDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId));
+            if (overrideSnap.exists()) {
+                renderRecipeHTML({ ...baseRecipe, ...overrideSnap.data(), isPersonalized: true });
+            }
+        } catch (e) { console.log("No personalization to apply."); }
+    });
+}
+
+function buildPersonalizeModal() {
+    if (document.getElementById('personalize-modal')) return;
+
+    const modal = document.createElement('div');
+    modal.id = 'personalize-modal';
+    modal.className = 'modal hidden';
+    modal.style.display = 'none';
+    modal.innerHTML = `
+        <div class="modal-content" style="max-width:500px; text-align:left;">
+            <button onclick="closePersonalizeModal()" class="close-btn">✕</button>
+            <h2 style="margin-top:0; text-align:center;">✏️ Personalize This Recipe</h2>
+            <p style="font-size:12px; color:#94a3b8; text-align:center; margin-top:-10px;">Only you will see these changes — everyone else still sees the original.</p>
+
+            <label style="display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;">Ingredients (one per line)</label>
+            <textarea id="personalize-ingredients" class="form-input" rows="6"></textarea>
+
+            <label style="display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;">Instructions (one step per line)</label>
+            <textarea id="personalize-instructions" class="form-input" rows="6"></textarea>
+
+            <label style="display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;">Notes</label>
+            <textarea id="personalize-notes" class="form-input" rows="2"></textarea>
+
+            <div style="display:flex; gap:10px; margin-top:20px;">
+                <button onclick="savePersonalization()" class="pill-btn btn-teal" style="flex:1; justify-content:center;">💾 Save My Version</button>
+                <button onclick="revertPersonalization()" class="pill-btn btn-slate" style="justify-content:center;">↩️ Revert</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+window.openPersonalizeModal = function() {
+    if (!originalRecipeData) return alert("Recipe hasn't finished loading yet — try again in a moment.");
+    if (!auth.currentUser) return alert("Please log in to personalize recipes.");
+
+    buildPersonalizeModal();
+
+    const current = lastRenderedRecipe || originalRecipeData;
+    const rawIng = current.ingredients || current.recipeIngredient || [];
+    const rawInst = current.instructions || current.recipeInstructions || [];
+
+    document.getElementById('personalize-ingredients').value = Array.isArray(rawIng) ? rawIng.join('\n') : (rawIng || '');
+    document.getElementById('personalize-instructions').value = Array.isArray(rawInst) ? rawInst.join('\n') : (rawInst || '');
+    document.getElementById('personalize-notes').value = current.notes || '';
+
+    const modal = document.getElementById('personalize-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+};
+
+window.closePersonalizeModal = function() {
+    const modal = document.getElementById('personalize-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }
+};
+
+window.savePersonalization = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in.");
+
+    const ingArray = document.getElementById('personalize-ingredients').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const instArray = document.getElementById('personalize-instructions').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const notes = document.getElementById('personalize-notes').value.trim();
+
+    try {
+        await setDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId), {
+            ingredients: ingArray,
+            instructions: instArray,
+            notes,
+            updatedAt: serverTimestamp()
+        });
+
+        renderRecipeHTML({ ...originalRecipeData, ingredients: ingArray, instructions: instArray, notes, isPersonalized: true });
+        closePersonalizeModal();
+    } catch (e) {
+        console.error(e);
+        alert("Could not save your changes: " + e.message);
+    }
+};
+
+window.revertPersonalization = async function() {
+    const user = auth.currentUser;
+    if (!user || !originalRecipeData) return;
+    if (!confirm("Remove your personalized version and go back to the original recipe?")) return;
+
+    try {
+        await deleteDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId));
+        renderRecipeHTML(originalRecipeData);
+        closePersonalizeModal();
+    } catch (e) {
+        console.error(e);
+        alert("Could not revert: " + e.message);
+    }
+};
 
 async function logViewToDatabase(recipeData) {
     const sessionKey = `viewed-${recipeData.id}`;
@@ -73,10 +383,27 @@ async function logViewToDatabase(recipeData) {
     } catch (e) { console.error("Could not log view:", e); }
 }
 
+let currentScaleFactor = 1;
+let currentElevationBand = localStorage.getItem('altitudeElevationBand') || null;
+let lastRenderedRecipe = null;
+
+window.setRecipeScale = function(factor) {
+    currentScaleFactor = factor;
+    if (lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
+};
+
+window.setAltitudeBand = function(band) {
+    currentElevationBand = band;
+    localStorage.setItem('altitudeElevationBand', band || '');
+    if (lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
+};
+
 function renderRecipeHTML(recipe) {
     const recipeContainer = document.getElementById("recipe");
     if (!recipeContainer) return;
-    
+
+    lastRenderedRecipe = recipe;
+
     // 1. Automatically mark opened recipe as "Camping Ready" in localStorage
     const currentId = recipe.id || recipeId;
     const campingReady = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
@@ -90,12 +417,10 @@ function renderRecipeHTML(recipe) {
     const isHidden = recipe.h === true || recipe.isHidden === true;
     const recTags = Array.isArray(recipe.t || recipe.tags) ? (recipe.t || recipe.tags) : [String(recipe.t || recipe.tags || "")];
     
-    // 3. Build Status Pills (Notice: Offline tent is commented out for now as requested!)
+    // 3. Build Status Pills
     let statusBarHtml = `<div class="recipe-status-bar" style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 12px 0 16px 0;">`;
-    
-    // /*
-    // statusBarHtml += `<span class="status-emoji" title="Saved for Offline / Camping" style="background: #fef08a; border: 1px solid #eab308; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; color: #854d0e;">⛺ Saved for Offline</span>`;
-    // */
+
+    statusBarHtml += `<span class="no-print" title="Cached on this device — this recipe will still open with no signal" style="background: #fef08a; border: 1px solid #eab308; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; color: #854d0e;">⛺ Available Offline</span>`;
 
     if (isReviewed) {
         statusBarHtml += `<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #10b981;">✅ Verified & Reviewed Recipe</span>`;
@@ -115,38 +440,106 @@ function renderRecipeHTML(recipe) {
     }
 
     statusBarHtml += `</div>`;
-    
+
+    const driveUrl = recipe.driveUrl || recipe.autoDriveUrl;
+    const driveLinkHtml = driveUrl
+        ? `<div style="text-align:center; margin-bottom:16px;" class="no-print">
+             <a href="${driveUrl}" target="_blank" rel="noopener" class="pill-btn btn-blue" style="text-decoration:none;">📄 View PDF / Google Drive Copy</a>
+           </div>`
+        : "";
+
     const rawIng = recipe.ingredients || recipe.recipeIngredient;
     const rawInst = recipe.instructions || recipe.recipeInstructions;
     const author = recipe.author || recipe.a || "Family";
 
+    // Scale ingredient quantities (0.5x/1x/2x/3x), then apply high-altitude
+    // adjustments on top — everything downstream (the list itself, and the
+    // per-step ingredient chips) uses this scaled+adjusted version.
+    const scaledIng = Array.isArray(rawIng)
+        ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
+        : rawIng;
+
     let ingHtml = "";
-    if (Array.isArray(rawIng)) {
-        ingHtml = rawIng.map(i => `<li>${i}</li>`).join("");
-    } else if (typeof rawIng === 'string') {
-        ingHtml = `<pre>${rawIng}</pre>`;
+    if (Array.isArray(scaledIng)) {
+        ingHtml = scaledIng.map(i => {
+            const sub = findSubstitution(i);
+            const subHtml = sub ? `<div class="sub-hint no-print">🔄 No ${sub.key}? Try: ${sub.sub}</div>` : '';
+            return `<li>${i}${subHtml}</li>`;
+        }).join("");
+    } else if (typeof scaledIng === 'string') {
+        ingHtml = `<pre>${scaledIng}</pre>`;
     }
+
+    const hasIngredients = Array.isArray(rawIng) && rawIng.length > 0;
+
+    // Scale/altitude are page-level *tools*, not recipe content — they live
+    // in the Kitchen Tools section (populated further down), not inline here.
+    const scaleSlotHtml = hasIngredients ? `
+        <span style="font-size:0.8rem; color:#94a3b8;">Scale recipe:</span>
+        ${[0.5, 1, 2, 3].map(f => `
+            <button class="pill-btn btn-slate scale-btn${currentScaleFactor === f ? ' scale-active' : ''}" onclick="setRecipeScale(${f})">${f}x</button>
+        `).join('')}` : "";
+
+    const altitudeSlotHtml = hasIngredients ? `
+        <span style="font-size:0.8rem; color:#94a3b8;">High altitude:</span>
+        <button class="pill-btn btn-slate scale-btn${!currentElevationBand ? ' scale-active' : ''}" onclick="setAltitudeBand(null)">Off</button>
+        <button class="pill-btn btn-slate scale-btn${currentElevationBand === '3000' ? ' scale-active' : ''}" onclick="setAltitudeBand('3000')">3-5k ft</button>
+        <button class="pill-btn btn-slate scale-btn${currentElevationBand === '5000' ? ' scale-active' : ''}" onclick="setAltitudeBand('5000')">5-7k ft</button>
+        <button class="pill-btn btn-slate scale-btn${currentElevationBand === '7000' ? ' scale-active' : ''}" onclick="setAltitudeBand('7000')">7k+ ft</button>` : "";
+
+    // The advisory banner stays with the ingredient list since it explains
+    // the 🏔️ marks that show up right there.
+    const altitudeBannerHtml = (hasIngredients && currentElevationBand) ? `
+        <div class="no-print" style="background:#fff7ed; border:1px solid #fdba74; color:#9a3412; padding:10px 14px; border-radius:8px; margin: 10px 0; font-size:0.8rem; text-align:center;">
+            🏔️ Estimated adjustments for ${ALTITUDE_LABELS[currentElevationBand]} (marked 🏔️ below). Also try: oven +15-25°F, and check doneness a few minutes early — every recipe reacts differently at altitude.
+        </div>` : "";
+
+    const ingredientsArr = Array.isArray(scaledIng) ? scaledIng : [];
+    const showStepIngredients = localStorage.getItem('showStepIngredients') === 'true';
 
     let instHtml = "";
     if (Array.isArray(rawInst)) {
-        instHtml = `<ol id="normal-instructions">${rawInst.map(s => `<li class="instruction-step">${s}</li>`).join("")}</ol>`;
+        instHtml = `<ol id="normal-instructions">${rawInst.map(s => {
+            const matched = matchIngredientsForStep(s, ingredientsArr);
+            return `<li class="instruction-step">${s}${stepIngredientsHtml(matched)}</li>`;
+        }).join("")}</ol>`;
     } else if (typeof rawInst === 'string') {
         instHtml = `<p style="white-space: pre-wrap;">${rawInst}</p>`;
     }
+
+    let notesHtml = "";
+    if (recipe.notes && String(recipe.notes).trim()) {
+        notesHtml = `
+        <h3 class="section-header">📝 Recipe Notes</h3>
+        <p style="white-space: pre-wrap;">${recipe.notes}</p>`;
+    }
+
+    const personalizedBadgeHtml = recipe.isPersonalized
+        ? `<div style="text-align:center; margin-bottom:16px;" class="no-print">
+             <button onclick="revertPersonalization()" class="pill-btn" style="background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd;" title="Click to revert to the original recipe">
+                📝 Personalized by you (tap to revert)
+             </button>
+           </div>`
+        : "";
 
     // 4. Inject into DOM: Notice statusBarHtml is right under From: ${author}
     recipeContainer.innerHTML = `
         <h1 class="recipe-title-lg">${recipe.name || recipe.n}</h1>
         <h2 class="recipe-chef" style="margin-bottom: 4px;">From: ${author}</h2>
-        
+
         ${statusBarHtml}
-        
+        ${driveLinkHtml}
+        ${personalizedBadgeHtml}
+
         <hr class="recipe-divider">
         <h3 class="section-header">Ingredients</h3>
         <p class="no-print" style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
+        ${altitudeBannerHtml}
         <ul id="ingredient-list">${ingHtml}</ul>
+
         <h3 class="section-header">Instructions</h3>
-        <div id="instructions-container">${instHtml}</div>
+        <div id="instructions-container" class="${showStepIngredients ? '' : 'hide-step-ingredients'}">${instHtml}</div>
+        ${notesHtml}
     `;
 
     setTimeout(() => {
@@ -156,7 +549,14 @@ function renderRecipeHTML(recipe) {
     }, 100);
 
     localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: currentId }));
-    
+
+    // Populate the Kitchen Tools slots (scale/altitude controls + the ingredients-in-steps toggle state)
+    const scaleSlot = document.getElementById('kt-scale-slot');
+    if (scaleSlot) scaleSlot.innerHTML = scaleSlotHtml;
+    const altitudeSlot = document.getElementById('kt-altitude-slot');
+    if (altitudeSlot) altitudeSlot.innerHTML = altitudeSlotHtml;
+    toggleInlineIngredients(showStepIngredients);
+
     // Trigger Mobile Tools layout setup
     setupMobileKitchenTools();
 }
@@ -165,67 +565,203 @@ function renderRecipeHTML(recipe) {
 // 2. KITCHEN TOOLS & MEAL PLANNER
 // ==========================================
 
+// --- STAY AWAKE (screen wake lock only, no fullscreen) ---
 let wakeLock = null;
-window.toggleCookMode = async function() {
-    const btn = document.getElementById('cookModeBtn');
+window.toggleStayAwake = async function() {
+    const btns = document.querySelectorAll('.js-stay-awake-btn');
     if (!wakeLock) {
         try {
             wakeLock = await navigator.wakeLock.request('screen');
-            btn.innerText = "Cook Mode: ON 🍳";
-            btn.classList.add('cook-mode-active');
-        } catch (err) { alert("Screen Wake Lock not supported"); }
+            btns.forEach(b => { b.innerText = "🔆 Stay Awake: ON"; b.classList.add('cook-mode-active'); });
+            wakeLock.addEventListener('release', () => {
+                wakeLock = null;
+                document.querySelectorAll('.js-stay-awake-btn').forEach(b => { b.innerText = "🔆 Stay Awake"; b.classList.remove('cook-mode-active'); });
+            });
+        } catch (err) { alert("Screen Wake Lock isn't supported on this browser."); }
     } else {
-        if(wakeLock) wakeLock.release();
+        wakeLock.release();
         wakeLock = null;
-        btn.innerText = "Enable Cook Mode 🍳";
-        btn.classList.remove('cook-mode-active');
+        btns.forEach(b => { b.innerText = "🔆 Stay Awake"; b.classList.remove('cook-mode-active'); });
     }
 }
 
-let currentSize = 16;
-window.resizeText = function(change) {
-    currentSize += change;
-    if (currentSize < 12) currentSize = 12; 
-    if (currentSize > 30) currentSize = 30; 
-    const elements = document.querySelectorAll('#ingredient-list li, #instructions-container li, #instructions-container p');
-    elements.forEach(el => el.style.fontSize = currentSize + 'px');
+// --- SHARED: Inline "show ingredients with steps" toggle (normal view + Cook Mode) ---
+window.toggleInlineIngredients = function(forceState) {
+    const state = typeof forceState === 'boolean' ? forceState : !(localStorage.getItem('showStepIngredients') === 'true');
+    localStorage.setItem('showStepIngredients', state);
+
+    document.querySelectorAll('.js-ing-toggle-btn').forEach(b => {
+        b.innerText = `🧪 Ingredients in Steps: ${state ? 'ON' : 'OFF'} (Beta)`;
+        b.classList.toggle('cook-mode-active', state);
+    });
+
+    const cookToggle = document.getElementById('cook-ing-toggle');
+    if (cookToggle) cookToggle.checked = state;
+
+    const instContainer = document.getElementById('instructions-container');
+    if (instContainer) instContainer.classList.toggle('hide-step-ingredients', !state);
+
+    const cookIngBox = document.getElementById('cook-mode-step-ing');
+    if (cookIngBox) cookIngBox.style.display = state ? 'flex' : 'none';
+};
+
+// ==========================================
+// FULLSCREEN SWIPEABLE COOK MODE
+// ==========================================
+let cookModeSteps = [];
+let cookModeIngredients = [];
+let cookModeIndex = 0;
+let cookModeWakeLock = null;
+
+window.startCookMode = function() {
+    const current = JSON.parse(localStorage.getItem("currentRecipeData")) || {};
+
+    const rawInst = current.instructions || current.recipeInstructions;
+    const rawIng = current.ingredients || current.recipeIngredient;
+
+    cookModeSteps = Array.isArray(rawInst) ? rawInst : (typeof rawInst === 'string' ? rawInst.split('\n').filter(Boolean) : []);
+    cookModeIngredients = Array.isArray(rawIng)
+        ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
+        : [];
+
+    if (cookModeSteps.length === 0) return alert("No instructions found for this recipe yet.");
+
+    cookModeIndex = 0;
+    buildCookModeOverlay(current.name || current.n || "Recipe");
+    renderCookModeStep();
+
+    const overlay = document.getElementById('cook-mode-overlay');
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    if (navigator.wakeLock && !cookModeWakeLock) {
+        navigator.wakeLock.request('screen').then(lock => { cookModeWakeLock = lock; }).catch(() => {});
+    }
+};
+
+window.exitCookMode = function() {
+    const overlay = document.getElementById('cook-mode-overlay');
+    if (overlay) overlay.style.display = 'none';
+    document.body.style.overflow = '';
+
+    if (cookModeWakeLock) {
+        cookModeWakeLock.release();
+        cookModeWakeLock = null;
+    }
+
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+};
+
+window.toggleReadAloud = function() {
+    const state = !(localStorage.getItem('cookModeReadAloud') === 'true');
+    localStorage.setItem('cookModeReadAloud', state);
+
+    const btn = document.getElementById('cook-read-toggle');
+    if (btn) {
+        btn.innerText = `🔊 Read Aloud: ${state ? 'ON' : 'OFF'}`;
+        btn.classList.toggle('cook-mode-active', state);
+    }
+
+    if (state) {
+        renderCookModeStep(); // speak the current step immediately
+    } else if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+};
+
+window.cookModeStep = function(direction) {
+    const newIndex = cookModeIndex + direction;
+    if (newIndex < 0 || newIndex >= cookModeSteps.length) return;
+    cookModeIndex = newIndex;
+    renderCookModeStep();
+};
+
+function buildCookModeOverlay(title) {
+    if (document.getElementById('cook-mode-overlay')) return;
+
+    const showIng = localStorage.getItem('showStepIngredients') === 'true';
+    const readAloudOn = localStorage.getItem('cookModeReadAloud') === 'true';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'cook-mode-overlay';
+    overlay.innerHTML = `
+        <div class="cook-mode-header">
+            <button class="cook-mode-close" onclick="exitCookMode()">✕</button>
+            <div class="cook-mode-title">${title}</div>
+            <label class="toggle-wrapper cook-mode-ing-toggle">
+                <div class="switch">
+                    <input type="checkbox" id="cook-ing-toggle" ${showIng ? 'checked' : ''} onchange="toggleInlineIngredients(this.checked)">
+                    <span class="slider"></span>
+                </div>
+                <span class="toggle-label-text">Ingredients</span>
+            </label>
+        </div>
+        <div class="cook-mode-progress"><div class="cook-mode-progress-bar" id="cook-mode-progress-bar"></div></div>
+        <div style="text-align:center; padding:8px 0 0 0;" class="no-print">
+            <button id="cook-read-toggle" class="pill-btn btn-slate${readAloudOn ? ' cook-mode-active' : ''}" onclick="toggleReadAloud()" style="padding:5px 14px; font-size:0.75rem;">🔊 Read Aloud: ${readAloudOn ? 'ON' : 'OFF'}</button>
+        </div>
+        <div class="cook-mode-body" id="cook-mode-body">
+            <div class="cook-mode-step-count" id="cook-mode-step-count"></div>
+            <div class="cook-mode-step-text" id="cook-mode-step-text"></div>
+            <div class="cook-mode-step-ing" id="cook-mode-step-ing" style="display:${showIng ? 'flex' : 'none'};"></div>
+        </div>
+        <div class="cook-mode-nav">
+            <button class="cook-mode-nav-btn" id="cook-mode-prev" onclick="cookModeStep(-1)">◀ Prev</button>
+            <button class="cook-mode-nav-btn" id="cook-mode-next" onclick="cookModeStep(1)">Next ▶</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Swipe gestures (left/right) to move between steps
+    let touchStartX = 0;
+    overlay.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    overlay.addEventListener('touchend', (e) => {
+        const delta = e.changedTouches[0].screenX - touchStartX;
+        if (Math.abs(delta) > 50) cookModeStep(delta < 0 ? 1 : -1);
+    }, { passive: true });
 }
 
-// window.saveRecipeOffline = function() {
-//     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-//     const btn = document.querySelector('button[onclick="saveRecipeOffline()"]');
-    
-//     if (!currentRecipe) {
-//         alert("Could not verify recipe data. Try refreshing the page!");
-//         return;
-//     }
+function renderCookModeStep() {
+    const stepText = cookModeSteps[cookModeIndex];
 
-//     // 1. Ensure the recipe is safely locked into local storage as a fallback
-//     localStorage.setItem(`offline-backup-${currentRecipe.id}`, JSON.stringify(currentRecipe));
+    document.getElementById('cook-mode-step-count').innerText = `Step ${cookModeIndex + 1} of ${cookModeSteps.length}`;
+    document.getElementById('cook-mode-step-text').innerText = stepText;
+    document.getElementById('cook-mode-progress-bar').style.width = `${((cookModeIndex + 1) / cookModeSteps.length) * 100}%`;
 
-//     // 2. Mark it as camping ready
-//     const campingReady = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
-//     if (!campingReady.includes(currentRecipe.id)) {
-//         campingReady.push(currentRecipe.id);
-//         localStorage.setItem('campingReadyIds', JSON.stringify(campingReady));
-//     }
+    const matched = matchIngredientsForStep(stepText, cookModeIngredients);
+    const ingBox = document.getElementById('cook-mode-step-ing');
+    ingBox.innerHTML = matched.length > 0
+        ? matched.map(i => `<span class="ing-chip">🧂 ${i}</span>`).join('')
+        : `<span class="ing-chip-empty">No specific ingredients tagged for this step</span>`;
 
-//     // 3. Give the user satisfying visual feedback
-//     if (btn) {
-//         const originalText = btn.innerText;
-//         btn.innerText = "✅ Saved for Offline Cooking!";
-//         btn.style.background = "#10b981"; // Turn green
-//         btn.style.color = "#ffffff";
-        
-//         setTimeout(() => {
-//             btn.innerText = originalText;
-//             btn.style.background = ""; // Reset to original style
-//             btn.style.color = "";
-//         }, 3000);
-//     } else {
-//         alert("✅ Recipe & Ingredients cached for offline cooking!");
-//     }
-// };
+    document.getElementById('cook-mode-prev').disabled = cookModeIndex === 0;
+    document.getElementById('cook-mode-next').disabled = cookModeIndex === cookModeSteps.length - 1;
+
+    if (localStorage.getItem('cookModeReadAloud') === 'true' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(stepText));
+    }
+}
+
+// Text +/- controls the same persisted, site-wide font size as the Settings
+// page slider (saved per-device via localStorage and per-account via
+// Firebase), rather than a one-off local override just for this page.
+const FONT_MIN_PX = 12;
+const FONT_MAX_PX = 28;
+
+window.resizeText = async function(change) {
+    const settings = JSON.parse(localStorage.getItem('userSettings')) || {};
+    let px = resolveFontSizePx(settings.fontSize);
+    px = Math.min(FONT_MAX_PX, Math.max(FONT_MIN_PX, px + change));
+
+    settings.fontSize = px;
+    document.documentElement.style.setProperty('--base-size', px + 'px');
+    localStorage.setItem('userSettings', JSON.stringify(settings));
+
+    if (auth.currentUser) {
+        try { await saveUserSettings(settings); } catch (e) { console.error("Could not save text size:", e); }
+    }
+}
 
 // --- MEAL PLANNER LOGIC ---
 window.addToMealPlan = function() {
@@ -299,10 +835,25 @@ window.recordCook = async function() {
 
     try {
         const user = auth.currentUser;
+        let chefName = "Guest";
+        let uid = null;
+
+        if (user) {
+            uid = user.uid;
+            chefName = user.displayName || (user.email ? user.email.split('@')[0] : "Family Member");
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists() && userDoc.data().Name) {
+                    chefName = userDoc.data().Name;
+                }
+            } catch (err) { console.log("Could not fetch profile name for cook record"); }
+        }
+
         await addDoc(collection(db, "global_cooks"), {
             recipeId: recipeId,
             timestamp: serverTimestamp(),
-            chef: user ? (user.displayName || "Family Member") : "Guest"
+            uid: uid,
+            chef: chefName
         });
     } catch (e) { console.error("Could not record cook to DB:", e); }
 }
@@ -390,21 +941,6 @@ window.triggerPrint = function() {
         window.print(); 
     }, 300);
 };
-
-// // ==========================================
-// // START THE SERVICE WORKER ON RECIPE PAGES
-// // ==========================================
-// if ('serviceWorker' in navigator) {
-//     window.addEventListener('load', () => {
-//         navigator.serviceWorker.register('./sw.js')
-//             .then((registration) => {
-//                 console.log('👷‍♂️ [SERVICE WORKER] Registered on Recipe Page with scope:', registration.scope);
-//             })
-//             .catch((error) => {
-//                 console.error('❌ [SERVICE WORKER] Registration failed:', error);
-//             });
-//     });
-// }
 
 // ==========================================
 // MOBILE FLOATING KITCHEN TOOLS MODAL
@@ -515,17 +1051,8 @@ function setupMobileKitchenTools() {
         document.head.appendChild(style);
     }
 
-    // 2. FOOLPROOF CONTAINER FINDER
-    const sampleBtn = document.getElementById('cookModeBtn') || document.querySelector('button[onclick*="toggleCookMode"]');
-    let toolsSection = null;
-    
-    if (sampleBtn) {
-        toolsSection = sampleBtn.closest('div[style*="background"], .kitchen-tools, div[class*="tools"], div[class*="card"], div');
-        if (toolsSection && toolsSection.parentElement && (toolsSection.parentElement.innerText.includes('KITCHEN TOOLS') || toolsSection.parentElement.querySelectorAll('button').length > 4)) {
-            toolsSection = toolsSection.parentElement;
-        }
-    }
-
+    // 2. Find the real Kitchen Tools section (it already carries this class in recipe.html)
+    const toolsSection = document.querySelector('.kitchen-tools-section');
     if (toolsSection && !toolsSection.classList.contains('kitchen-tools-inline')) {
         toolsSection.classList.add('kitchen-tools-inline');
     }
@@ -561,44 +1088,44 @@ function setupMobileKitchenTools() {
 window.openMobileToolsModal = function() {
     const modal = document.getElementById('mobile-tools-modal');
     const modalBody = document.getElementById('mobile-tools-body');
-    
-    let inlineTools = document.querySelector('.kitchen-tools-inline');
-    if (!inlineTools) {
-        const sampleBtn = document.getElementById('cookModeBtn') || document.querySelector('button[onclick*="toggleCookMode"]');
-        if (sampleBtn) inlineTools = sampleBtn.parentElement;
-    }
-    
+    const inlineTools = document.querySelector('.kitchen-tools-section');
+
     if (modal && inlineTools) {
         const allToolButtons = Array.from(inlineTools.querySelectorAll('button'));
         modalBody.innerHTML = '';
-        
-        // 🚀 SORT ORDER: Text +/-, Day Mode & Cook Mode, Share & Menu, Report
+
+        // 🚀 SORT ORDER: Text +/-, Day Mode, Stay Awake, Cook Mode, Share & Menu, Report
         const getOrderScore = (text) => {
             if (text.includes('Text +')) return 1;
             if (text.includes('Text -')) return 2;
             if (text.includes('Day') || text.includes('Night')) return 3;
-            if (text.includes('Cook Mode')) return 4;
-            if (text.includes('Share') || text.includes('Print')) return 5;
-            if (text.includes('Menu')) return 6;
-            if (text.includes('Report')) return 7;
+            if (text.includes('Stay Awake')) return 4;
+            if (text.includes('Cook Mode')) return 5;
+            if (text.includes('Share') || text.includes('Print')) return 6;
+            if (text.includes('Menu')) return 7;
+            if (text.includes('Report')) return 8;
             return 10;
         };
 
         allToolButtons
-            .filter(btn => !btn.innerText.includes('Save Offline') && btn.id !== 'mobile-tool-fab')
+            .filter(btn => btn.id !== 'mobile-tool-fab')
             .sort((a, b) => getOrderScore(a.innerText) - getOrderScore(b.innerText))
             .forEach(btn => {
                 const clone = btn.cloneNode(true);
+                // Buttons are looked up by class, not id — strip the id so we don't
+                // end up with duplicate DOM ids (that was breaking state updates
+                // on the cloned button previously).
+                clone.removeAttribute('id');
                 clone.classList.add('mobile-tool-pill');
-                
-                // 🚀 THE FIX: Only Report Issue stretches across both columns now!
+
+                // 🚀 Only Report Issue stretches across both columns
                 if (clone.innerText.includes('Report')) {
                     clone.classList.add('mobile-tool-pill-wide');
                 }
-                
+
                 modalBody.appendChild(clone);
             });
-        
+
         modal.style.display = 'flex';
     } else {
         alert("Could not load kitchen tools. Please check console for errors.");

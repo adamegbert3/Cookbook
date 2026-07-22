@@ -12,10 +12,13 @@
         button { margin-top: 20px; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
         .btn-save { background: #10b981; color: white; font-weight: bold; width: 100%; }
         .btn-back { background: #6b7280; color: white; font-size: 12px; padding: 8px 16px; display: inline-block; text-decoration: none; border-radius: 4px; margin-bottom: 20px;}
+        .btn-tool { background: #e0f2fe; color: #0369a1; font-size: 12px; padding: 6px 12px; margin-top: 8px; }
         #status-msg { margin-top: 15px; text-align: center; font-weight: bold; }
+        .hint { font-weight: normal; font-size: 12px; color: #6b7280; margin-top: 2px; }
     </style>
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
 </head>
 <body>
 
@@ -23,7 +26,7 @@
 
     <div class="container">
         <h2 style="margin-top:0;">✏️ Edit Recipe</h2>
-        
+
         <label>Recipe Name</label>
         <input type="text" id="e-name">
 
@@ -43,10 +46,21 @@
             <option value="Soups & Salads">Soups & Salads</option>
         </select>
 
-        <label>Ingredients (One per line)</label>
-       <textarea id="e-instructions" rows="8"></textarea>
-        
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-bottom: 15px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+        <label>Ingredients <span class="hint">(one per line)</span></label>
+        <textarea id="e-ingredients" rows="8"></textarea>
+
+        <label>Instructions <span class="hint">(one step per line)</span></label>
+        <textarea id="e-instructions" rows="8"></textarea>
+        <button type="button" class="btn-tool" onclick="autoSplitInstructions()">✂️ Auto-split into steps</button>
+
+        <label>Chef's Notes <span class="hint">(optional)</span></label>
+        <textarea id="e-notes" rows="3"></textarea>
+
+        <label>PDF / Google Drive Link <span class="hint">(optional — shows a "View PDF" button on the recipe)</span></label>
+        <input type="url" id="e-drive-link" placeholder="https://drive.google.com/...">
+        <p class="hint" style="margin-top:4px;">Auto-filled if you use the local Drive sync tool — leave blank unless you want to link a specific file yourself.</p>
+
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
             <label style="margin: 0; font-weight: 600; color: #0369a1; cursor: pointer; display: flex; align-items: center; gap: 6px;">
                 <input type="checkbox" id="e-fav-egbert" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Egbert Favorite
@@ -56,7 +70,7 @@
             </label>
         </div>
 
-        <div style="background: #fffbeb; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+        <div style="background: #fffbeb; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; gap: 10px;">
             <input type="checkbox" id="e-reviewed" style="width: 20px; height: 20px; margin: 0;">
             <div>
                 <label for="e-reviewed" style="margin: 0; font-weight: bold; color: #92400e; cursor: pointer;">Mark as Verified / Reviewed</label>
@@ -66,20 +80,16 @@
 
         <button class="btn-save" onclick="saveChanges()">💾 Update Recipe</button>
         <p id="status-msg"></p>
+
+        <details style="margin-top:20px; border-top:1px solid #eee; padding-top:15px;">
+            <summary style="cursor:pointer; font-weight:bold; color:#374151;">📜 Edit History</summary>
+            <div id="history-list" style="margin-top:10px; font-size:13px; color:#6b7280;">Loading...</div>
+        </details>
     </div>
-            <div>
-                <label for="e-reviewed" style="margin: 0; font-weight: bold; color: #92400e; cursor: pointer;">Mark as Verified / Reviewed</label>
-                <div style="font-size: 12px; color: #b45309;">Check this box to remove the "Needs Review" warning.</div>
-            </div>
-        </div>
-        <button class="btn-save" onclick="saveChanges()">💾 Update Recipe</button>
-        <p id="status-msg"></p>
-    </div>
-    
 
     <script type="module">
-        import { db, auth } from './scripts/firebase-config.js'; 
-        import { doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+        import { db, auth } from './scripts/firebase-config.js';
+        import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
         // ⚠️ PASTE YOUR ADMIN UIDS HERE ⚠️
@@ -117,11 +127,11 @@
 
                 if (docSnap.exists()) {
                     const data = docSnap.data();
-                    
+
                     // --- SMARTER CATEGORY DETECTION ---
                     let detectedCategory = "Miscellaneous";
                     if (data.tags && Array.isArray(data.tags) && data.tags.length > 0) {
-                        detectedCategory = data.tags[0]; 
+                        detectedCategory = data.tags[0];
                     } else if (data.category) {
                         detectedCategory = data.category;
                     }
@@ -130,11 +140,13 @@
                     // --- LOAD TEXT FIELDS ---
                     document.getElementById('e-name').value = data.name || "";
                     document.getElementById('e-author').value = data.author || "";
+                    document.getElementById('e-notes').value = data.notes || "";
+                    document.getElementById('e-drive-link').value = data.driveUrl || "";
 
                     // --- LOAD REVIEW STATUS ---
                     document.getElementById('e-reviewed').checked = data.reviewed === true;
 
-                    // --- LOAD FAVORITE STATUS (This belongs here in loadRecipe!) ---
+                    // --- LOAD FAVORITE STATUS ---
                     const tagsList = data.tags || [];
                     document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
                     document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
@@ -142,14 +154,14 @@
                     // --- HANDLE ARRAYS ---
                     let ingText = "";
                     const rawIng = data.ingredients || data.recipeIngredient;
-                    if(Array.isArray(rawIng)) ingText = rawIng.join('\n');
-                    else if(typeof rawIng === 'string') ingText = rawIng;
+                    if (Array.isArray(rawIng)) ingText = rawIng.join('\n');
+                    else if (typeof rawIng === 'string') ingText = rawIng;
                     document.getElementById('e-ingredients').value = ingText;
 
                     let instText = "";
                     const rawInst = data.instructions || data.recipeInstructions;
-                    if(Array.isArray(rawInst)) instText = rawInst.join('\n');
-                    else if(typeof rawInst === 'string') instText = rawInst;
+                    if (Array.isArray(rawInst)) instText = rawInst.join('\n');
+                    else if (typeof rawInst === 'string') instText = rawInst;
                     document.getElementById('e-instructions').value = instText;
 
                 } else {
@@ -158,43 +170,117 @@
             } catch (error) {
                 console.error("Error loading doc:", error);
             }
+
+            loadHistory(id);
         }
+
+        // --- EDIT HISTORY ---
+        let historySnapshots = [];
+
+        async function loadHistory(id) {
+            const listEl = document.getElementById('history-list');
+            try {
+                const q = query(collection(db, "recipes", id, "history"), orderBy("timestamp", "desc"), limit(20));
+                const snap = await getDocs(q);
+
+                if (snap.empty) {
+                    listEl.innerHTML = "No edit history yet — it starts recording from your next save.";
+                    return;
+                }
+
+                historySnapshots = snap.docs.map(d => d.data());
+
+                listEl.innerHTML = historySnapshots.map((v, i) => {
+                    const when = v.timestamp && v.timestamp.toDate ? v.timestamp.toDate().toLocaleString() : "Unknown date";
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid #f3f4f6;">
+                            <span>${when} — "${v.name || 'Untitled'}"</span>
+                            <button type="button" onclick="loadHistoryVersion(${i})" style="background:#e0f2fe; color:#0369a1; border:none; padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; margin:0;">Load into form</button>
+                        </div>`;
+                }).join('');
+            } catch (error) {
+                console.error("Error loading history:", error);
+                listEl.innerHTML = "Could not load history.";
+            }
+        }
+
+        window.loadHistoryVersion = function(index) {
+            const v = historySnapshots[index];
+            if (!v) return;
+            if (!confirm("Load this older version into the form? You'll still need to click Update Recipe to save it.")) return;
+
+            document.getElementById('e-name').value = v.name || "";
+            document.getElementById('e-author').value = v.author || "";
+            document.getElementById('e-notes').value = v.notes || "";
+            document.getElementById('e-drive-link').value = v.driveUrl || "";
+            document.getElementById('e-reviewed').checked = v.reviewed === true;
+
+            const tagsList = v.tags || [];
+            document.getElementById('e-category').value = tagsList[0] || v.category || "Miscellaneous";
+            document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
+            document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
+
+            const rawIng = v.ingredients || v.recipeIngredient;
+            document.getElementById('e-ingredients').value = Array.isArray(rawIng) ? rawIng.join('\n') : (rawIng || "");
+
+            const rawInst = v.instructions || v.recipeInstructions;
+            document.getElementById('e-instructions').value = Array.isArray(rawInst) ? rawInst.join('\n') : (rawInst || "");
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
 
         // 3. Save Changes
         window.saveChanges = async function() {
-            if(!recipeId) return;
+            if (!recipeId) return;
             const btn = document.querySelector('.btn-save');
             const status = document.getElementById('status-msg');
-            
+
             btn.disabled = true;
             btn.innerText = "Saving...";
 
-            const ingArray = document.getElementById('e-ingredients').value.split('\n').filter(line => line.trim() !== '');
-            const instArray = document.getElementById('e-instructions').value.split('\n').filter(line => line.trim() !== '');
+            const ingArray = document.getElementById('e-ingredients').value.split('\n').map(l => l.trim()).filter(line => line !== '');
+            const instArray = document.getElementById('e-instructions').value.split('\n').map(l => l.trim()).filter(line => line !== '');
+            const notes = document.getElementById('e-notes').value.trim();
+            const driveUrl = document.getElementById('e-drive-link').value.trim();
             const cat = document.getElementById('e-category').value;
-            
+
             // GET CHECKBOX STATUS
             const isReviewed = document.getElementById('e-reviewed').checked;
-            
-            // --- THIS IS PART C: BUILD THE TAGS ARRAY ---
+
+            // --- BUILD THE TAGS ARRAY ---
             const updatedTags = [cat];
             if (document.getElementById('e-fav-egbert').checked) updatedTags.push("Egbert Favorite");
             if (document.getElementById('e-fav-wheeler').checked) updatedTags.push("Wheeler Favorite");
 
             try {
+                // Snapshot the current (pre-edit) version before overwriting it
+                try {
+                    const beforeSnap = await getDoc(doc(db, "recipes", recipeId));
+                    if (beforeSnap.exists()) {
+                        await addDoc(collection(db, "recipes", recipeId, "history"), {
+                            ...beforeSnap.data(),
+                            timestamp: serverTimestamp()
+                        });
+                    }
+                } catch (historyError) {
+                    console.error("Could not save history snapshot:", historyError);
+                }
+
                 await updateDoc(doc(db, "recipes", recipeId), {
                     name: document.getElementById('e-name').value,
                     author: document.getElementById('e-author').value,
                     category: cat,
-                    tags: updatedTags, // <-- Notice how we use our new updatedTags array here instead of [cat]!
+                    tags: updatedTags,
                     ingredients: ingArray,
                     recipeIngredient: ingArray,
                     instructions: instArray,
                     recipeInstructions: instArray,
-                    
+                    notes: notes,
+                    driveUrl: driveUrl,
+
                     // SAVE VERIFICATION STATUS
                     reviewed: isReviewed,
-                    
+
                     lastUpdated: serverTimestamp()
                 });
 
@@ -202,72 +288,24 @@
                 status.style.color = "green";
                 btn.innerText = "💾 Update Recipe";
                 btn.disabled = false;
-                
+                loadHistory(recipeId);
+
             } catch (error) {
                 console.error(error);
                 status.innerText = "❌ Error: " + error.message;
                 status.style.color = "red";
                 btn.disabled = false;
-            }
-        };
-
-        // 3. Save Changes
-        window.saveChanges = async function() {
-            if(!recipeId) return;
-            const btn = document.querySelector('.btn-save');
-            const status = document.getElementById('status-msg');
-            
-            btn.disabled = true;
-            btn.innerText = "Saving...";
-
-            const ingArray = document.getElementById('e-ingredients').value.split('\n').filter(line => line.trim() !== '');
-            const instArray = document.getElementById('e-instructions').value.split('\n').filter(line => line.trim() !== '');
-            const cat = document.getElementById('e-category').value;
-            
-            // GET CHECKBOX STATUS
-            const isReviewed = document.getElementById('e-reviewed').checked;
-            // --- LOAD FAVORITE STATUS ---
-            const tagsList = data.tags || [];
-            document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
-            document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
-
-            try {
-                await updateDoc(doc(db, "recipes", recipeId), {
-                    name: document.getElementById('e-name').value,
-                    author: document.getElementById('e-author').value,
-                    category: cat,
-                    tags: [cat],
-                    ingredients: ingArray,
-                    recipeIngredient: ingArray,
-                    instructions: instArray,
-                    recipeInstructions: instArray,
-                    
-                    // SAVE VERIFICATION STATUS
-                    reviewed: isReviewed,
-                    
-                    lastUpdated: serverTimestamp()
-                });
-
-                status.innerText = "✅ Saved Successfully!";
-                status.style.color = "green";
                 btn.innerText = "💾 Update Recipe";
-                btn.disabled = false;
-                
-            } catch (error) {
-                console.error(error);
-                status.innerText = "❌ Error: " + error.message;
-                status.style.color = "red";
-                btn.disabled = false;
             }
         };
 
-        // --- KEEP YOUR SPLIT TOOL ---
+        // --- SPLIT TOOL ---
         window.autoSplitInstructions = function() {
             const instBox = document.getElementById('e-instructions');
             let text = instBox.value;
             if (!text) return;
             if (text.includes('\n')) {
-                if(!confirm("This looks like it already has lines. Split anyway?")) return;
+                if (!confirm("This looks like it already has lines. Split anyway?")) return;
             }
             const formatted = text.replace(/\. /g, '.\n');
             instBox.value = formatted;

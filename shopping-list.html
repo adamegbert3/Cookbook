@@ -8,13 +8,16 @@
     <link rel="stylesheet" href="styles/recipes.css">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-    
+    <link rel="manifest" href="offline_features/manifest.json">
+
     <script>
         const settings = JSON.parse(localStorage.getItem('userSettings'));
         if (settings) {
             const html = document.documentElement;
             if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
-            html.setAttribute('data-size', settings.fontSize || 'normal');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>
@@ -102,6 +105,7 @@
         import { db, auth } from './scripts/firebase-config.js';
         import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { groupIngredients } from './scripts/ingredient-utils.js';
 
         onAuthStateChanged(auth, user => {
             if (user) {
@@ -129,7 +133,8 @@
                     }
 
                     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday", "Custom"];
-                    
+                    const allIngredientEntries = []; // flat list across every day, for the merged view
+
                     days.forEach(day => {
                         const dayDoc = snapshot.docs.find(d => d.id === day);
                         if (!dayDoc) return; // Skip days with no data
@@ -143,15 +148,19 @@
                                 // Custom items are stored as "ingredients" inside a fake meal
                                 if (m.ingredients && m.ingredients.length > 0) {
                                     items.push({ isIngredient: true, text: m.ingredients[0] });
+                                    allIngredientEntries.push({ text: m.ingredients[0], source: 'Extras' });
                                 }
                             });
-                        } 
+                        }
                         // --- 2. HANDLE REGULAR MEALS ---
                         else {
                             const meals = dayDoc.data().meals || [];
                             meals.forEach(m => {
                                 items.push({ isHeader: true, text: `${m.name} (${m.type})` });
-                                m.ingredients.forEach(ing => items.push({ isIngredient: true, text: ing }));
+                                m.ingredients.forEach(ing => {
+                                    items.push({ isIngredient: true, text: ing });
+                                    allIngredientEntries.push({ text: ing, source: m.name });
+                                });
                             });
                         }
 
@@ -159,7 +168,7 @@
                         if (items.length > 0) {
                             let dayTitle = day === "Custom" ? "📝 My Extras" : day;
                             let dayHtml = `<div class="day-group"><div class="day-title">${dayTitle}</div>`;
-                            
+
                             items.forEach(item => {
                                 if (item.isHeader) {
                                     dayHtml += `<div style="font-size:12px; color: var(--accent-teal); font-weight:bold; margin-top:5px; margin-bottom:2px;">${item.text}</div>`;
@@ -167,7 +176,7 @@
                                     // Handle ' vs \' in strings for the onclick event
                                     const safeText = item.text.replace(/'/g, "\\'");
                                     const isChecked = checkedItems.includes(item.text);
-                                    
+
                                     dayHtml += `
                                         <div class="item-row ${isChecked ? 'checked' : ''}" onclick="toggleCheck('${safeText}', this)">
                                             <span class="checkbox">${isChecked ? '✅' : '⬜'}</span>
@@ -175,11 +184,30 @@
                                         </div>`;
                                 }
                             });
-                            
+
                             dayHtml += `</div>`;
                             container.innerHTML += dayHtml;
                         }
                     });
+
+                    // --- 4. MERGED VIEW: same ingredient across multiple recipes shown once ---
+                    const groups = groupIngredients(allIngredientEntries).filter(g => g.items.length > 1);
+                    if (groups.length > 0) {
+                        let mergedHtml = `<div class="day-group" style="border: 2px solid var(--accent-teal);">
+                            <div class="day-title" style="color: var(--accent-teal);">🔀 Used in Multiple Recipes This Week</div>`;
+
+                        groups.forEach(group => {
+                            mergedHtml += `<div style="padding: 8px 0; border-bottom: 1px solid var(--border);">
+                                <div style="font-weight: 700; color: var(--primary); text-transform: capitalize;">${group.label || group.items[0].text}</div>`;
+                            group.items.forEach(item => {
+                                mergedHtml += `<div style="font-size: 13px; color: var(--primary); opacity: 0.8; padding-left: 10px;">• ${item.text} <span style="opacity:0.6;">(${item.source})</span></div>`;
+                            });
+                            mergedHtml += `</div>`;
+                        });
+
+                        mergedHtml += `</div>`;
+                        container.innerHTML = mergedHtml + container.innerHTML;
+                    }
                 });
             });
         }

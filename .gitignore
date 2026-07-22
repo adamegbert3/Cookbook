@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Secrets — never commit these
+serviceAccountKey.json
+local-tools/**/serviceAccountKey.json
+local-tools/**/credentials.json
+local-tools/**/token.json
+.env
+
+# OS junk
+.DS_Store
+Thumbs.db

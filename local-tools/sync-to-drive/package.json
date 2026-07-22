@@ -1,0 +1,14 @@
+{
+  "name": "cookbook-sync-to-drive",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Automatically mirror every Cookbook recipe into a shared Google Drive folder as native Google Docs, using your own free personal Drive storage.",
+  "scripts": {
+    "start": "node sync-to-drive.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0",
+    "googleapis": "^144.0.0"
+  }
+}

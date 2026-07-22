@@ -46,8 +46,13 @@ onAuthStateChanged(auth, (user) => {
 
 async function loadAdminDashboard() {
     console.log("📥 [DASHBOARD] Starting database fetch...");
-    loadPendingRecipes(); 
+    loadPendingRecipes();
     loadReports();
+    loadUsageStats();
+
+    const ollamaInput = document.getElementById('ollama-server-url');
+    const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
+    if (ollamaInput && savedOllamaUrl) ollamaInput.value = savedOllamaUrl;
 
     try {
         console.log("⏳ [FIRESTORE] Querying 'recipes' collection...");
@@ -83,9 +88,57 @@ async function loadAdminDashboard() {
 // ==========================================
 // 3. MASTER RECIPE MANAGER (v7 - CLEAN FIX)
 // ==========================================
+function buildRecipeRowHtml(r) {
+    const isHidden = r.isHidden === true;
+    const isReviewed = r.reviewed === true;
+    const viewCount = r.views || 0;
+
+    let badge = `<span class="status-badge status-live">🟢 Live</span>`;
+    if (!isReviewed) badge = `<span class="status-badge status-review">⚠️ Review</span>`;
+    else if (isHidden) badge = `<span class="status-badge status-hidden">❌ Hidden</span>`;
+
+    let cat = "Misc";
+    if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
+    else if (r.category) cat = r.category;
+
+    const toggleText = isHidden ? "Show" : "Hide";
+    const toggleIcon = isHidden ? "👁️" : "🚫";
+
+    const currentTags = r.tags || [];
+    const isEgb = currentTags.includes("Egbert Favorite");
+    const isWhl = currentTags.includes("Wheeler Favorite");
+
+    return `
+        <div class="recipe-manage-card">
+            <div class="rmc-top">
+                <span class="rmc-name">${r.name || "Untitled"}</span>
+                ${badge}
+            </div>
+            <div class="rmc-meta">
+                👤 ${r.author || "Unknown"}<br>
+                📂 ${cat}<br>
+                👀 ${viewCount} views
+            </div>
+            <div class="rmc-actions">
+                <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
+                <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
+                <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️ Delete</button>
+            </div>
+            <div class="rmc-favorites">
+                <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" style="background: ${isEgb ? '#0284c7' : '#f0f9ff'}; color: ${isEgb ? '#ffffff' : '#0369a1'}; border: 1px solid #bae6fd; font-weight: 800;" title="Toggle Egbert Favorite">
+                    ${isEgb ? '★ Egb' : '☆ Egb'}
+                </button>
+                <button onclick="quickTag('${r.id}', 'Wheeler Favorite', ${isWhl})" class="btn-action" style="background: ${isWhl ? '#16a34a' : '#f0fdf4'}; color: ${isWhl ? '#ffffff' : '#15803d'}; border: 1px solid #bbf7d0; font-weight: 800;" title="Toggle Wheeler Favorite">
+                    ${isWhl ? '★ Whl' : '☆ Whl'}
+                </button>
+            </div>
+        </div>`;
+}
+
+const MASTER_LIST_BATCH_SIZE = 30;
+let masterListQueue = [];
+
 function renderUnifiedManager(recipes) {
-    console.log("🚀 Rendering Unified Manager v7 (Separated Columns)");
-    
     const list = document.getElementById('unified-list');
     if(!list) return;
 
@@ -96,75 +149,35 @@ function renderUnifiedManager(recipes) {
         return (a.name || "").localeCompare(b.name || "");
     });
 
-    // 🚀 THE SPEED FIX: Limit the table to 50 rows initially
-    const recipesToRender = recipes.slice(0, 50);
+    if (recipes.length === 0) {
+        list.innerHTML = "<div style='padding:20px; text-align:center'>No recipes found.</div>";
+        return;
+    }
 
-    let html = `
-    <div class="table-container">
-        <table class="admin-table">
-            <thead>
-                <tr>
-                    <th style="width: 30%;">Recipe Name</th>
-                    <th style="width: 15%;">Author</th>
-                    <th style="width: 15%;">Category</th>
-                    <th style="width: 10%; text-align: center;">Views</th>
-                    <th style="width: 10%; text-align: center;">Status</th>
-                    <th style="width: 20%; text-align: right;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
+    masterListQueue = recipes.slice();
+
+    list.innerHTML = `
+    <div class="recipe-manage-list" id="unified-cards"></div>
+    <div id="unified-load-more-wrap" style="text-align:center; margin-top:15px;"></div>
     `;
 
-    recipes.forEach(r => {
-        const isHidden = r.isHidden === true;
-        const isReviewed = r.reviewed === true;
-        const viewCount = r.views || 0; 
-        
-        let badge = `<span class="status-badge status-live">🟢 Live</span>`;
-        if (!isReviewed) badge = `<span class="status-badge status-review">⚠️ Review</span>`;
-        else if (isHidden) badge = `<span class="status-badge status-hidden">❌ Hidden</span>`;
-
-        let cat = "Misc";
-        if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
-        else if (r.category) cat = r.category;
-
-        const toggleText = isHidden ? "Show" : "Hide";
-        const toggleIcon = isHidden ? "👁️" : "🚫";
-
-        html += '<tr>';
-        html += `<td><strong>${r.name || "Untitled"}</strong></td>`;
-        html += `<td>${r.author || "Unknown"}</td>`;
-        html += `<td>${cat}</td>`;
-        html += `<td style="text-align: center; color: #666;">${viewCount}</td>`;
-        
-        // COLUMN 5: BADGE ONLY
-        html += `<td style="text-align: center;">${badge}</td>`;
-        
-        // Check existing tags to style our quick-buttons automatically
-        const currentTags = r.tags || [];
-        const isEgb = currentTags.includes("Egbert Favorite");
-        const isWhl = currentTags.includes("Wheeler Favorite");
-
-        // COLUMN 6: BUTTONS ONLY (Now with Hall of Fame Toggles!)
-        html += `<td>
-                    <div style="display: flex; gap: 4px; justify-content: flex-end; flex-wrap: wrap; align-items: center;">
-                        <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" style="background: ${isEgb ? '#0284c7' : '#f0f9ff'}; color: ${isEgb ? '#ffffff' : '#0369a1'}; border: 1px solid #bae6fd; font-weight: 800;" title="Toggle Egbert Favorite">
-                            ${isEgb ? '★ Egb' : '☆ Egb'}
-                        </button>
-                        <button onclick="quickTag('${r.id}', 'Wheeler Favorite', ${isWhl})" class="btn-action" style="background: ${isWhl ? '#16a34a' : '#f0fdf4'}; color: ${isWhl ? '#ffffff' : '#15803d'}; border: 1px solid #bbf7d0; font-weight: 800;" title="Toggle Wheeler Favorite">
-                            ${isWhl ? '★ Whl' : '☆ Whl'}
-                        </button>
-                        <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
-                        <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
-                        <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️</button>
-                    </div>
-                 </td>`;
-        html += '</tr>';
-    });
-
-    html += `</tbody></table></div>`;
-    list.innerHTML = html || "<div style='padding:20px; text-align:center'>No recipes found.</div>";
+    renderNextMasterBatch();
 }
+
+window.renderNextMasterBatch = function() {
+    const cardsEl = document.getElementById('unified-cards');
+    const wrap = document.getElementById('unified-load-more-wrap');
+    if (!cardsEl) return;
+
+    const batch = masterListQueue.splice(0, MASTER_LIST_BATCH_SIZE);
+    cardsEl.insertAdjacentHTML('beforeend', batch.map(buildRecipeRowHtml).join(''));
+
+    if (masterListQueue.length > 0) {
+        wrap.innerHTML = `<button class="pill-btn btn-teal" onclick="renderNextMasterBatch()">Load ${Math.min(MASTER_LIST_BATCH_SIZE, masterListQueue.length)} More (${masterListQueue.length} remaining)</button>`;
+    } else {
+        wrap.innerHTML = '';
+    }
+};
 
 // ACTION FUNCTIONS
 window.deleteRecipe = async function(id, recipeName) {
@@ -297,9 +310,34 @@ async function loadPendingRecipes() {
         let html = '';
         querySnapshot.forEach((doc) => {
             const data = doc.data();
+            const ingredients = data.ingredients || data.recipeIngredient || [];
+            const instructions = data.instructions || data.recipeInstructions || [];
+            const category = (data.tags && data.tags[0]) || data.category || "Uncategorized";
+
+            const ingHtml = Array.isArray(ingredients) && ingredients.length > 0
+                ? `<ul>${ingredients.map(i => `<li>${i}</li>`).join('')}</ul>`
+                : `<p class="pending-empty">No ingredients listed.</p>`;
+
+            const instHtml = Array.isArray(instructions) && instructions.length > 0
+                ? `<ol>${instructions.map(s => `<li>${s}</li>`).join('')}</ol>`
+                : `<p class="pending-empty">No instructions listed.</p>`;
+
+            const notesHtml = data.notes ? `<div class="pending-notes"><strong>📝 Notes:</strong> ${data.notes}</div>` : '';
+
             html += `
                 <div class="pending-card" id="card-${doc.id}">
-                    <div class="pending-header"><h2>${data.name || "Untitled"}</h2><span>${data.author || "Unknown"}</span></div>
+                    <div class="pending-header"><h2>${data.name || "Untitled"}</h2><span>${data.author || "Unknown"} · ${category}</span></div>
+                    <div class="pending-body">
+                        <div class="pending-col">
+                            <h4>Ingredients</h4>
+                            ${ingHtml}
+                        </div>
+                        <div class="pending-col">
+                            <h4>Instructions</h4>
+                            ${instHtml}
+                        </div>
+                    </div>
+                    ${notesHtml}
                     <div class="pending-actions">
                         <button class="btn-approve" onclick="approveRecipe('${doc.id}')">✅ Approve</button>
                         <button class="btn-reject" onclick="rejectRecipe('${doc.id}')">❌ Reject</button>
@@ -331,10 +369,17 @@ window.uploadBulkRecipes = async function() {
     try {
         const recipes = JSON.parse(input.value);
         if(confirm(`Upload ${recipes.length}?`)) {
-            for(const r of recipes) await addDoc(collection(db, "recipes"), {
-                name: r.name, author: r.author, tags: r.tags,
-                recipeIngredient: r.recipeIngredient||r.ingredients, recipeInstructions: r.recipeInstructions||r.instructions, reviewed: false
-            });
+            for(const r of recipes) {
+                const ingredients = r.recipeIngredient || r.ingredients || [];
+                const instructions = r.recipeInstructions || r.instructions || [];
+                await addDoc(collection(db, "recipes"), {
+                    name: r.name, author: r.author, tags: r.tags,
+                    ingredients, recipeIngredient: ingredients,
+                    instructions, recipeInstructions: instructions,
+                    notes: r.notes || "",
+                    reviewed: false
+                });
+            }
             alert("Done!"); input.value="";
         }
     } catch(e) { alert("Invalid JSON"); }
@@ -344,6 +389,10 @@ function renderDeepStats(recipes) {
     getDocs(collection(db, "global_cooks")).then(snap => { if(cookCountEl) cookCountEl.innerText = snap.size.toLocaleString(); });
     const catListEl = document.getElementById('category-stats-list');
     if(!catListEl) return;
+
+    const totalEl = document.getElementById('stats-total-count');
+    if (totalEl) totalEl.innerText = `${recipes.length} total recipe${recipes.length === 1 ? '' : 's'}`;
+
     const categoryCounts = {};
     recipes.forEach(data => {
         let cat = "Uncategorized";
@@ -359,6 +408,86 @@ function renderDeepStats(recipes) {
     });
     catListEl.innerHTML = html;
 }
+// ==========================================
+// FREE SITE USAGE CHART (from the "site_visits" collection, no billing needed)
+// ==========================================
+let usageDailyCounts = {};
+
+async function loadUsageStats() {
+    const chartEl = document.getElementById('usage-chart');
+    if (!chartEl) return;
+
+    try {
+        const snap = await getDocs(collection(db, "site_visits"));
+        usageDailyCounts = {};
+        snap.forEach(d => { usageDailyCounts[d.id] = d.data().count || 0; });
+        renderUsageChart('day');
+    } catch (error) {
+        console.error("Error loading usage stats:", error);
+        chartEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>Could not load usage stats.</p>";
+    }
+}
+
+function dateKey(d) { return d.toISOString().slice(0, 10); }
+
+function renderUsageChart(range) {
+    const chartEl = document.getElementById('usage-chart');
+    if (!chartEl) return;
+
+    const today = new Date();
+    let buckets = [];
+
+    if (range === 'day') {
+        for (let i = 13; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            buckets.push({
+                label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                value: usageDailyCounts[dateKey(d)] || 0
+            });
+        }
+    } else if (range === 'week') {
+        for (let i = 7; i >= 0; i--) {
+            let sum = 0;
+            for (let j = 0; j < 7; j++) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - (i * 7 + j));
+                sum += usageDailyCounts[dateKey(d)] || 0;
+            }
+            const weekStart = new Date(today);
+            weekStart.setDate(weekStart.getDate() - (i * 7 + 6));
+            buckets.push({ label: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: sum });
+        }
+    } else { // month
+        for (let i = 5; i >= 0; i--) {
+            const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthKey = monthDate.toISOString().slice(0, 7); // YYYY-MM
+            let sum = 0;
+            Object.keys(usageDailyCounts).forEach(key => {
+                if (key.startsWith(monthKey)) sum += usageDailyCounts[key];
+            });
+            buckets.push({ label: monthDate.toLocaleDateString('en-US', { month: 'short' }), value: sum });
+        }
+    }
+
+    const max = Math.max(...buckets.map(b => b.value), 1);
+    chartEl.innerHTML = buckets.map(b => `
+        <div style="display:flex; flex-direction:column; align-items:center; flex:1; gap:6px;">
+            <div style="font-size:11px; font-weight:700; color:#374151;">${b.value}</div>
+            <div style="width:100%; max-width:28px; background:#f3f4f6; border-radius:4px; height:90px; display:flex; align-items:flex-end; overflow:hidden;">
+                <div style="width:100%; background:linear-gradient(180deg, #10b981, #059669); height:${(b.value / max) * 100}%;"></div>
+            </div>
+            <div style="font-size:10px; color:#6b7280; text-align:center;">${b.label}</div>
+        </div>
+    `).join('');
+}
+
+window.setUsageRange = function(range, btn) {
+    document.querySelectorAll('.usage-range-btn').forEach(b => b.classList.remove('active-filter'));
+    if (btn) btn.classList.add('active-filter');
+    renderUsageChart(range);
+};
+
 function renderDustyRecipes(recipes, viewCounts) {
     const dustyList = document.getElementById('dusty-list');
     if(!dustyList) return;
@@ -387,14 +516,17 @@ window.generateMegaIndex = async function() {
     
     snap.forEach(d => {
         const data = d.data();
+        const ingredients = data.ingredients || data.recipeIngredient || [];
         list.push({
-            id: d.id, 
-            n: data.name || "Untitled",          
+            id: d.id,
+            n: data.name || "Untitled",
             a: data.author || "Family",          // 👨‍🍳 ADDED THIS BACK IN!
-            t: data.tags || [],                  
-            c: data.category || "Misc",          
-            r: data.reviewed || false,           
-            h: data.isHidden === true            
+            t: data.tags || [],
+            c: data.category || "Misc",
+            r: data.reviewed || false,
+            h: data.isHidden === true,
+            // Compact lowercase ingredient text so homepage search can match ingredients too
+            ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         });
     });
     
@@ -539,15 +671,175 @@ window.resolveReport = async function(reportId) {
     try {
         const { doc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js");
         await deleteDoc(doc(db, "recipe_reports", reportId));
-        
+
         const row = document.getElementById(`report-${reportId}`);
         if(row) row.remove();
-        
+
         const tbody = document.getElementById('reports-table-body');
         if (tbody && tbody.children.length === 0) {
              tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
         }
     } catch (e) {
         alert("Error resolving report: " + e.message);
+    }
+};
+
+// ==========================================
+// WEBSITE-INTEGRATED AI RECIPE SCAN
+// Calls a local Ollama install directly from this page — free, and nothing
+// leaves this computer. Only works when Ollama is running on the same
+// machine you're viewing this page from. See local-tools/scan-recipe/README.md.
+// ==========================================
+const SCAN_CATEGORIES = [
+    'Appetizers & Snacks', 'Breads & Rolls', 'Breakfast', 'Desserts', 'Dutch Oven',
+    'Main Dishes', 'Miscellaneous', 'Sauces, Dressings & Marinades', 'Soups & Salads'
+];
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+const MAX_PDF_PAGES = 5; // safety cap so one huge PDF can't hang the browser/model
+
+async function pdfFileToImages(file) {
+    if (!window.pdfjsLib) throw new Error("PDF support didn't load — check your internet connection and reload the page.");
+
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pageCount = Math.min(pdf.numPages, MAX_PDF_PAGES);
+    const images = [];
+
+    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        images.push(canvas.toDataURL('image/jpeg', 0.9).split(',')[1]);
+    }
+
+    return images;
+}
+
+function getOllamaBaseUrl() {
+    const input = document.getElementById('ollama-server-url');
+    const typed = input ? input.value.trim() : '';
+    const saved = typed || localStorage.getItem('ollamaServerUrl') || 'http://localhost:11434';
+    if (typed) localStorage.setItem('ollamaServerUrl', typed);
+    return saved.replace(/\/$/, ''); // strip trailing slash
+}
+
+async function scanOneFile(file) {
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const images = isPdf ? await pdfFileToImages(file) : [await fileToBase64(file)];
+
+    const prompt = `You are reading ${images.length > 1 ? 'multiple pages of' : 'a photo of'} a handwritten or printed recipe card/cookbook page.
+Extract the recipe and respond with ONLY raw JSON (no markdown fences, no commentary) in exactly this shape:
+{
+  "name": "Recipe title",
+  "author": "Person's name if credited on the card, otherwise an empty string",
+  "category": "One of: ${SCAN_CATEGORIES.join(' | ')}",
+  "ingredients": ["one ingredient per array item, as written"],
+  "instructions": ["one step per array item, in order"],
+  "notes": "Any extra notes/tips on the card, or an empty string"
+}
+If the image is unreadable or not a recipe, respond with {"error": "reason here"}.`;
+
+    const res = await fetch(`${getOllamaBaseUrl()}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: 'llama3.2-vision',
+            prompt,
+            images,
+            stream: false,
+            format: 'json'
+        })
+    });
+
+    if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
+
+    const data = await res.json();
+    const raw = (data.response || '').trim();
+    const cleaned = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
+    const recipe = JSON.parse(cleaned);
+
+    if (recipe.error) throw new Error(recipe.error);
+    if (!SCAN_CATEGORIES.includes(recipe.category)) recipe.category = 'Miscellaneous';
+
+    return {
+        name: recipe.name || 'Untitled',
+        author: recipe.author || '',
+        tags: [recipe.category],
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [],
+        notes: recipe.notes || ''
+    };
+}
+
+window.scanRecipePhoto = async function() {
+    const fileInput = document.getElementById('scan-photo-input');
+    const statusEl = document.getElementById('scan-photo-status');
+    const resultBox = document.getElementById('scan-photo-result');
+    const btn = document.getElementById('scan-photo-btn');
+
+    const files = Array.from(fileInput.files || []);
+    if (files.length === 0) { statusEl.innerText = "Choose one or more photos/PDFs first."; return; }
+
+    btn.disabled = true;
+    resultBox.style.display = 'none';
+
+    const results = [];
+    const failures = [];
+
+    // Scan one at a time — local models handle one request at a time much
+    // more reliably than several fired off in parallel.
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        statusEl.innerText = `⏳ Scanning ${i + 1} of ${files.length}: ${file.name}...`;
+        try {
+            results.push(await scanOneFile(file));
+        } catch (error) {
+            console.error(`Scan failed for ${file.name}:`, error);
+            failures.push(`${file.name} (${error.message})`);
+        }
+    }
+
+    btn.disabled = false;
+
+    if (results.length > 0) {
+        document.getElementById('scan-photo-json').value = JSON.stringify(results, null, 2);
+        resultBox.style.display = 'block';
+    }
+
+    let summary = `✅ Scanned ${results.length} of ${files.length} file(s).`;
+    if (failures.length > 0) summary += ` Failed: ${failures.join(', ')}.`;
+    if (results.length === 0) summary = "❌ Nothing could be scanned — is Ollama running on this computer with OLLAMA_ORIGINS=* ollama serve?";
+    statusEl.innerText = summary;
+};
+
+window.sendScanToUploadStation = function() {
+    const scanJson = document.getElementById('scan-photo-json').value;
+    const bulkInput = document.getElementById('bulk-input');
+
+    try {
+        const scanned = JSON.parse(scanJson);
+        let existing = [];
+        if (bulkInput.value.trim()) {
+            try {
+                existing = JSON.parse(bulkInput.value);
+                if (!Array.isArray(existing)) existing = [];
+            } catch (e) { existing = []; }
+        }
+        bulkInput.value = JSON.stringify([...existing, ...scanned], null, 2);
+        bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } catch (e) {
+        alert("Could not merge into the upload box: " + e.message);
     }
 };

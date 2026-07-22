@@ -32,6 +32,7 @@ if (form) {
         const instructionsList = instructionsRaw.split('\n').map(s => s.trim()).filter(s => s);
 
         const notes = document.getElementById('notes').value.trim();
+        const driveUrl = document.getElementById('driveLink').value.trim();
 
         // 🚀 SEND TO "PENDING" COLLECTION
         const submitBtn = form.querySelector('button');
@@ -49,6 +50,7 @@ if (form) {
                 ingredients: ingredientsList,
                 instructions: instructionsList,
                 notes: notes,
+                driveUrl: driveUrl,
                 timestamp: serverTimestamp(),
                 status: "pending"
             });

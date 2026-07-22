@@ -13,18 +13,22 @@
         if (settings) {
             const html = document.documentElement;
             if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
-            html.setAttribute('data-size', settings.fontSize || 'normal');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
 </head>
 <body>
 
     <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border);">
         <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">← Back</a>
         <div style="display: flex; gap: 8px;">
+            <a href="leaderboard.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">🏆 Leaderboard</a>
             <a href="settings.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">⚙️ Settings</a>
             <button onclick="logout()" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-family: var(--font-main); font-weight: bold; font-size: 14px;">Log Out</button>
         </div>

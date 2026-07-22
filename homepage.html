@@ -32,6 +32,7 @@
 </style>
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
 </head>
 <body>
     <div class="header-container">
@@ -43,12 +44,17 @@
         </div>
 
         <div class="header-actions">
-            <!-- <button onclick="prepForCamping()" style="background-color: #0d9488; color: white; padding: 10px 18px; border-radius: 20px; font-weight: bold; cursor: pointer; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-    ⛺ Prep for Camping (Sync All)
-</button> -->
             <button onclick="quickToggleTheme()" class="icon-btn" id="homeThemeBtn" aria-label="Toggle Theme" style="font-size: 1.1rem;">
                 🌙
             </button>
+
+            <a href="leaderboard.html" class="icon-btn" aria-label="Leaderboard" style="font-size: 1.1rem; text-decoration: none;">
+                🏆
+            </a>
+
+            <a href="print.html" class="icon-btn" aria-label="Print Recipes" style="font-size: 1.1rem; text-decoration: none;">
+                🖨️
+            </a>
 
             <button id="header-search-btn" class="icon-btn" aria-label="Search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
@@ -97,8 +103,13 @@
             </label>
         </div>
 
-        <div style="text-align: center; margin-bottom: 30px;">
+        <div style="text-align: center; margin-bottom: 15px;">
             <a href="submit.html" class="btn-dark">+ Add Your Own Recipe</a>
+        </div>
+
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button onclick="downloadAllForOffline(event)" class="pill-btn btn-teal">⛺ Download All Recipes for Offline</button>
+            <p id="offline-status-line" style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Do this before you lose signal — recipes you've already opened stay available too.</p>
         </div>
 
         <div id="recent-recipes-box">
@@ -163,8 +174,9 @@
             <div class="search-box-content">
                 <button id="close-search">✕</button>
                 <h3>What are you craving?</h3>
+                <p style="font-size: 12px; color: #94a3b8; margin: -10px 0 5px 0;">Search by recipe name or an ingredient</p>
                 <form id="search-form">
-                    <input type="text" id="searchbar" placeholder="Tacos, Pie, etc..." autocomplete="off">
+                    <input type="text" id="searchbar" placeholder="Tacos, Pie, or chicken..." autocomplete="off">
                     <button type="submit" id="search-submit">GO</button>
                 </form>
             </div>
@@ -174,26 +186,6 @@
         
         <p id="notsigned" class="hidden" style="text-align:center; color:red; display:none;">Please sign in to view recipes.</p>
     </main>
-
-    <div id="shoppingModal" class="modal hidden">
-        <div class="modal-content">
-            <div class="shopping-header">
-                <h2>🛒 Your List</h2>
-                <button onclick="closeShoppingModal()" class="close-btn">&times;</button>
-            </div>
-            
-            <div id="shopping-status" class="shopping-status">Loading...</div>
-            
-            <div id="shopping-list-container" class="shopping-list-scroll hidden">
-                <ul id="shopping-ul" class="shopping-ul"></ul>
-            </div>
-            
-            <div class="shopping-actions">
-                <button onclick="generateFromPlan()" class="pill-btn btn-blue" style="flex:1;">🔄 Sync</button>
-                <button onclick="copyShoppingList()" class="pill-btn btn-slate">📋 Copy</button>
-            </div>
-        </div>
-    </div>
 
     <div id="reviewInfoModal" class="modal hidden">
         <div class="modal-content">
