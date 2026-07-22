@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp, increment, enableIndexedDbPersistence } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { getFirestore, doc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA7ILMR7YRqydfCMi-wnQ7QAXTZIGlYP6o",
@@ -17,19 +17,19 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 
 // ==========================================
-// OFFLINE MODE (free, built into Firebase/the browser — no billing required)
-// Any recipe a user has opened stays readable with no signal, like Google
-// Docs offline: Firestore caches document reads in IndexedDB, and the
-// Service Worker below caches the app shell (HTML/CSS/JS) so the pages
-// themselves still load with no connection.
+// OFFLINE MODE
+// We deliberately do NOT use Firestore's enableIndexedDbPersistence() here.
+// That feature must fully initialize its own local database before ANY
+// other Firestore read is allowed to proceed — on a device that's already
+// set it up, that's instant, but on a first-time visit it can be slow or
+// simply hang depending on the browser's storage/privacy settings, which
+// blocks every read on the page behind it. That's exactly the bug we hit:
+// it worked on devices that already had it cached and silently broke the
+// site for everyone else. Offline support instead comes from two simpler,
+// independent, non-blocking pieces: the Service Worker below (app shell:
+// HTML/CSS/JS) and plain localStorage caching of recipe data as it's
+// viewed (see recipePage.js / main.js) — neither can stall a live read.
 // ==========================================
-enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-        console.warn("[Offline] Persistence only works in one tab at a time — close other open tabs of this site.");
-    } else if (err.code === 'unimplemented') {
-        console.warn("[Offline] This browser doesn't support offline storage.");
-    }
-});
 
 // Skip the Service Worker entirely on localhost/127.0.0.1 dev servers (Live
 // Server, etc.) — otherwise it caches your local edits and you end up

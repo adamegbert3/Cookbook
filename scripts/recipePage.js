@@ -3,7 +3,7 @@ import {
     doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { saveUserSettings, resolveFontSizePx } from './main.js';
+import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe } from './main.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -226,7 +226,10 @@ async function loadRecipe() {
             logViewToDatabase(fullData);
             applyPersonalizationIfAny(fullData);
         } else {
-            if(localData && localData.id === recipeId) {
+            const offlineCopy = getOfflineRecipe(recipeId);
+            if (offlineCopy) {
+                renderRecipeHTML(offlineCopy);
+            } else if(localData && localData.id === recipeId) {
                 renderRecipeHTML(localData);
             } else {
                 recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
@@ -235,7 +238,12 @@ async function loadRecipe() {
     } catch (error) {
         console.error("Recipe load failed:", error);
 
-        // Fall back to the locally cached copy if we have one (offline / rules trouble)
+        // Fall back to a locally cached copy if we have one (offline / rules trouble)
+        const offlineCopy = getOfflineRecipe(recipeId);
+        if (offlineCopy) {
+            renderRecipeHTML(offlineCopy);
+            return;
+        }
         if (localData && localData.id === recipeId && (localData.ingredients || localData.recipeIngredient)) {
             renderRecipeHTML(localData);
             return;
@@ -420,12 +428,12 @@ function renderRecipeHTML(recipe) {
 
     lastRenderedRecipe = recipe;
 
-    // 1. Automatically mark opened recipe as "Camping Ready" in localStorage
+    // 1. Automatically save this recipe's full content to localStorage so
+    // it's readable offline the next time (only if it's the real, complete
+    // recipe — not a partial/merge object built for a one-off render).
     const currentId = recipe.id || recipeId;
-    const campingReady = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
-    if (currentId && !campingReady.includes(currentId)) {
-        campingReady.push(currentId);
-        localStorage.setItem('campingReadyIds', JSON.stringify(campingReady));
+    if (currentId && (recipe.ingredients || recipe.recipeIngredient)) {
+        saveRecipeOffline({ id: currentId, ...recipe });
     }
 
     // 2. Check recipe statuses

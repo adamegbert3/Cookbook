@@ -22,6 +22,35 @@ const ADMIN_UIDS = [
 console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
 
 // ==========================================
+// OFFLINE RECIPE STORAGE (plain localStorage — no Firestore persistence
+// involved, so it can never block or slow down a live read; see
+// firebase-config.js for why we stopped using enableIndexedDbPersistence)
+// ==========================================
+const OFFLINE_DATA_KEY = 'offlineRecipeData';
+
+export function saveRecipeOffline(recipe) {
+    if (!recipe || !recipe.id) return;
+    try {
+        const store = JSON.parse(localStorage.getItem(OFFLINE_DATA_KEY) || "{}");
+        store[recipe.id] = recipe;
+        localStorage.setItem(OFFLINE_DATA_KEY, JSON.stringify(store));
+    } catch (e) { console.warn("Could not save recipe for offline use:", e); }
+}
+
+export function getOfflineRecipe(id) {
+    try {
+        const store = JSON.parse(localStorage.getItem(OFFLINE_DATA_KEY) || "{}");
+        return store[id] || null;
+    } catch (e) { return null; }
+}
+
+export function getOfflineRecipeIds() {
+    try {
+        return Object.keys(JSON.parse(localStorage.getItem(OFFLINE_DATA_KEY) || "{}"));
+    } catch (e) { return []; }
+}
+
+// ==========================================
 // 2. AUTH & STARTUP
 // ==========================================
 onAuthStateChanged(auth, async (user) => {
@@ -181,7 +210,7 @@ function updateOfflineStatusLine() {
     const line = document.getElementById('offline-status-line');
     if (!line) return;
 
-    const readyIds = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+    const readyIds = getOfflineRecipeIds();
     const readyCount = allRecipes.filter(r => readyIds.includes(r.id)).length;
 
     line.innerText = readyCount > 0
@@ -278,7 +307,7 @@ function renderLocalList(list) {
     const container = document.getElementById('recipes');
     if(!container) return;
 
-    offlineChecklist = JSON.parse(localStorage.getItem('campingReadyIds') || "[]");
+    offlineChecklist = getOfflineRecipeIds();
 
     // 1. Sort safely
     list.sort((a, b) => {
@@ -828,9 +857,9 @@ setTimeout(() => {
 
 // ==========================================
 // 9. ⛺ DOWNLOAD ALL RECIPES FOR OFFLINE (e.g. camping/no-signal use)
-// Firestore's IndexedDB persistence (enabled in firebase-config.js) caches
-// every document it reads, so simply reading all recipes here is what
-// actually makes them available with no connection afterward.
+// Stores the actual recipe content in localStorage (see saveRecipeOffline
+// above) — plain, synchronous, and can't hang the way Firestore's own
+// persistence layer could.
 // ==========================================
 window.downloadAllForOffline = async function(event) {
     const btn = event ? event.currentTarget : document.querySelector('button[onclick*="downloadAllForOffline"]');
@@ -846,14 +875,14 @@ window.downloadAllForOffline = async function(event) {
         console.log("⛺ Fetching all recipes so they're cached for offline use...");
         const querySnapshot = await getDocs(collection(db, "recipes"));
 
-        const offlineIds = [];
-        querySnapshot.forEach((doc) => { offlineIds.push(doc.id); });
+        const store = {};
+        querySnapshot.forEach((docSnap) => { store[docSnap.id] = { id: docSnap.id, ...docSnap.data() }; });
+        localStorage.setItem(OFFLINE_DATA_KEY, JSON.stringify(store));
 
-        localStorage.setItem('campingReadyIds', JSON.stringify(offlineIds));
-
-        console.log(`✅ ${offlineIds.length} recipes are now cached for offline use.`);
+        const count = Object.keys(store).length;
+        console.log(`✅ ${count} recipes are now cached for offline use.`);
         if (btn) {
-            btn.innerHTML = `⛺ All ${offlineIds.length} Recipes Ready Offline!`;
+            btn.innerHTML = `⛺ All ${count} Recipes Ready Offline!`;
             btn.style.backgroundColor = "#15803d";
         }
 
