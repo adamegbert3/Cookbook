@@ -8,6 +8,18 @@ machine, and nothing is ever uploaded anywhere.
 There are two ways to use it — **the website is easier for normal use**;
 the terminal tool is handy for scanning a big folder of files at once.
 
+**First time using any of this on a given Mac?** These tools live inside
+the project folder, so that folder has to actually exist on this computer
+first:
+```bash
+git clone https://github.com/adamegbert3/Cookbook.git
+cd Cookbook
+```
+(If `git` isn't found, macOS will prompt you to install "Command Line
+Tools" the first time — click Install, wait a minute, then run the clone
+command again.) Run every command in this guide from inside that `Cookbook`
+folder.
+
 ## One-time setup (needed for both options)
 
 1. **Install Ollama** (the free local AI runner): https://ollama.com/download
@@ -120,6 +132,39 @@ Then:
 1. Open `scanned-recipes.json`, copy its contents.
 2. Go to the admin dashboard → **🚀 Speed Upload Station**.
 3. Paste the JSON into the box and click **🚀 Launch Recipes**.
+
+## Troubleshooting
+
+**"Cannot find module .../serve-locally.mjs" or "no such file or directory"**
+You're not inside the project folder. See the `git clone` step at the very
+top of this README — every command here needs to run from inside the
+cloned `Cookbook` folder (`cd Cookbook` first).
+
+**Ollama fails with `unknown model architecture: 'mllama'`**
+This means Ollama itself can't load `llama3.2-vision` — this is an Ollama
+compatibility issue, not something wrong with the scan or this site.
+`mllama` is the architecture name for Llama 3.2 Vision; the version of
+Ollama installed doesn't have support for it wired up correctly. Try, in
+order:
+1. **Update Ollama** — open the Ollama menu bar icon → check for an update
+   (or just re-download and reinstall from https://ollama.com/download).
+2. **Switch to a different vision model.** `llava` is older and more
+   broadly compatible:
+   ```bash
+   ollama pull llava
+   ```
+   Then, on the website, open **📷 Scan Recipe Photos & PDFs → "🧠 Model not
+   loading?"** and type `llava` into the box (this is remembered after
+   that, no need to type it every time). For the terminal tool, set
+   `OLLAMA_MODEL=llava` before running it:
+   ```bash
+   OLLAMA_MODEL=llava node scan-recipe.mjs photo.jpg
+   ```
+3. If you want to double-check the model itself outside of this site
+   entirely, run `ollama run llama3.2-vision "describe a photo"` directly
+   in Terminal — if that also fails with the same architecture error, it
+   confirms this is purely an Ollama/model issue to resolve with steps 1-2
+   above, nothing to fix here.
 
 ## After scanning (either option)
 

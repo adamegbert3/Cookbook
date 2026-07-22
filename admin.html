@@ -248,6 +248,15 @@
                 </p>
                 <input type="text" id="ollama-server-url" placeholder="http://localhost:11434" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
             </details>
+            <details style="margin-bottom: 12px;">
+                <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">🧠 Model not loading? Change which Ollama model is used</summary>
+                <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
+                    If scanning fails with something like <code>unknown model architecture</code>, your installed Ollama version can't run <code>llama3.2-vision</code> yet.
+                    Try a different vision model instead — e.g. run <code>ollama pull llava</code> in Terminal, then type <code>llava</code> below.
+                    See <code>local-tools/scan-recipe/README.md</code> for more options.
+                </p>
+                <input type="text" id="ollama-model-name" placeholder="llama3.2-vision" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
+            </details>
             <input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple style="margin-bottom: 10px;">
             <br>
             <button id="scan-photo-btn" onclick="scanRecipePhoto()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">🔍 Scan File(s)</button>

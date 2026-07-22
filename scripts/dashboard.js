@@ -54,6 +54,10 @@ async function loadAdminDashboard() {
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
     if (ollamaInput && savedOllamaUrl) ollamaInput.value = savedOllamaUrl;
 
+    const ollamaModelInput = document.getElementById('ollama-model-name');
+    const savedOllamaModel = localStorage.getItem('ollamaModelName');
+    if (ollamaModelInput && savedOllamaModel) ollamaModelInput.value = savedOllamaModel;
+
     try {
         console.log("⏳ [FIRESTORE] Querying 'recipes' collection...");
         const querySnapshot = await getDocs(collection(db, "recipes"));
@@ -736,6 +740,14 @@ function getOllamaBaseUrl() {
     return saved.replace(/\/$/, ''); // strip trailing slash
 }
 
+function getOllamaModel() {
+    const input = document.getElementById('ollama-model-name');
+    const typed = input ? input.value.trim() : '';
+    const saved = typed || localStorage.getItem('ollamaModelName') || 'llama3.2-vision';
+    if (typed) localStorage.setItem('ollamaModelName', typed);
+    return saved;
+}
+
 // One file can contain anywhere from 0 to many recipes: a single photo
 // might catch two recipes side by side on a cookbook spread, a multi-page
 // PDF might be one recipe that spans every page, or it might be several
@@ -771,7 +783,7 @@ If nothing readable/recipe-like is present, respond with an empty array: []`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            model: 'llama3.2-vision',
+            model: getOllamaModel(),
             prompt,
             images,
             stream: false,
@@ -779,7 +791,14 @@ If nothing readable/recipe-like is present, respond with an empty array: []`;
         })
     });
 
-    if (!res.ok) throw new Error(`Ollama returned ${res.status}`);
+    if (!res.ok) {
+        let detail = '';
+        try { detail = (await res.json()).error || ''; } catch (e) { /* body wasn't JSON */ }
+        if (/unknown model architecture/i.test(detail)) {
+            throw new Error(`Ollama can't load "${getOllamaModel()}" (unsupported on your installed Ollama version) — try a different model in "🧠 Model not loading?" below, e.g. llava`);
+        }
+        throw new Error(`Ollama returned ${res.status}${detail ? ': ' + detail : ''}`);
+    }
 
     const data = await res.json();
     const raw = (data.response || '').trim();
