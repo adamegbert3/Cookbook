@@ -229,11 +229,13 @@
             <h3 style="margin-top: 0; color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
                 Reads photos or PDFs using Ollama running on <strong>this same computer</strong> — nothing is uploaded anywhere.
-                Pick as many files as you want; each one becomes its own recipe. One-time setup: install
+                Pick as many files as you want. One-time setup: install
                 <a href="https://ollama.com/download" target="_blank">Ollama</a>, run
                 <code>ollama pull llama3.2-vision</code>, then start it with
-                <code>OLLAMA_ORIGINS=* ollama serve</code> so this page is allowed to talk to it.
-                See <code>local-tools/scan-recipe/README.md</code> for full details.
+                <code>OLLAMA_ORIGINS=* ollama serve</code> so it accepts requests from this page.
+            </p>
+            <p style="font-size: 12px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 12px; border-radius: 6px;">
+                ⚠️ <strong>Important:</strong> this only works while you're viewing this page over plain <code>http://</code>, not the secure live site — browsers permanently block a secure page from calling Ollama, with no setting to allow it. Run <code>node local-tools/scan-recipe/serve-locally.mjs</code> in the project folder and open the <code>http://localhost:8080</code> link it prints, then come back to this same widget there.
             </p>
             <details style="margin-bottom: 12px;">
                 <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">📱 Scanning from your phone instead of the computer running Ollama?</summary>
@@ -241,7 +243,8 @@
                     Enter your computer's address on your home WiFi instead of "localhost" (e.g. <code>http://192.168.1.42:11434</code>).
                     On the computer, find it under Wi-Fi settings, and start Ollama with
                     <code>OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS=* ollama serve</code> so it accepts connections from other devices.
-                    See <code>local-tools/scan-recipe/README.md</code> for the full walkthrough (including a note on HTTPS).
+                    This still requires viewing this page over <code>http://</code> (see the warning above) — see
+                    <code>local-tools/scan-recipe/README.md</code> for the full walkthrough.
                 </p>
                 <input type="text" id="ollama-server-url" placeholder="http://localhost:11434" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
             </details>

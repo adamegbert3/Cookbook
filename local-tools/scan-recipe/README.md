@@ -28,14 +28,32 @@ the terminal tool is handy for scanning a big folder of files at once.
 
 ## Option 1: From the website (recommended)
 
-1. Go to the **admin dashboard** → **📷 Scan Recipe Photos & PDFs**.
-2. Click the file picker and select one photo, one PDF, or **select several
+**Important — read this first:** the scanner will not work from the normal
+`https://www.yum4you.com/admin.html` link. Browsers permanently block a
+secure (HTTPS) page from calling a plain HTTP address, and that includes
+Ollama at `localhost` — there is no setting or workaround for this, it's a
+hard security rule with no exception for `localhost`. So scanning has to
+happen from a plain-HTTP copy of the page instead:
+
+1. In a terminal, from the project folder, run:
+   ```bash
+   node local-tools/scan-recipe/serve-locally.mjs
+   ```
+   It prints two links. Open the first one (`.../index.html`) and log in —
+   this is a separate login session from the live site, so you'll need to
+   sign in here too, even if you're already logged into yum4you.com.
+2. Then open the second link (`.../admin.html`) and scroll to **📷 Scan
+   Recipe Photos & PDFs**.
+3. Click the file picker and select one photo, one PDF, or **select several
    files at once**.
-3. Click **🔍 Scan File(s)**. It scans them one at a time (you'll see
+4. Click **🔍 Scan File(s)**. It scans them one at a time (you'll see
    progress: "Scanning 2 of 5..."), and PDFs are read page-by-page (up to 10
    pages) automatically — no extra steps.
-4. When it's done, review the JSON it found, then click
+5. When it's done, review the JSON it found, then click
    **⬇️ Send to Speed Upload Station** and **🚀 Launch Recipes**.
+
+Leave the `serve-locally.mjs` terminal window running the whole time you're
+scanning; press Ctrl+C when you're done.
 
 **A file isn't assumed to be exactly one recipe.** The scanner looks at the
 actual content and figures out how many recipes are really there:
@@ -52,44 +70,37 @@ long document, split it into smaller PDFs first.
 ### Scanning from your phone (Ollama stays on the computer)
 
 You can trigger scans from your phone while the actual AI work happens on
-your Mac, as long as both devices are on the **same home WiFi**:
+your Mac, as long as both devices are on the **same home WiFi** — and this
+also requires the `serve-locally.mjs` server from above, since the HTTPS
+blocking rule applies here too:
 
-1. On the computer, find its local network address: Wi-Fi settings →
-   click the (i) next to your network → it'll look like `192.168.1.42`.
-2. Start Ollama so it accepts connections from other devices on the network
+1. On the computer, run `node local-tools/scan-recipe/serve-locally.mjs`
+   and note the port it prints (default `8080`).
+2. Find the computer's local network address: Wi-Fi settings → click the
+   (i) next to your network → it'll look like `192.168.1.42`.
+3. Start Ollama so it accepts connections from other devices on the network
    (not just from itself):
    ```bash
    OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS=* ollama serve
    ```
    (If Ollama auto-started already, quit it from the menu bar first, or
    `killall Ollama`, then run the command above.)
-3. On your phone, open the admin dashboard → **📷 Scan Recipe Photos &
-   PDFs** → expand **"Scanning from your phone instead of the computer
-   running Ollama?"** → enter `http://192.168.1.42:11434` (using your
-   computer's actual address) in the box.
-4. Scan as normal — the photo/PDF is sent from your phone, but the AI
+4. On your phone (same WiFi), open `http://192.168.1.42:8080/index.html`
+   (your computer's address, not "localhost" — that only means something on
+   the computer itself), log in, then go to `.../admin.html`.
+5. In the **📷 Scan Recipe Photos & PDFs** widget, expand **"Scanning from
+   your phone instead of the computer running Ollama?"** and enter
+   `http://192.168.1.42:11434` in the box.
+6. Scan as normal — the photo/PDF is sent from your phone, but the AI
    model runs on your computer.
-
-**One catch:** if your cookbook site is served over HTTPS (which is normal
-for a real domain), browsers block a secure page from calling a plain
-`http://` address on the network — this is called "mixed content," and it's
-a browser security rule, not something this site can turn off. `localhost`
-gets a special exception, but a LAN address like `192.168.1.42` does not.
-If scanning from your phone doesn't work and the browser console mentions
-"mixed content" or "blocked," that's why. Two ways around it:
-- Load the admin dashboard itself from the computer's address too — e.g.
-  run `npx serve` in this project's root folder on the computer, then visit
-  `http://192.168.1.42:3000/admin.html` from your phone instead of your
-  real domain. Since the page itself is then plain HTTP, calling Ollama's
-  HTTP address is no longer blocked.
-- Or just scan from the same computer that's running Ollama (Option 1
-  above) — simplest, and works every time with zero setup.
 
 ## Option 2: From the terminal (`scan-recipe.mjs`)
 
 Better for batch-processing a whole folder of photos at once without
-clicking through the browser each time. Currently handles **images only**
-(no PDFs — use the website for PDFs, since it can render pages itself).
+clicking through the browser each time, and doesn't run into any of the
+HTTPS/localhost issues above since there's no browser involved. Currently
+handles **images only** (no PDFs — use the website for PDFs, since it can
+render pages itself).
 
 ```bash
 cd local-tools/scan-recipe

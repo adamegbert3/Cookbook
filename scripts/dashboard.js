@@ -813,6 +813,16 @@ window.scanRecipePhoto = async function() {
     const files = Array.from(fileInput.files || []);
     if (files.length === 0) { statusEl.innerText = "Choose one or more photos/PDFs first."; return; }
 
+    // Browsers permanently block a secure (HTTPS) page from calling a plain
+    // HTTP address — including Ollama at localhost — with no way to opt in
+    // from this side. If we're on the live HTTPS site, fail fast with a
+    // clear explanation instead of a cryptic "Load failed" from the browser.
+    const ollamaUrl = getOllamaBaseUrl();
+    if (location.protocol === 'https:' && ollamaUrl.startsWith('http://')) {
+        statusEl.innerHTML = `❌ Can't reach Ollama from the secure (https://) site — browsers block that connection entirely, there's no setting to allow it.<br>Run <code>node local-tools/scan-recipe/serve-locally.mjs</code> and open the printed <code>http://localhost:8080</code> link instead, then scan from there.`;
+        return;
+    }
+
     btn.disabled = true;
     resultBox.style.display = 'none';
 
