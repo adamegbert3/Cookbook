@@ -1,5 +1,5 @@
 import { db, auth } from './firebase-config.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { doc, getDoc, getDocs, collection, query, where, documentId } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 let indexedRecipes = [];
@@ -14,14 +14,17 @@ onAuthStateChanged(auth, (user) => {
 
 async function loadPickList() {
     const container = document.getElementById('print-pick-list');
+    console.log("🖨️ [PRINT] Loading the recipe pick list...");
     try {
         const docSnap = await getDoc(doc(db, "static_assets", "cookbook_index"));
         if (!docSnap.exists()) {
+            console.warn("🖨️ [PRINT] No cookbook_index doc found.");
             container.innerHTML = "<p style='text-align:center;'>No recipes found.</p>";
             return;
         }
 
         indexedRecipes = (docSnap.data().recipes || []).filter(r => r.h !== true);
+        console.log(`✅ [PRINT] Loaded ${indexedRecipes.length} recipe(s) into the pick list.`);
         indexedRecipes.sort((a, b) => (a.n || "").localeCompare(b.n || ""));
 
         const byCategory = {};
@@ -64,25 +67,53 @@ window.selectCategory = function(category, state) {
     card.querySelectorAll('.print-pick-checkbox').forEach(cb => { cb.checked = state; });
 };
 
+// Firestore's `where(documentId(), 'in', ...)` accepts at most 30 values per
+// query, so a big "select everything" print run is fetched in batches of 30
+// instead of firing one getDoc() per recipe — that N-individual-round-trips
+// approach (with zero progress feedback) was the "takes forever, nothing
+// logged" slowness.
+const PRINT_FETCH_CHUNK_SIZE = 30;
+
+function chunkArray(arr, size) {
+    const out = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+}
+
 window.printSelected = async function() {
     const ids = Array.from(document.querySelectorAll('.print-pick-checkbox:checked')).map(cb => cb.value);
     if (ids.length === 0) return alert("Pick at least one recipe first.");
 
     const output = document.getElementById('print-output');
     output.innerHTML = `<p style="text-align:center;">Preparing ${ids.length} recipe(s)...</p>`;
+    console.log(`🖨️ [PRINT] Preparing ${ids.length} recipe(s) for printing...`);
 
     try {
-        const recipes = await Promise.all(ids.map(async (id) => {
-            const snap = await getDoc(doc(db, "recipes", id));
-            return snap.exists() ? { id, ...snap.data() } : null;
-        }));
+        const idChunks = chunkArray(ids, PRINT_FETCH_CHUNK_SIZE);
+        const recipesById = {};
 
-        output.innerHTML = recipes.filter(Boolean).map(recipeToPrintHtml).join('');
+        for (let i = 0; i < idChunks.length; i++) {
+            const progressMsg = `Fetching batch ${i + 1} of ${idChunks.length}...`;
+            console.log(`🖨️ [PRINT] ${progressMsg}`);
+            output.innerHTML = `<p style="text-align:center;">${progressMsg}</p>`;
 
+            const batchQuery = query(collection(db, "recipes"), where(documentId(), "in", idChunks[i]));
+            const snap = await getDocs(batchQuery);
+            snap.forEach(d => { recipesById[d.id] = { id: d.id, ...d.data() }; });
+        }
+
+        // Keep the order the user picked them in — object key order from the
+        // batched fetch above isn't guaranteed to match.
+        const recipes = ids.map(id => recipesById[id]).filter(Boolean);
+        console.log(`✅ [PRINT] Fetched ${recipes.length} of ${ids.length} recipe(s). Building print layout...`);
+
+        output.innerHTML = recipes.map(recipeToPrintHtml).join('');
+
+        console.log("🖨️ [PRINT] Opening the print dialog now...");
         setTimeout(() => window.print(), 300);
 
     } catch (e) {
-        console.error("Print error:", e);
+        console.error("🔥 [PRINT] Print error:", e);
         alert("Could not prepare recipes for printing.");
     }
 };

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Review Recipes</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #f9fafb; }
+        .container { background: white; padding: 30px; border-radius: 8px; border: 1px solid #ddd; }
+        label { display: block; margin-top: 15px; font-weight: bold; font-size: 14px; color: #333; }
+        input, textarea, select { width: 100%; padding: 10px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 16px; }
+        button { padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        .btn-back { background: #6b7280; color: white; font-size: 12px; padding: 8px 16px; display: inline-block; text-decoration: none; border-radius: 4px; margin-bottom: 20px; }
+        .btn-tool { background: #e0f2fe; color: #0369a1; font-size: 12px; padding: 6px 12px; margin-top: 8px; }
+        .btn-approve { background: #10b981; color: white; font-weight: bold; flex: 2; min-width: 180px; }
+        .btn-save { background: #2563eb; color: white; font-weight: bold; flex: 1; min-width: 140px; }
+        .btn-needs-review { background: #fef3c7; color: #92400e; flex: 1; min-width: 140px; }
+        .btn-skip { background: #f3f4f6; color: #374151; flex: 1; min-width: 100px; }
+        #status-msg { margin-top: 15px; text-align: center; font-weight: bold; }
+        .hint { font-weight: normal; font-size: 12px; color: #6b7280; margin-top: 2px; }
+        .progress-header {
+            display: flex; justify-content: space-between; align-items: center;
+            background: #ede9fe; border: 1px solid #ddd6fe; padding: 12px 16px;
+            border-radius: 8px; margin-bottom: 20px;
+        }
+        .progress-header h2 { margin: 0; font-size: 1.1rem; color: #5b21b6; }
+        .progress-bar-track { background: #ddd6fe; height: 8px; border-radius: 4px; overflow: hidden; margin-top: 8px; }
+        .progress-bar-fill { background: #7c3aed; height: 100%; transition: width 0.2s; }
+        .action-row { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; }
+        #all-done { text-align: center; padding: 40px 20px; }
+
+        /* --- SEARCH + NEEDS-REVIEW LIST PANELS --- */
+        .panel { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px; margin-bottom: 15px; }
+        .panel h3 { margin: 0 0 4px 0; font-size: 1rem; color: #374151; }
+        .list-scroll { max-height: 260px; overflow-y: auto; margin-top: 10px; border-top: 1px solid #f3f4f6; }
+        .review-list-row {
+            display: flex; justify-content: space-between; align-items: center; gap: 10px;
+            padding: 10px 4px; border-bottom: 1px solid #f3f4f6; cursor: pointer; font-size: 14px;
+        }
+        .review-list-row:hover { background: #f9fafb; }
+        .review-list-row.active { background: #ede9fe; font-weight: bold; }
+        .review-status-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; white-space: nowrap; }
+        .review-status-badge.reviewed { background: #d1fae5; color: #065f46; }
+        .review-status-badge.unreviewed { background: #fef3c7; color: #92400e; }
+        #review-status-badge { display: inline-block; margin-left: 8px; vertical-align: middle; }
+        .hidden { display: none !important; }
+    </style>
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+</head>
+<body>
+
+    <a href="admin.html" class="btn-back">← Back to Dashboard</a>
+
+    <div class="progress-header">
+        <div>
+            <h2 id="progress-title">📋 Recipe Review</h2>
+            <p class="hint" style="margin: 4px 0 0 0;" id="progress-subtitle">Loading recipes...</p>
+        </div>
+    </div>
+    <div class="progress-bar-track"><div class="progress-bar-fill" id="progress-bar-fill" style="width:0%;"></div></div>
+
+    <div class="panel">
+        <h3>🔍 Search All Recipes</h3>
+        <p class="hint">Flipping through the physical book? Search a title here to see if it's already reviewed.</p>
+        <input type="text" id="search-input" placeholder="Search by recipe name...">
+        <div id="search-results" class="list-scroll hidden"></div>
+    </div>
+
+    <div class="panel">
+        <h3>📋 Still Needs Review (<span id="needs-review-count">0</span>)</h3>
+        <p class="hint">Tap any recipe to jump straight to it.</p>
+        <div id="needs-review-list" class="list-scroll"></div>
+    </div>
+
+    <div class="container" id="review-form-container" style="margin-top: 20px; display: none;">
+        <h2 style="margin-top:0;" id="review-recipe-name">Loading...<span id="review-status-badge" class="review-status-badge"></span></h2>
+
+        <label>Recipe Name</label>
+        <input type="text" id="r-name">
+
+        <label>Author</label>
+        <input type="text" id="r-author">
+
+        <label>Category</label>
+        <select id="r-category">
+            <option value="Appetizers & Snacks">Appetizers & Snacks</option>
+            <option value="Breads & Rolls">Breads & Rolls</option>
+            <option value="Breakfast">Breakfast</option>
+            <option value="Desserts">Desserts</option>
+            <option value="Dutch Oven">Dutch Oven</option>
+            <option value="Main Dishes">Main Dishes</option>
+            <option value="Miscellaneous">Miscellaneous</option>
+            <option value="Sauces, Dressings & Marinades">Sauces, Dressings & Marinades</option>
+            <option value="Sides & Veggies">Sides & Veggies</option>
+            <option value="Soups & Salads">Soups & Salads</option>
+        </select>
+
+        <label>Ingredients <span class="hint">(one per line)</span></label>
+        <textarea id="r-ingredients" rows="8"></textarea>
+
+        <label>Instructions <span class="hint">(one step per line)</span></label>
+        <textarea id="r-instructions" rows="8"></textarea>
+        <button type="button" class="btn-tool" onclick="autoSplitInstructions()">✂️ Auto-split into steps</button>
+
+        <label>Chef's Notes <span class="hint">(optional)</span></label>
+        <textarea id="r-notes" rows="3"></textarea>
+
+        <label>PDF / Google Drive Link <span class="hint">(optional)</span></label>
+        <input type="url" id="r-drive-link" placeholder="https://drive.google.com/...">
+
+        <label>Original Recipe URL <span class="hint">(optional)</span></label>
+        <input type="url" id="r-source-url" placeholder="https://example.com/the-recipe-i-adapted-this-from">
+
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
+            <label style="margin: 0; font-weight: 600; color: #0369a1; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <input type="checkbox" id="r-fav-egbert" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Egbert Favorite
+            </label>
+            <label style="margin: 0; font-weight: 600; color: #15803d; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <input type="checkbox" id="r-fav-wheeler" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Wheeler Favorite
+            </label>
+        </div>
+
+        <div class="action-row">
+            <button class="btn-approve" onclick="saveReview('reviewed')">✅ Mark Reviewed &amp; Next</button>
+            <button class="btn-save" onclick="saveReview('keep')">💾 Save (Keep Status)</button>
+            <button class="btn-needs-review" onclick="saveReview('needs-review')">⚠️ Save as Needs Review</button>
+            <button class="btn-skip" onclick="skipReview()">⏭️ Skip</button>
+        </div>
+        <p id="status-msg"></p>
+    </div>
+
+    <div class="container" id="all-done" style="display: none;">
+        <h2>🎉 Nothing left to review!</h2>
+        <p class="hint">Every recipe in the cookbook is marked as verified. Search above any time to double-check one.</p>
+        <a href="admin.html" class="btn-back" style="margin-top: 15px;">← Back to Dashboard</a>
+    </div>
+
+    <script type="module" src="scripts/review.js"></script>
+</body>
+</html>

@@ -14,6 +14,8 @@ async function loadLeaderboard() {
     const list = document.getElementById('leaderboard-list');
     if (!list) return;
 
+    console.log("🏆 [LEADERBOARD] Loading global_cooks...");
+
     try {
         const snap = await getDocs(collection(db, "global_cooks"));
         const byUser = {}; // uid -> { name, recipeIds: Set }
@@ -41,6 +43,7 @@ async function loadLeaderboard() {
             return;
         }
 
+        console.log(`✅ [LEADERBOARD] Ranked ${ranked.length} chef(s).`);
         const medals = ["🥇", "🥈", "🥉"];
         list.innerHTML = ranked.map((u, i) => `
             <div class="leaderboard-row${i < 3 ? ' leaderboard-top' : ''}">

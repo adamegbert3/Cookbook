@@ -5,10 +5,25 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/fir
 // Check Login
 onAuthStateChanged(auth, (user) => {
     if (!user) {
+        console.warn("🚫 [SUBMIT] Not logged in — bouncing to login page.");
         alert("Please log in to submit recipes.");
         window.location.href = "index.html";
+    } else {
+        console.log("✅ [SUBMIT] Logged in as:", user.email);
     }
 });
+
+// --- SPLIT TOOL (same behavior as edit-recipe.html's version) ---
+window.autoSplitInstructions = function() {
+    const instBox = document.getElementById('instructions');
+    let text = instBox.value;
+    if (!text) return;
+    if (text.includes('\n')) {
+        if (!confirm("This looks like it already has lines. Split anyway?")) return;
+    }
+    console.log("✂️ [SUBMIT] Auto-splitting instructions into steps.");
+    instBox.value = text.replace(/\. /g, '.\n');
+};
 
 // Handle Form Submit
 const form = document.getElementById('submitForm');
@@ -33,12 +48,15 @@ if (form) {
 
         const notes = document.getElementById('notes').value.trim();
         const driveUrl = document.getElementById('driveLink').value.trim();
+        const sourceUrl = document.getElementById('sourceUrl').value.trim();
 
         // 🚀 SEND TO "PENDING" COLLECTION
         const submitBtn = form.querySelector('button');
         const originalText = submitBtn.innerText;
         submitBtn.disabled = true;
         submitBtn.innerText = "Sending...";
+
+        console.log(`🚀 [SUBMIT] Sending "${title}" to the pending_recipes queue...`);
 
         try {
             await addDoc(collection(db, "pending_recipes"), {
@@ -51,15 +69,17 @@ if (form) {
                 instructions: instructionsList,
                 notes: notes,
                 driveUrl: driveUrl,
+                sourceUrl: sourceUrl,
                 timestamp: serverTimestamp(),
                 status: "pending"
             });
 
+            console.log("✅ [SUBMIT] Recipe submitted successfully.");
             alert("Recipe submitted! The Admin will review it shortly.");
             window.location.href = "homepage.html";
 
         } catch (error) {
-            console.error("Error submitting:", error);
+            console.error("🔥 [SUBMIT] Error submitting:", error);
             alert("Error: " + error.message);
             submitBtn.disabled = false;
             submitBtn.innerText = originalText;

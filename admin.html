@@ -69,6 +69,16 @@
     .btn-delete { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     .btn-delete:hover { background: #fecaca; }
 
+    /* FLOATING BACK BUTTON (so you don't have to scroll past the whole
+       Master Recipe List to get back to the cookbook) */
+    #floating-back-btn {
+        position: fixed; bottom: 20px; left: 20px; z-index: 500;
+        background: #111827; color: white; text-decoration: none;
+        padding: 10px 16px; border-radius: 30px; font-size: 13px; font-weight: 700;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.25); display: inline-flex; align-items: center; gap: 6px;
+    }
+    #floating-back-btn:hover { background: #1f2937; }
+
     /* USAGE CHART RANGE TOGGLE */
     .usage-range-btn { opacity: 0.6; }
     .usage-range-btn.active-filter { opacity: 1; background: #059669 !important; color: white !important; }
@@ -107,11 +117,13 @@
         }
         .reports-table td { padding: 6px 0 !important; border: none !important; text-align: left; }
         
-        /* Add labels before the data on mobile */
-        .reports-table td:nth-child(1):before { content: "📅 Date: "; font-weight: bold; color: #6b7280; }
-        .reports-table td:nth-child(2):before { content: "👤 Reporter: "; font-weight: bold; color: #6b7280; }
-        .reports-table td:nth-child(3):before { content: "🍲 Recipe: "; font-weight: bold; color: #6b7280; }
-        .reports-table td:nth-child(4):before { content: "🚩 Issue: "; font-weight: bold; color: #6b7280; display: block; margin-bottom: 4px; }
+        /* Add labels before the data on mobile — skipped on the "No reported
+           issues!" empty-state row (.reports-empty-row) since it's a single
+           full-width cell, not actual date/reporter/recipe/issue data */
+        .reports-table tr:not(.reports-empty-row) td:nth-child(1):before { content: "📅 Date: "; font-weight: bold; color: #6b7280; }
+        .reports-table tr:not(.reports-empty-row) td:nth-child(2):before { content: "👤 Reporter: "; font-weight: bold; color: #6b7280; }
+        .reports-table tr:not(.reports-empty-row) td:nth-child(3):before { content: "🍲 Recipe: "; font-weight: bold; color: #6b7280; }
+        .reports-table tr:not(.reports-empty-row) td:nth-child(4):before { content: "🚩 Issue: "; font-weight: bold; color: #6b7280; display: block; margin-bottom: 4px; }
         
         /* Action Button Container */
         .reports-table td:nth-child(5) { 
@@ -129,6 +141,14 @@
     
     <div class="dashboard-widgets" style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; margin: 0 auto;">
 
+        <div class="pending-card widget-card" style="border-left: 5px solid #7c3aed; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <div>
+                <h3 style="margin: 0 0 4px 0; color: #5b21b6;">📋 Recipe Review</h3>
+                <p style="margin: 0; font-size: 12px; color: #6b7280;">Go through every unreviewed recipe one at a time — no more opening the editor for each one separately.</p>
+            </div>
+            <a href="review.html" style="background: #7c3aed; color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; text-decoration: none; white-space: nowrap;">Start Reviewing →</a>
+        </div>
+
         <div class="pending-card widget-card" style="border-left: 5px solid #8b5cf6;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0; color: #5b21b6;">🛡️ Recipe Approval Queue</h3>
@@ -136,6 +156,33 @@
             </div>
             <div id="loading" style="margin-top: 15px; color: #666; font-style: italic;">Checking for new recipes...</div>
             <div id="pending-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+
+        <div class="pending-card widget-card" style="border-left: 5px solid #16a34a;">
+            <h3 style="margin-top:0; color: #166534;">👪 Invite a Family Member</h3>
+            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
+                Works from anywhere, including your phone — no computer or Ollama-style local setup needed.
+                Creates a private signup link; the person sets their own password when they open it (nothing with admin access ever touches this page).
+            </p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                <input type="text" id="invite-name" placeholder="Full name (e.g. Aunt Sally)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="email" id="invite-email" placeholder="Email address" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+            </div>
+            <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #374151;">
+                <input type="checkbox" id="invite-is-admin" onchange="document.getElementById('invite-admin-hint').style.display = this.checked ? 'block' : 'none';" style="width: 16px; height: 16px; margin: 0;"> Make this person an Admin
+            </label>
+            <p id="invite-admin-hint" style="display:none; font-size: 11px; background:#fffbeb; border:1px solid #fcd34d; color:#92400e; padding:8px 10px; border-radius:6px; margin-top:6px;">
+                Admin access still needs one manual step after they sign up: add their UID to the <code>ADMIN_UIDS</code> list in scripts/dashboard.js, scripts/main.js, scripts/profile.js, edit-recipe.html, and firestore.rules, then redeploy. This just gets their account created.
+            </p>
+            <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite Link</button>
+            <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
+                <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Send this link to them (text, email, whatever's easiest):</p>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="invite-link-output" readonly style="flex:1; padding: 6px; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 12px; font-family: monospace;">
+                    <button onclick="copyInviteLink()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy</button>
+                </div>
+            </div>
+            <div id="pending-invites-list" style="margin-top: 15px;"></div>
         </div>
 
         <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">
@@ -164,8 +211,10 @@
                 </div>
             </div>
             <p style="font-size: 12px; color: #6b7280; margin: 8px 0 15px 0;">Counts one visit per signed-in family member per day (free, no Firebase billing plan needed).</p>
-            <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px;">
-                <p style="color:#9ca3af; font-size: 13px;">Loading usage stats...</p>
+            <div style="overflow-x: auto; padding-bottom: 4px;">
+                <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px; min-width: 460px;">
+                    <p style="color:#9ca3af; font-size: 13px;">Loading usage stats...</p>
+                </div>
             </div>
         </div>
 
@@ -183,7 +232,7 @@
                         </tr>
                     </thead>
                     <tbody id="reports-table-body">
-                        <tr><td colspan="5" style="text-align: center; padding: 15px; color: #6b7280;">Loading reports...</td></tr>
+                        <tr class="reports-empty-row"><td colspan="5" style="text-align: center; padding: 15px; color: #6b7280;">Loading reports...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -195,12 +244,16 @@
             </summary>
             
             <div style="display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap;">
+                <a href="review.html" style="background: #7c3aed; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center;">📋 Review Recipes</a>
                 <button id="btn-sync" onclick="syncViewCounts()" style="background: white; border: 1px solid #ccc; color: #555; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
                 <button onclick="openStatsModal()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📊 Recipe Counts by Category</button>
                 <button onclick="generateMegaIndex()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🌐 Update Homepage Index</button>
                 <button onclick="exportRecipes()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">💾 Backup Recipes</button>
             </div>
             
+            <!-- Keep this list in sync with submit.html's #category, edit-recipe.html's
+                 #e-category, SCAN_CATEGORIES in scripts/dashboard.js, and the folder
+                 buttons in homepage.html. -->
             <div id="admin-filters" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px;">
                 <button onclick="filterAdmin('All')" class="pill-btn btn-dark" style="padding: 4px 10px; font-size: 11px;">All</button>
                 <button onclick="filterAdmin('Appetizers')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Appetizers</button>
@@ -211,6 +264,7 @@
                 <button onclick="filterAdmin('Main')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Mains</button>
                 <button onclick="filterAdmin('Misc')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Misc</button>
                 <button onclick="filterAdmin('Sauces')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Sauces</button>
+                <button onclick="filterAdmin('Sides')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Sides & Veggies</button>
                 <button onclick="filterAdmin('Soups')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Soups</button>
             </div>
 
@@ -223,7 +277,11 @@
 
         <div class="pending-card widget-card"><h3 style="margin-top:0; color: #b45309;">🏆 Most Popular</h3><table style="width: 100%; margin-top: 10px;"><tbody id="leaderboard-list"><tr><td>Loading...</td></tr></tbody></table></div>
         
-        <div class="pending-card widget-card"><h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3><div id="activity-list" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div></div>
+        <div class="pending-card widget-card">
+            <h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3>
+            <p style="font-size: 12px; color: #6b7280; margin: -8px 0 10px 0;">Tap anyone to see everything they've viewed and cooked.</p>
+            <div id="activity-list" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
 
         <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #7c3aed;">
             <h3 style="margin-top: 0; color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h3>
@@ -269,14 +327,34 @@
 
         <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0a4d74;">
             <h3 style="margin-top: 0; color: #0a4d74;">🚀 Speed Upload Station</h3>
-            <textarea id="bulk-input" rows="5" placeholder='[{"name": "Moms Spaghetti"}]\n' style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px;"></textarea>
-            <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold;">🚀 Launch Recipes</button>
+            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">Paste an array of recipes in this exact shape — it's the same shape "Send to Speed Upload Station" above produces.</p>
+            <textarea id="bulk-input" rows="12" placeholder='[
+  {
+    "name": "Mom&#39;s Spaghetti",
+    "author": "Mom",
+    "tags": ["Main Dishes"],
+    "ingredients": ["1 lb ground beef", "1 jar marinara sauce", "1 lb spaghetti noodles"],
+    "instructions": ["Brown the beef.", "Add sauce and simmer 10 min.", "Boil noodles and combine."],
+    "notes": "Great with garlic bread."
+  }
+]' style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 16px; box-sizing: border-box;"></textarea>
+            <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%;">🚀 Launch Recipes</button>
         </div>
 
     </div> 
     
     <div style="margin-top: 40px; text-align: center;">
         <a href="index.html" style="color: #666; text-decoration: none;">← Back to Cookbook</a>
+    </div>
+
+    <a href="index.html" id="floating-back-btn">← Cookbook</a>
+
+    <div id="person-activity-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 id="person-activity-title" style="margin: 0 0 15px 0;">🕵️‍♀️ Activity</h2>
+            <div id="person-activity-body" style="overflow-y: auto; flex: 1;"></div>
+            <button onclick="closePersonActivityModal()" style="margin-top:15px; width:100%; padding:10px;">Close</button>
+        </div>
     </div>
 
     <div id="stats-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">

@@ -34,6 +34,9 @@
         <input type="text" id="e-author">
 
         <label>Category</label>
+        <!-- Keep this list in sync with submit.html's #category, the admin
+             filter pills + SCAN_CATEGORIES in scripts/dashboard.js, and the
+             folder buttons in homepage.html. -->
         <select id="e-category">
             <option value="Appetizers & Snacks">Appetizers & Snacks</option>
             <option value="Breads & Rolls">Breads & Rolls</option>
@@ -43,6 +46,7 @@
             <option value="Main Dishes">Main Dishes</option>
             <option value="Miscellaneous">Miscellaneous</option>
             <option value="Sauces, Dressings & Marinades">Sauces, Dressings & Marinades</option>
+            <option value="Sides & Veggies">Sides & Veggies</option>
             <option value="Soups & Salads">Soups & Salads</option>
         </select>
 
@@ -59,6 +63,9 @@
         <label>PDF / Google Drive Link <span class="hint">(optional — shows a "View PDF" button on the recipe)</span></label>
         <input type="url" id="e-drive-link" placeholder="https://drive.google.com/...">
         <p class="hint" style="margin-top:4px;">Auto-filled if you use the local Drive sync tool — leave blank unless you want to link a specific file yourself.</p>
+
+        <label>Original Recipe URL <span class="hint">(optional — different from the PDF/Drive link above)</span></label>
+        <input type="url" id="e-source-url" placeholder="https://example.com/the-recipe-i-adapted-this-from">
 
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
@@ -142,6 +149,7 @@
                     document.getElementById('e-author').value = data.author || "";
                     document.getElementById('e-notes').value = data.notes || "";
                     document.getElementById('e-drive-link').value = data.driveUrl || "";
+                    document.getElementById('e-source-url').value = data.sourceUrl || "";
 
                     // --- LOAD REVIEW STATUS ---
                     document.getElementById('e-reviewed').checked = data.reviewed === true;
@@ -213,6 +221,7 @@
             document.getElementById('e-author').value = v.author || "";
             document.getElementById('e-notes').value = v.notes || "";
             document.getElementById('e-drive-link').value = v.driveUrl || "";
+            document.getElementById('e-source-url').value = v.sourceUrl || "";
             document.getElementById('e-reviewed').checked = v.reviewed === true;
 
             const tagsList = v.tags || [];
@@ -242,6 +251,7 @@
             const instArray = document.getElementById('e-instructions').value.split('\n').map(l => l.trim()).filter(line => line !== '');
             const notes = document.getElementById('e-notes').value.trim();
             const driveUrl = document.getElementById('e-drive-link').value.trim();
+            const sourceUrl = document.getElementById('e-source-url').value.trim();
             const cat = document.getElementById('e-category').value;
 
             // GET CHECKBOX STATUS
@@ -277,6 +287,7 @@
                     recipeInstructions: instArray,
                     notes: notes,
                     driveUrl: driveUrl,
+                    sourceUrl: sourceUrl,
 
                     // SAVE VERIFICATION STATUS
                     reviewed: isReviewed,

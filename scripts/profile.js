@@ -16,6 +16,7 @@ const ADMIN_UIDS = [
 // STARTUP
 onAuthStateChanged(auth, async (user) => {
     if (user) {
+        console.log("👤 [PROFILE] Loading profile for:", user.email);
         // --- NEW: REVEAL ADMIN BUTTON ---
         if (ADMIN_UIDS.includes(user.uid)) {
             const adminBtn = document.getElementById('profile-admin-btn');
@@ -78,7 +79,7 @@ async function loadUserProfile(user) {
             }
         }
     } catch (e) {
-        console.error("Error loading user profile:", e);
+        console.error("🔥 [PROFILE] Error loading user profile:", e);
     }
 }
 
@@ -127,10 +128,11 @@ async function loadUserFavorites(user) {
             }
         });
 
+        console.log(`✅ [PROFILE] Loaded ${favorites.length} favorite(s).`);
         grid.innerHTML = html || "<p style='text-align:center; width:100%; color:#94a3b8;'>No favorite recipes found.</p>";
 
     } catch (error) {
-        console.error(error);
+        console.error("🔥 [PROFILE] Error loading favorites:", error);
         grid.innerHTML = "<p>Error loading favorites.</p>";
     }
 }

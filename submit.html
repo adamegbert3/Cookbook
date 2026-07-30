@@ -37,9 +37,13 @@
             <div class="input-group">
                 <label>Instructions (New line for each)</label>
                 <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix..." required></textarea>
+                <button type="button" onclick="autoSplitInstructions()" class="pill-btn btn-slate" style="margin-top:8px; font-size:0.75rem; padding:6px 12px;">✂️ Auto-split into steps</button>
             </div>
             <div class="input-group">
                 <label>Category</label>
+                <!-- Keep this list in sync with edit-recipe.html's #e-category,
+                     the admin filter pills + SCAN_CATEGORIES in scripts/dashboard.js,
+                     and the folder buttons in homepage.html. -->
                 <select id="category" class="form-input">
                     <option value="Appetizers & Snacks">Appetizers & Snacks</option>
                     <option value="Breads & Rolls">Breads & Rolls</option>
@@ -49,6 +53,7 @@
                     <option value="Main Dishes">Main Dishes</option>
                     <option value="Miscellaneous">Miscellaneous</option>
                     <option value="Sauces, Dressings & Marinades">Sauces, Dressings & Marinades</option>
+                    <option value="Sides & Veggies">Sides & Veggies</option>
                     <option value="Soups & Salads">Soups & Salads</option>
                 </select>
             </div>
@@ -61,6 +66,12 @@
             <div class="input-group">
                 <label>PDF / Google Drive Link (Optional)</label>
                 <input type="url" id="driveLink" class="form-input" placeholder="https://drive.google.com/...">
+            </div>
+
+            <div class="input-group">
+                <label>Original Recipe URL (Optional)</label>
+                <input type="url" id="sourceUrl" class="form-input" placeholder="https://example.com/the-recipe-i-adapted-this-from">
+                <p style="font-size:12px; color:#94a3b8; margin:4px 0 0 0;">If this came from a website/blog, link back to it — different from the PDF/Drive link above.</p>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px;">

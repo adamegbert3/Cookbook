@@ -14,7 +14,7 @@ const ADMIN_UIDS = [
 ];
 
 // Global Variables
-let currentActivityLimit = 50; 
+let currentActivityLimit = 200; // higher than before so the per-person Activity roster has enough history to be useful
 let allRecipeData = []; 
 
 onAuthStateChanged(auth, (user) => {
@@ -49,6 +49,7 @@ async function loadAdminDashboard() {
     loadPendingRecipes();
     loadReports();
     loadUsageStats();
+    loadPendingInvites();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -189,7 +190,7 @@ window.deleteRecipe = async function(id, recipeName) {
     try {
         await deleteDoc(doc(db, "recipes", id));
         allRecipeData = allRecipeData.filter(r => r.id !== id);
-        renderUnifiedManager(allRecipeData);
+        applyAdminFilters();
     } catch (error) { alert("Error deleting: " + error.message); }
 };
 
@@ -200,7 +201,7 @@ window.toggleVisibility = async function(id, currentStatus) {
         await updateDoc(doc(db, "recipes", id), { isHidden: newStatus });
         const recipe = allRecipeData.find(r => r.id === id);
         if(recipe) recipe.isHidden = newStatus;
-        renderUnifiedManager(allRecipeData); 
+        applyAdminFilters();
     } catch (error) { alert("Could not update visibility."); }
 };
 // ==========================================
@@ -228,9 +229,13 @@ window.quickTag = async function(id, tagString, currentlyHasTag) {
             }
         }
 
-        // 3. Re-render the table instantly to show the new button color
-        renderUnifiedManager(allRecipeData);
-        
+        // 3. Re-render the table instantly to show the new button color —
+        // through applyAdminFilters() (not a raw renderUnifiedManager call)
+        // so an active search/category filter doesn't get silently dropped
+        // right when you click a tag (that's what made this feel like it
+        // "kicked you out" of the list).
+        applyAdminFilters();
+
     } catch (error) {
         console.error("Error updating tag:", error);
         alert("Could not update tag: " + error.message);
@@ -259,40 +264,35 @@ window.syncViewCounts = async function() {
 };
 
 // HELPERS
+function tsToMillis(ts) { return ts && typeof ts.toDate === 'function' ? ts.toDate().getTime() : 0; }
+function tsToStr(ts) {
+    if (!ts || typeof ts.toDate !== 'function') return "Recently";
+    const date = ts.toDate();
+    return date.toLocaleDateString() + ", " + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+}
+
+// key -> { key, name, views: [...], cooks: [...] } — filled by renderActivityRoster,
+// read by openPersonActivity when a roster row is clicked.
+let personActivityMap = {};
+
 async function loadAnalytics(allRecipes) {
-    const activityList = document.getElementById('activity-list');
     const leaderboardList = document.getElementById('leaderboard-list');
     try {
         const q = query(collection(db, "recipe_views"), orderBy("timestamp", "desc"), limit(currentActivityLimit));
         const snapshot = await getDocs(q);
-        
-        let activityHtml = "";
-        const viewCounts = {}; 
 
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            let timeStr = "Recently";
-            if (data.timestamp) {
-                const date = data.timestamp.toDate();
-                timeStr = date.toLocaleDateString() + ", " + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-            }
-            activityHtml += `
-                <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
-                    <div style="margin-bottom: 4px;">
-                        <strong>${data.viewer}</strong> viewed 
-                        <a href="edit-recipe.html?id=${data.recipeId}" style="color: #10b981; font-weight: bold; text-decoration: none;">
-                            ${data.recipeTitle}
-                        </a>
-                    </div>
-                    <div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>
-                </div>`;
+        const viewCounts = {};
+        const viewDocs = [];
+
+        snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            viewDocs.push(data);
             const title = data.recipeTitle || "Unknown Recipe";
             viewCounts[title] = (viewCounts[title] || 0) + 1;
         });
 
-        if(activityList) activityList.innerHTML = activityHtml || "<p>No activity yet.</p>";
         if(leaderboardList) {
-            const sortedRecipes = Object.entries(viewCounts).sort(([,countA], [,countB]) => countB - countA).slice(0, 5); 
+            const sortedRecipes = Object.entries(viewCounts).sort(([,countA], [,countB]) => countB - countA).slice(0, 5);
             let lbHtml = "";
             sortedRecipes.forEach(([title, count]) => {
                 lbHtml += `<tr><td style="padding: 8px 5px; border-bottom: 1px solid #eee;">${title}</td><td style="font-weight: bold; border-bottom: 1px solid #eee;">${count}</td></tr>`;
@@ -300,8 +300,110 @@ async function loadAnalytics(allRecipes) {
             leaderboardList.innerHTML = lbHtml || "<tr><td>No data</td></tr>";
         }
         renderDustyRecipes(allRecipes, viewCounts);
+        await renderActivityRoster(viewDocs, allRecipes);
     } catch (error) { console.error("Error loading analytics:", error); }
 }
+
+// ==========================================
+// ACTIVITY ROSTER (who's been doing what, grouped per person instead of
+// one flat "X viewed Y" feed) — click a person to see their full history.
+// ==========================================
+async function renderActivityRoster(viewDocs, allRecipes) {
+    const activityList = document.getElementById('activity-list');
+    if (!activityList) return;
+
+    let cookDocs = [];
+    try {
+        const cookSnap = await getDocs(query(collection(db, "global_cooks"), orderBy("timestamp", "desc"), limit(currentActivityLimit)));
+        cookSnap.forEach(d => cookDocs.push(d.data()));
+    } catch (e) { console.error("Could not load cook history for the activity roster:", e); }
+
+    // Group per person — prefer uid (added to recipe_views going forward),
+    // fall back to their display name for older records that predate it.
+    const personKey = (uid, name) => uid || `name:${name || "Guest"}`;
+    const people = {};
+
+    viewDocs.forEach(v => {
+        const key = personKey(v.uid, v.viewer);
+        if (!people[key]) people[key] = { key, name: v.viewer || "Guest", views: [], cooks: [] };
+        if (v.viewer) people[key].name = v.viewer;
+        people[key].views.push(v);
+    });
+
+    cookDocs.forEach(c => {
+        const key = personKey(c.uid, c.chef);
+        if (!people[key]) people[key] = { key, name: c.chef || "Family Member", views: [], cooks: [] };
+        if (c.chef) people[key].name = c.chef;
+        people[key].cooks.push(c);
+    });
+
+    const roster = Object.values(people).map(p => {
+        const lastViewMillis = p.views[0] ? tsToMillis(p.views[0].timestamp) : 0;
+        const lastCookMillis = p.cooks[0] ? tsToMillis(p.cooks[0].timestamp) : 0;
+        return { ...p, lastViewMillis, lastCookMillis, lastActivityMillis: Math.max(lastViewMillis, lastCookMillis) };
+    }).sort((a, b) => b.lastActivityMillis - a.lastActivityMillis);
+
+    personActivityMap = {};
+    roster.forEach(p => { personActivityMap[p.key] = p; });
+
+    if (roster.length === 0) {
+        activityList.innerHTML = "<p>No activity yet.</p>";
+        return;
+    }
+
+    activityList.innerHTML = roster.map(p => {
+        const lastIsView = p.lastViewMillis >= p.lastCookMillis;
+        let lastActivityText = "No recent activity";
+        if (p.lastActivityMillis > 0) {
+            if (lastIsView) {
+                lastActivityText = `👀 viewed <strong>${p.views[0].recipeTitle || "a recipe"}</strong>`;
+            } else {
+                const recipeName = (allRecipes.find(r => r.id === p.cooks[0].recipeId) || {}).name;
+                lastActivityText = `🎉 cooked <strong>${recipeName || "a recipe"}</strong>`;
+            }
+        }
+        const timeStr = p.lastActivityMillis ? tsToStr(lastIsView ? p.views[0].timestamp : p.cooks[0].timestamp) : "";
+
+        return `
+            <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; cursor: pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                    <strong>${p.name}</strong>
+                    <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'}</span>
+                </div>
+                <div style="color: #6b7280; margin-top: 2px;">${lastActivityText}</div>
+                <div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>
+            </div>`;
+    }).join('');
+}
+
+window.openPersonActivity = function(key) {
+    const person = personActivityMap[key];
+    const modal = document.getElementById('person-activity-modal');
+    const titleEl = document.getElementById('person-activity-title');
+    const bodyEl = document.getElementById('person-activity-body');
+    if (!person || !modal) return;
+
+    titleEl.innerText = `🕵️‍♀️ ${person.name}`;
+
+    const combined = [
+        ...person.views.map(v => ({ type: 'view', title: v.recipeTitle || 'a recipe', ts: v.timestamp })),
+        ...person.cooks.map(c => ({ type: 'cook', title: (allRecipeData.find(r => r.id === c.recipeId) || {}).name || 'a recipe', ts: c.timestamp }))
+    ].sort((a, b) => tsToMillis(b.ts) - tsToMillis(a.ts));
+
+    bodyEl.innerHTML = combined.length
+        ? combined.map(item => `
+            <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
+                <strong>${item.type === 'cook' ? '🎉 Cooked' : '👀 Viewed'}</strong> ${item.title}
+                <div style="color: #9ca3af; font-size: 11px;">🕒 ${tsToStr(item.ts)}</div>
+            </div>`).join('')
+        : "<p>No activity found.</p>";
+
+    modal.style.display = 'flex';
+};
+window.closePersonActivityModal = function() {
+    const modal = document.getElementById('person-activity-modal');
+    if (modal) modal.style.display = 'none';
+};
 
 async function loadPendingRecipes() {
     const loadingDiv = document.getElementById('loading');
@@ -364,6 +466,84 @@ window.approveRecipe = async function(id) {
 window.rejectRecipe = async function(id) {
     if(confirm("Delete?")) { await deleteDoc(doc(db, "pending_recipes", id)); document.getElementById(`card-${id}`).remove(); }
 };
+// ==========================================
+// FAMILY MEMBER INVITES (self-service signup — no admin credentials ever
+// touch the browser; the invited person creates their own account via
+// invite.html + scripts/invite-signup.js)
+// ==========================================
+window.createInvite = async function() {
+    const nameInput = document.getElementById('invite-name');
+    const emailInput = document.getElementById('invite-email');
+    const isAdminCheckbox = document.getElementById('invite-is-admin');
+
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim().toLowerCase();
+    if (!name || !email) return alert("Name and email are both required.");
+
+    console.log(`👪 [INVITE] Creating invite for ${name} <${email}>...`);
+
+    try {
+        const inviteRef = await addDoc(collection(db, "invites"), {
+            name,
+            email,
+            role: isAdminCheckbox.checked ? 'admin' : 'user',
+            used: false,
+            createdAt: serverTimestamp()
+        });
+
+        const basePath = location.pathname.replace(/admin\.html$/, '');
+        const link = `${location.origin}${basePath}invite.html?id=${inviteRef.id}`;
+        document.getElementById('invite-link-output').value = link;
+        document.getElementById('invite-result').style.display = 'block';
+
+        console.log("✅ [INVITE] Created:", inviteRef.id);
+        nameInput.value = "";
+        emailInput.value = "";
+        isAdminCheckbox.checked = false;
+        document.getElementById('invite-admin-hint').style.display = 'none';
+        loadPendingInvites();
+    } catch (e) {
+        console.error("🔥 [INVITE] Could not create invite:", e);
+        alert("Could not create invite: " + e.message);
+    }
+};
+
+window.copyInviteLink = function() {
+    const input = document.getElementById('invite-link-output');
+    input.select();
+    navigator.clipboard.writeText(input.value).then(() => alert("Link copied!"));
+};
+
+window.loadPendingInvites = async function() {
+    const list = document.getElementById('pending-invites-list');
+    if (!list) return;
+    try {
+        const snap = await getDocs(query(collection(db, "invites"), orderBy("createdAt", "desc")));
+        const pending = [];
+        snap.forEach(d => { const data = d.data(); if (!data.used) pending.push({ id: d.id, ...data }); });
+
+        if (pending.length === 0) { list.innerHTML = ''; return; }
+
+        list.innerHTML = `<p style="font-size:11px; color:#6b7280; margin-bottom:6px;">Pending invites (not signed up yet):</p>` +
+            pending.map(inv => `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px;">
+                    <span>${inv.name} (${inv.email})${inv.role === 'admin' ? ' <strong>· Admin</strong>' : ''}</span>
+                    <button onclick="revokeInvite('${inv.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; white-space:nowrap;">Revoke</button>
+                </div>`).join('');
+    } catch (e) {
+        console.error("🔥 [INVITE] Could not load pending invites:", e);
+    }
+};
+
+window.revokeInvite = async function(id) {
+    if (!confirm("Revoke this invite? The link will stop working.")) return;
+    try {
+        await deleteDoc(doc(db, "invites", id));
+        console.log("🗑️ [INVITE] Revoked:", id);
+        loadPendingInvites();
+    } catch (e) { alert("Could not revoke: " + e.message); }
+};
+
 window.postAnnouncement = async function() {
     const input = document.getElementById('announce-input');
     if (input.value) { await addDoc(collection(db, "announcements"), { message: input.value, type: "alert", timestamp: serverTimestamp() }); alert("Posted!"); input.value=""; }
@@ -621,7 +801,7 @@ window.loadReportedIssues = async function() {
         const snap = await getDocs(collection(db, "recipe_reports")); 
         
         if (snap.empty) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
+            tbody.innerHTML = `<tr class="reports-empty-row"><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
             return;
         }
         
@@ -666,7 +846,7 @@ window.loadReportedIssues = async function() {
         tbody.innerHTML = html;
     } catch (e) {
         console.error("Error loading reports:", e);
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: red;">Error loading reports.</td></tr>`;
+        tbody.innerHTML = `<tr class="reports-empty-row"><td colspan="5" style="text-align:center; padding: 15px; color: red;">Error loading reports.</td></tr>`;
     }
 };
 
@@ -681,7 +861,7 @@ window.resolveReport = async function(reportId) {
 
         const tbody = document.getElementById('reports-table-body');
         if (tbody && tbody.children.length === 0) {
-             tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
+             tbody.innerHTML = `<tr class="reports-empty-row"><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
         }
     } catch (e) {
         alert("Error resolving report: " + e.message);
@@ -694,9 +874,12 @@ window.resolveReport = async function(reportId) {
 // leaves this computer. Only works when Ollama is running on the same
 // machine you're viewing this page from. See local-tools/scan-recipe/README.md.
 // ==========================================
+// Keep this list in sync with submit.html's #category, edit-recipe.html's
+// #e-category, the admin filter pills above, and the folder buttons in
+// homepage.html.
 const SCAN_CATEGORIES = [
     'Appetizers & Snacks', 'Breads & Rolls', 'Breakfast', 'Desserts', 'Dutch Oven',
-    'Main Dishes', 'Miscellaneous', 'Sauces, Dressings & Marinades', 'Soups & Salads'
+    'Main Dishes', 'Miscellaneous', 'Sauces, Dressings & Marinades', 'Sides & Veggies', 'Soups & Salads'
 ];
 
 function fileToBase64(file) {

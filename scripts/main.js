@@ -229,6 +229,7 @@ function getCategoryClass(category) {
     if (cat.includes('bread') || cat.includes('roll')) return 'border-brown';
     if (cat.includes('soup') || cat.includes('salad')) return 'border-purple';
     if (cat.includes('sauce') || cat.includes('dressing') || cat.includes('marinade')) return 'border-teal';
+    if (cat.includes('side') || cat.includes('veggie') || cat.includes('vegetable')) return 'border-green';
     if (cat.includes('dutch')) return 'border-slate';
     if (cat.includes('misc')) return 'border-gray';
     
@@ -592,7 +593,32 @@ window.applyHomepageFilters = function() {
     }
 
     renderLocalList(filtered);
+    updateActiveSearchChip(term);
 };
+
+// Keeps the active search term visible on the page (and clearable) instead
+// of it disappearing into a closed overlay with no trace once you search.
+function updateActiveSearchChip(term) {
+    const chip = document.getElementById('active-search-chip');
+    const chipTerm = document.getElementById('active-search-term');
+    if (!chip || !chipTerm) return;
+
+    if (term) {
+        chipTerm.innerText = term;
+        chip.classList.remove('hidden');
+    } else {
+        chip.classList.add('hidden');
+    }
+}
+
+window.clearHomepageSearch = function() {
+    const input = document.getElementById('searchbar');
+    if (input) input.value = "";
+    console.log("🔍 [SEARCH] Cleared.");
+    applyHomepageFilters();
+};
+
+let searchDebounceTimer = null;
 
 function setupSearch() {
     const openBtn = document.getElementById('header-search-btn');
@@ -600,16 +626,25 @@ function setupSearch() {
     const closeBtn = document.getElementById('close-search');
     const form = document.getElementById('search-form');
     const input = document.getElementById('searchbar');
-    
+
     if (!openBtn) return;
     openBtn.onclick = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
     if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
-    
+
+    // Live filtering as you type (debounced), so results update in real time
+    // instead of only after hitting GO.
+    if (input) input.addEventListener('input', () => {
+        clearTimeout(searchDebounceTimer);
+        searchDebounceTimer = setTimeout(() => applyHomepageFilters(), 250);
+    });
+
     if (form) form.onsubmit = (e) => {
         e.preventDefault();
-        applyHomepageFilters(); 
+        console.log("🔍 [SEARCH] Searching for:", input.value.trim());
+        applyHomepageFilters();
         overlay.classList.add('hidden');
-        input.value = "";
+        // Keep the typed term in the box (and shown in the chip below) —
+        // clearing it made it impossible to tell what you'd searched for.
     }
 }
 
@@ -678,18 +713,24 @@ async function loadHomepageMenu(user) {
                     data.meals.forEach(meal => {
                         const uniqueId = meal.addedAt || 0;
                         const safeName = (meal.name || "Unknown").replace(/'/g, "\\'");
-                        const recipeId = meal.id; 
+                        const recipeId = meal.id;
+
+                        // Custom meals (leftovers, takeout, etc) have no recipe id to
+                        // link to — show them as plain text instead of a broken link.
+                        const nameHtml = recipeId
+                            ? `<a href="recipe.html?id=${recipeId}" style="text-decoration: none; flex-grow: 1; overflow: hidden; margin-right: 8px;">
+                                   <span style="font-size: 13px; color: var(--primary); font-weight: 600; text-align: left; line-height: 1.3; display: block; white-space: normal;">
+                                       ${meal.name}
+                                   </span>
+                               </a>`
+                            : `<span style="font-size: 13px; color: var(--primary); font-weight: 600; text-align: left; line-height: 1.3; flex-grow: 1; overflow: hidden; margin-right: 8px; white-space: normal;">
+                                   🍽️ ${meal.name}
+                               </span>`;
 
                         html += `
                         <div style="background: var(--bg-card); margin-top: 4px; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; box-shadow: var(--shadow-sm);">
-                            
-                            <a href="recipe.html?id=${recipeId}" style="text-decoration: none; flex-grow: 1; overflow: hidden; margin-right: 8px;">
-                                <span style="font-size: 13px; color: var(--primary); font-weight: 600; text-align: left; line-height: 1.3; display: block; white-space: normal;">
-                                    ${meal.name}
-                                </span>
-                            </a>
-
-                            <button onclick="deleteMealFromMenu('${dayFull}', ${uniqueId}, '${safeName}')" 
+                            ${nameHtml}
+                            <button onclick="deleteMealFromMenu('${dayFull}', ${uniqueId}, '${safeName}')"
                                   style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 18px; font-weight: bold; padding: 0; line-height: 1;">
                                 &times;
                             </button>
@@ -740,6 +781,46 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
         console.error("Delete Error:", e);
         alert("Could not delete item.");
         if(box) box.style.opacity = "1";
+    }
+};
+
+// --- CUSTOM (NON-RECIPE) WEEKLY MEALS — leftovers, takeout, etc ---
+window.openCustomMealModal = function() {
+    if (!auth.currentUser) return alert("Please sign in to save menus!");
+    const modal = document.getElementById('customMealModal');
+    if (modal) modal.classList.remove('hidden');
+};
+
+window.closeCustomMealModal = function() {
+    const modal = document.getElementById('customMealModal');
+    if (modal) modal.classList.add('hidden');
+    const nameInput = document.getElementById('customMealName');
+    if (nameInput) nameInput.value = "";
+};
+
+window.confirmAddCustomMeal = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("You must be logged in.");
+
+    const name = document.getElementById('customMealName').value.trim();
+    if (!name) return alert("Give this meal a name first.");
+
+    const day = document.getElementById('customMealDay').value;
+    const mealType = document.getElementById('customMealType').value;
+
+    console.log(`🍽️ [CUSTOM MEAL] Adding "${name}" to ${day} (${mealType})...`);
+
+    try {
+        const mealData = { id: null, name, ingredients: [], type: mealType, addedAt: Date.now() };
+        const docRef = doc(db, "users", user.uid, "weekly_plan", day);
+        await setDoc(docRef, { meals: arrayUnion(mealData) }, { merge: true });
+
+        console.log("✅ [CUSTOM MEAL] Saved.");
+        closeCustomMealModal();
+        loadHomepageMenu(user);
+    } catch (e) {
+        console.error("🔥 [CUSTOM MEAL] Error:", e);
+        alert("Could not save this meal.");
     }
 };
 
