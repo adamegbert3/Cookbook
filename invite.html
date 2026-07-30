@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join the Cookbook</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+</head>
+<body class="login-page">
+    <div class="login-card">
+        <div class="login-header">
+            <img src="images/logo.jpg" style="height: 60px; margin-bottom: 10px;" alt="Logo">
+            <h1 id="invite-heading">You're Invited!</h1>
+            <p class="subtitle" id="invite-subtitle">Loading your invite...</p>
+        </div>
+
+        <form id="invite-form" class="hidden">
+            <div class="input-group">
+                <label>Name</label>
+                <input type="text" id="invite-name-display" class="form-input" disabled>
+            </div>
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" id="invite-email-display" class="form-input" disabled>
+            </div>
+            <div class="input-group">
+                <label>Choose a Password</label>
+                <input type="password" id="invite-password" class="form-input" placeholder="At least 6 characters" required minlength="6">
+            </div>
+            <div class="input-group">
+                <label>Confirm Password</label>
+                <input type="password" id="invite-password-confirm" class="form-input" placeholder="••••••••" required minlength="6">
+            </div>
+
+            <p id="invite-error" style="color: red; font-size: 14px; text-align: center; min-height: 20px;"></p>
+
+            <button id="invite-submit-btn" type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center; margin-top: 10px;">
+                Create My Account
+            </button>
+        </form>
+
+        <div id="invite-invalid" class="hidden" style="text-align: center;">
+            <p style="color: #ef4444;">This invite link isn't valid — it may have already been used or revoked.</p>
+            <p class="subtitle">Ask whoever sent it to you for a fresh link.</p>
+        </div>
+    </div>
+
+    <script type="module" src="scripts/invite-signup.js"></script>
+</body>
+</html>

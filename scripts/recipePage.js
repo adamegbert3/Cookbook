@@ -213,24 +213,30 @@ async function loadRecipe() {
         return;
     }
 
+    console.log("🍳 [RECIPE] Loading recipe:", recipeId);
+
     try {
         const docRef = doc(db, "recipes", recipeId);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
             const fullData = { id: recipeId, ...docSnap.data() };
+            console.log("✅ [RECIPE] Loaded:", fullData.name || fullData.n);
             originalRecipeData = fullData;
             localStorage.setItem("currentRecipeData", JSON.stringify(fullData));
             renderRecipeHTML(fullData);
             loadCookStats();
             logViewToDatabase(fullData);
             applyPersonalizationIfAny(fullData);
+            maybeShowCookPrompt();
         } else {
             const offlineCopy = getOfflineRecipe(recipeId);
             if (offlineCopy) {
                 renderRecipeHTML(offlineCopy);
+                maybeShowCookPrompt();
             } else if(localData && localData.id === recipeId) {
                 renderRecipeHTML(localData);
+                maybeShowCookPrompt();
             } else {
                 recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
             }
@@ -242,10 +248,12 @@ async function loadRecipe() {
         const offlineCopy = getOfflineRecipe(recipeId);
         if (offlineCopy) {
             renderRecipeHTML(offlineCopy);
+            maybeShowCookPrompt();
             return;
         }
         if (localData && localData.id === recipeId && (localData.ingredients || localData.recipeIngredient)) {
             renderRecipeHTML(localData);
+            maybeShowCookPrompt();
             return;
         }
 
@@ -281,71 +289,103 @@ function applyPersonalizationIfAny(baseRecipe) {
     });
 }
 
-function buildPersonalizeModal() {
-    if (document.getElementById('personalize-modal')) return;
+// Edited in place on the page itself (swap the rendered ingredient/instruction
+// lists for textareas right where they are), not a popup modal — the modal
+// was cramped on phones.
+let editModeActive = false;
 
-    const modal = document.createElement('div');
-    modal.id = 'personalize-modal';
-    modal.className = 'modal hidden';
-    modal.style.display = 'none';
-    modal.innerHTML = `
-        <div class="modal-content" style="max-width:500px; text-align:left;">
-            <button onclick="closePersonalizeModal()" class="close-btn">✕</button>
-            <h2 style="margin-top:0; text-align:center;">✏️ Personalize This Recipe</h2>
-            <p style="font-size:12px; color:#94a3b8; text-align:center; margin-top:-10px;">Only you will see these changes — everyone else still sees the original.</p>
+const PERSONALIZE_BTN_HTML = `<button onclick="toggleEditMode()" class="pill-btn btn-slate js-personalize-btn">✏️ Personalize This Recipe</button>`;
 
-            <label style="display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;">Ingredients (one per line)</label>
-            <textarea id="personalize-ingredients" class="form-input" rows="6"></textarea>
-
-            <label style="display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;">Instructions (one step per line)</label>
-            <textarea id="personalize-instructions" class="form-input" rows="6"></textarea>
-
-            <label style="display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;">Notes</label>
-            <textarea id="personalize-notes" class="form-input" rows="2"></textarea>
-
-            <div style="display:flex; gap:10px; margin-top:20px;">
-                <button onclick="savePersonalization()" class="pill-btn btn-teal" style="flex:1; justify-content:center;">💾 Save My Version</button>
-                <button onclick="revertPersonalization()" class="pill-btn btn-slate" style="justify-content:center;">↩️ Revert</button>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
+function setPersonalizeSlotHtml(html) {
+    const slot = document.getElementById('personalize-slot');
+    if (slot) slot.innerHTML = html;
 }
 
-window.openPersonalizeModal = function() {
+window.toggleEditMode = function() {
     if (!originalRecipeData) return alert("Recipe hasn't finished loading yet — try again in a moment.");
     if (!auth.currentUser) return alert("Please log in to personalize recipes.");
 
-    buildPersonalizeModal();
-
-    const current = lastRenderedRecipe || originalRecipeData;
-    const rawIng = current.ingredients || current.recipeIngredient || [];
-    const rawInst = current.instructions || current.recipeInstructions || [];
-
-    document.getElementById('personalize-ingredients').value = Array.isArray(rawIng) ? rawIng.join('\n') : (rawIng || '');
-    document.getElementById('personalize-instructions').value = Array.isArray(rawInst) ? rawInst.join('\n') : (rawInst || '');
-    document.getElementById('personalize-notes').value = current.notes || '';
-
-    const modal = document.getElementById('personalize-modal');
-    modal.classList.remove('hidden');
-    modal.style.display = 'flex';
-};
-
-window.closePersonalizeModal = function() {
-    const modal = document.getElementById('personalize-modal');
-    if (modal) {
-        modal.classList.add('hidden');
-        modal.style.display = 'none';
+    console.log(`✏️ [PERSONALIZE] ${editModeActive ? 'Exiting' : 'Entering'} edit mode.`);
+    if (editModeActive) {
+        exitEditMode();
+    } else {
+        enterEditMode();
     }
 };
 
-window.savePersonalization = async function() {
+function enterEditMode() {
+    editModeActive = true;
+    const current = lastRenderedRecipe || originalRecipeData;
+
+    const rawIng = current.ingredients || current.recipeIngredient || [];
+    const rawInst = current.instructions || current.recipeInstructions || [];
+    const ingArr = Array.isArray(rawIng) ? rawIng : String(rawIng || '').split('\n').filter(Boolean);
+    const instArr = Array.isArray(rawInst) ? rawInst : String(rawInst || '').split('\n').filter(Boolean);
+
+    // Ingredients: swap the rendered <li>s for one editable textarea in place
+    const ingList = document.getElementById('ingredient-list');
+    if (ingList) {
+        ingList.innerHTML = '';
+        const li = document.createElement('li');
+        li.className = 'inline-edit-li';
+        const ta = document.createElement('textarea');
+        ta.id = 'edit-ingredients-inline';
+        ta.className = 'form-input';
+        ta.rows = Math.max(6, ingArr.length);
+        ta.value = ingArr.join('\n');
+        li.appendChild(ta);
+        ingList.appendChild(li);
+    }
+
+    // Instructions: swap the rendered <ol> for one editable textarea
+    const instContainer = document.getElementById('instructions-container');
+    if (instContainer) {
+        instContainer.innerHTML = '';
+        const ta = document.createElement('textarea');
+        ta.id = 'edit-instructions-inline';
+        ta.className = 'form-input';
+        ta.rows = Math.max(6, instArr.length);
+        ta.value = instArr.join('\n');
+        instContainer.appendChild(ta);
+
+        // Notes go right under the instructions edit box
+        const notesLabel = document.createElement('label');
+        notesLabel.style.cssText = 'display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;';
+        notesLabel.innerText = 'Notes';
+        const notesTa = document.createElement('textarea');
+        notesTa.id = 'edit-notes-inline';
+        notesTa.className = 'form-input';
+        notesTa.rows = 2;
+        notesTa.value = current.notes || '';
+        instContainer.appendChild(notesLabel);
+        instContainer.appendChild(notesTa);
+    }
+
+    const revertBtnHtml = current.isPersonalized
+        ? `<button onclick="revertPersonalization()" class="pill-btn btn-slate">↩️ Revert to Original</button>`
+        : '';
+    setPersonalizeSlotHtml(`
+        <button onclick="saveInlinePersonalization()" class="pill-btn btn-teal">💾 Save My Version</button>
+        <button onclick="toggleEditMode()" class="pill-btn btn-slate">✖️ Cancel</button>
+        ${revertBtnHtml}
+    `);
+
+    document.getElementById('edit-ingredients-inline')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function exitEditMode() {
+    editModeActive = false;
+    setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
+    renderRecipeHTML(lastRenderedRecipe || originalRecipeData);
+}
+
+window.saveInlinePersonalization = async function() {
     const user = auth.currentUser;
     if (!user) return alert("Please log in.");
 
-    const ingArray = document.getElementById('personalize-ingredients').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const instArray = document.getElementById('personalize-instructions').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const notes = document.getElementById('personalize-notes').value.trim();
+    const ingArray = document.getElementById('edit-ingredients-inline').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const instArray = document.getElementById('edit-instructions-inline').value.split('\n').map(s => s.trim()).filter(Boolean);
+    const notes = document.getElementById('edit-notes-inline').value.trim();
 
     try {
         await setDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId), {
@@ -355,10 +395,12 @@ window.savePersonalization = async function() {
             updatedAt: serverTimestamp()
         });
 
+        console.log("✅ [PERSONALIZE] Saved personal version for recipe:", recipeId);
+        editModeActive = false;
+        setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
         renderRecipeHTML({ ...originalRecipeData, ingredients: ingArray, instructions: instArray, notes, isPersonalized: true });
-        closePersonalizeModal();
     } catch (e) {
-        console.error(e);
+        console.error("🔥 [PERSONALIZE] Save failed:", e);
         alert("Could not save your changes: " + e.message);
     }
 };
@@ -370,10 +412,12 @@ window.revertPersonalization = async function() {
 
     try {
         await deleteDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId));
+        console.log("↩️ [PERSONALIZE] Reverted to the original recipe.");
+        editModeActive = false;
+        setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
         renderRecipeHTML(originalRecipeData);
-        closePersonalizeModal();
     } catch (e) {
-        console.error(e);
+        console.error("🔥 [PERSONALIZE] Revert failed:", e);
         alert("Could not revert: " + e.message);
     }
 };
@@ -400,11 +444,13 @@ async function logViewToDatabase(recipeData) {
             recipeId: recipeData.id,
             recipeTitle: recipeData.name || recipeData.n,
             timestamp: serverTimestamp(),
-            viewer: viewerName 
+            viewer: viewerName,
+            uid: user ? user.uid : null // lets the admin Activity roster group views per person reliably
         });
 
+        console.log(`👀 [VIEW LOG] Logged view of "${recipeData.name || recipeData.n}" by ${viewerName}.`);
         sessionStorage.setItem(sessionKey, "true");
-    } catch (e) { console.error("Could not log view:", e); }
+    } catch (e) { console.error("🔥 [VIEW LOG] Could not log view:", e); }
 }
 
 let currentScaleFactor = 1;
@@ -412,11 +458,13 @@ let currentElevationBand = localStorage.getItem('altitudeElevationBand') || null
 let lastRenderedRecipe = null;
 
 window.setRecipeScale = function(factor) {
+    if (editModeActive) return alert("Finish or cancel your edits first.");
     currentScaleFactor = factor;
     if (lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
 };
 
 window.setAltitudeBand = function(band) {
+    if (editModeActive) return alert("Finish or cancel your edits first.");
     currentElevationBand = band;
     localStorage.setItem('altitudeElevationBand', band || '');
     if (lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
@@ -466,9 +514,11 @@ function renderRecipeHTML(recipe) {
     statusBarHtml += `</div>`;
 
     const driveUrl = recipe.driveUrl || recipe.autoDriveUrl;
-    const driveLinkHtml = driveUrl
-        ? `<div style="text-align:center; margin-bottom:16px;" class="no-print">
-             <a href="${driveUrl}" target="_blank" rel="noopener" class="pill-btn btn-blue" style="text-decoration:none;">📄 View PDF / Google Drive Copy</a>
+    const sourceUrl = recipe.sourceUrl;
+    const driveLinkHtml = (driveUrl || sourceUrl)
+        ? `<div style="text-align:center; margin-bottom:16px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;" class="no-print">
+             ${driveUrl ? `<a href="${driveUrl}" target="_blank" rel="noopener" class="pill-btn btn-blue" style="text-decoration:none;">📄 View PDF / Google Drive Copy</a>` : ""}
+             ${sourceUrl ? `<a href="${sourceUrl}" target="_blank" rel="noopener" class="pill-btn btn-slate" style="text-decoration:none;">🔗 View Original Recipe</a>` : ""}
            </div>`
         : "";
 
@@ -520,6 +570,7 @@ function renderRecipeHTML(recipe) {
 
     const ingredientsArr = Array.isArray(scaledIng) ? scaledIng : [];
     const showStepIngredients = localStorage.getItem('showStepIngredients') === 'true';
+    const showSubstitutions = localStorage.getItem('showSubstitutions') === 'true';
 
     let instHtml = "";
     if (Array.isArray(rawInst)) {
@@ -559,7 +610,7 @@ function renderRecipeHTML(recipe) {
         <h3 class="section-header">Ingredients</h3>
         <p class="no-print" style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
         ${altitudeBannerHtml}
-        <ul id="ingredient-list">${ingHtml}</ul>
+        <ul id="ingredient-list" class="${showSubstitutions ? '' : 'hide-substitutions'}">${ingHtml}</ul>
 
         <h3 class="section-header">Instructions</h3>
         <div id="instructions-container" class="${showStepIngredients ? '' : 'hide-step-ingredients'}">${instHtml}</div>
@@ -580,6 +631,7 @@ function renderRecipeHTML(recipe) {
     const altitudeSlot = document.getElementById('kt-altitude-slot');
     if (altitudeSlot) altitudeSlot.innerHTML = altitudeSlotHtml;
     toggleInlineIngredients(showStepIngredients);
+    toggleSubstitutions(showSubstitutions);
 
     // Trigger Mobile Tools layout setup
     setupMobileKitchenTools();
@@ -629,6 +681,22 @@ window.toggleInlineIngredients = function(forceState) {
     if (cookIngBox) cookIngBox.style.display = state ? 'flex' : 'none';
 };
 
+// --- Ingredient substitution hints on/off toggle (off by default — some
+// people find the "No buttermilk? Try:" lines under every other ingredient
+// noisy when they're not looking for a swap) ---
+window.toggleSubstitutions = function(forceState) {
+    const state = typeof forceState === 'boolean' ? forceState : !(localStorage.getItem('showSubstitutions') === 'true');
+    localStorage.setItem('showSubstitutions', state);
+
+    document.querySelectorAll('.js-sub-toggle-btn').forEach(b => {
+        b.innerText = `🔄 Substitution Hints: ${state ? 'ON' : 'OFF'}`;
+        b.classList.toggle('cook-mode-active', state);
+    });
+
+    const ingList = document.getElementById('ingredient-list');
+    if (ingList) ingList.classList.toggle('hide-substitutions', !state);
+};
+
 // ==========================================
 // FULLSCREEN SWIPEABLE COOK MODE
 // ==========================================
@@ -650,6 +718,7 @@ window.startCookMode = function() {
 
     if (cookModeSteps.length === 0) return alert("No instructions found for this recipe yet.");
 
+    console.log(`👨‍🍳 [COOK MODE] Starting with ${cookModeSteps.length} step(s).`);
     cookModeIndex = 0;
     buildCookModeOverlay(current.name || current.n || "Recipe");
     renderCookModeStep();
@@ -664,6 +733,7 @@ window.startCookMode = function() {
 };
 
 window.exitCookMode = function() {
+    console.log("👨‍🍳 [COOK MODE] Exiting.");
     const overlay = document.getElementById('cook-mode-overlay');
     if (overlay) overlay.style.display = 'none';
     document.body.style.overflow = '';
@@ -830,16 +900,47 @@ window.confirmAddToPlan = async function() {
         const docRef = doc(db, "users", user.uid, "weekly_plan", day);
         await setDoc(docRef, { meals: arrayUnion(mealData) }, { merge: true });
 
+        console.log(`✅ [MENU] Added "${mealData.name}" to ${day} (${mealType}).`);
         alert(`Success! Added to ${day} for ${mealType}.`);
         closePlannerModal();
 
     } catch (e) {
-        console.error("Menu Error:", e);
+        console.error("🔥 [MENU] Menu Error:", e);
         alert("Could not save to menu.");
     } finally {
         if(btn) btn.innerText = "Save";
     }
 }
+
+// --- VIEWING OR COOKING? PROMPT ---
+// Asked once per page load — if the answer is "cooking it now", automatically
+// records it the same way the "🎉 I Made This!" button does, instead of
+// making them remember to click it again after they're done.
+let cookPromptShown = false;
+
+function maybeShowCookPrompt() {
+    if (cookPromptShown) return;
+    cookPromptShown = true;
+
+    const modal = document.getElementById('cook-prompt-modal');
+    if (!modal) return;
+
+    console.log("🍽️ [COOK PROMPT] Asking: viewing or cooking?");
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+}
+
+window.answerCookPrompt = function(isCooking) {
+    const modal = document.getElementById('cook-prompt-modal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+
+    if (isCooking) {
+        console.log("👨‍🍳 [COOK PROMPT] Cooking now — recording it automatically.");
+        window.recordCook();
+    } else {
+        console.log("👀 [COOK PROMPT] Just looking.");
+    }
+};
 
 // --- COOK COUNTER ---
 function loadCookStats() {
@@ -852,6 +953,7 @@ window.recordCook = async function() {
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
     localStorage.setItem(`cook-${recipeId}`, count);
+    console.log(`🎉 [COOK] Recording cook #${count} for recipe:`, recipeId);
     loadCookStats();
     
     const btn = document.querySelector('.celebration-area button');
@@ -924,19 +1026,20 @@ window.submitReport = async function(event) {
             userName: reporterName,      
             userEmail: reporterEmail,    
             uid: user ? user.uid : "anonymous",
-            createdAt: serverTimestamp() 
+            createdAt: serverTimestamp()
         });
-        
+
+        console.log("🚩 [REPORT] Report sent for recipe:", current.id);
         alert("Report sent to the Chef!");
         document.getElementById('report-reason').value = "";
-        
+
         const reportModal = document.getElementById('report-modal');
         if (reportModal) reportModal.classList.add('hidden');
         if (window.closeReportModal) window.closeReportModal();
-        
-    } catch(e) { 
-        console.error(e);
-        alert("Error sending report. Check your connection."); 
+
+    } catch(e) {
+        console.error("🔥 [REPORT] Error sending report:", e);
+        alert("Error sending report. Check your connection.");
     } finally {
         if(btn) btn.innerText = originalText;
     }
@@ -1016,6 +1119,9 @@ function setupMobileKitchenTools() {
                 background: #1e293b;
                 width: 100%;
                 max-width: 500px;
+                max-height: 85vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
                 border-top-left-radius: 20px;
                 border-top-right-radius: 20px;
                 padding: 24px;
@@ -1056,6 +1162,21 @@ function setupMobileKitchenTools() {
             /* Make wide buttons (like Report Issue or Cook Mode) span across both columns! */
             .mobile-tool-pill-wide {
                 grid-column: span 2;
+            }
+
+            /* Section labels so scale (0.5x/1x/2x/3x) and altitude (3-5k ft/etc)
+               buttons don't look like one confusing pile of pills */
+            .mobile-tool-section-header {
+                grid-column: span 2;
+                color: #94a3b8;
+                font-size: 0.72rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                margin: 10px 0 -2px 0;
+            }
+            .mobile-tool-section-header:first-child {
+                margin-top: 0;
             }
 
             /* Mobile Media Query Switch */
@@ -1109,46 +1230,63 @@ function setupMobileKitchenTools() {
     }
 }
 
+// Groups + labels so the mobile modal doesn't read as one flat pile of
+// pills (this is what the scale 0.5x/1x/2x/3x buttons sitting right next
+// to the altitude Off/3-5k ft/etc buttons with no labels was confusing).
+// Checked in order; first match wins.
+const MOBILE_TOOL_GROUPS = [
+    { label: '⚖️ Scale Recipe', match: text => /^\d+(\.\d+)?x$/.test(text.trim()) },
+    { label: '🏔️ High Altitude', match: text => text.trim() === 'Off' || /ft$/.test(text.trim()) },
+    { label: '🚩 Report an Issue', match: text => text.includes('Report') },
+    { label: '🖥️ Display', match: text => /Text \+|Text -|Day Mode|Night Mode|Ingredients in Steps|Substitution Hints/.test(text) },
+    { label: '🎬 Actions', match: () => true } // fallback: Share/Print, Stay Awake, Cook Mode, Menu, Personalize
+];
+
+function classifyMobileToolButton(text) {
+    const idx = MOBILE_TOOL_GROUPS.findIndex(g => g.match(text));
+    return idx === -1 ? MOBILE_TOOL_GROUPS.length - 1 : idx;
+}
+
 window.openMobileToolsModal = function() {
     const modal = document.getElementById('mobile-tools-modal');
     const modalBody = document.getElementById('mobile-tools-body');
     const inlineTools = document.querySelector('.kitchen-tools-section');
 
     if (modal && inlineTools) {
-        const allToolButtons = Array.from(inlineTools.querySelectorAll('button'));
+        const allToolButtons = Array.from(inlineTools.querySelectorAll('button'))
+            .filter(btn => btn.id !== 'mobile-tool-fab');
         modalBody.innerHTML = '';
 
-        // 🚀 SORT ORDER: Text +/-, Day Mode, Stay Awake, Cook Mode, Share & Menu, Report
-        const getOrderScore = (text) => {
-            if (text.includes('Text +')) return 1;
-            if (text.includes('Text -')) return 2;
-            if (text.includes('Day') || text.includes('Night')) return 3;
-            if (text.includes('Stay Awake')) return 4;
-            if (text.includes('Cook Mode')) return 5;
-            if (text.includes('Share') || text.includes('Print')) return 6;
-            if (text.includes('Menu')) return 7;
-            if (text.includes('Report')) return 8;
-            return 10;
-        };
+        // Group first (Actions, Display, Scale, Altitude, Report), preserving
+        // each button's original order within its group.
+        const grouped = allToolButtons
+            .map((btn, i) => ({ btn, group: classifyMobileToolButton(btn.innerText), i }))
+            .sort((a, b) => (a.group - b.group) || (a.i - b.i));
 
-        allToolButtons
-            .filter(btn => btn.id !== 'mobile-tool-fab')
-            .sort((a, b) => getOrderScore(a.innerText) - getOrderScore(b.innerText))
-            .forEach(btn => {
-                const clone = btn.cloneNode(true);
-                // Buttons are looked up by class, not id — strip the id so we don't
-                // end up with duplicate DOM ids (that was breaking state updates
-                // on the cloned button previously).
-                clone.removeAttribute('id');
-                clone.classList.add('mobile-tool-pill');
+        let lastGroup = null;
+        grouped.forEach(({ btn, group }) => {
+            if (group !== lastGroup) {
+                lastGroup = group;
+                const header = document.createElement('div');
+                header.className = 'mobile-tool-section-header';
+                header.innerText = MOBILE_TOOL_GROUPS[group].label;
+                modalBody.appendChild(header);
+            }
 
-                // 🚀 Only Report Issue stretches across both columns
-                if (clone.innerText.includes('Report')) {
-                    clone.classList.add('mobile-tool-pill-wide');
-                }
+            const clone = btn.cloneNode(true);
+            // Buttons are looked up by class, not id — strip the id so we don't
+            // end up with duplicate DOM ids (that was breaking state updates
+            // on the cloned button previously).
+            clone.removeAttribute('id');
+            clone.classList.add('mobile-tool-pill');
 
-                modalBody.appendChild(clone);
-            });
+            // 🚀 Only Report Issue stretches across both columns
+            if (clone.innerText.includes('Report')) {
+                clone.classList.add('mobile-tool-pill-wide');
+            }
+
+            modalBody.appendChild(clone);
+        });
 
         modal.style.display = 'flex';
     } else {

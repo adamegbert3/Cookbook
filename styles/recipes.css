@@ -53,16 +53,23 @@
 /* ==========================================================================
    2. GLOBAL STYLES
    ========================================================================== */
+html {
+    /* Safety net: no single element (a long line of text, a fixed-width
+       widget, etc) should ever be able to force the whole page to scroll
+       sideways on mobile — only that element should scroll internally. */
+    overflow-x: hidden;
+}
 body {
     /* ⚠️ This uses the variables we set above */
     font-family: var(--font-main);
-    font-size: var(--base-size); 
+    font-size: var(--base-size);
     background-color: var(--bg-body);
     color: var(--primary);
-    
+
     margin: 0;
     padding-bottom: 50px;
     line-height: 1.6;
+    overflow-x: hidden;
     transition: background-color 0.3s, color 0.3s; /* Smooth Dark Mode Toggle */
 }
 
@@ -86,14 +93,20 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
     position: sticky; top: 0; z-index: 100; height: 60px; margin-bottom: 20px;
     border-bottom: 1px solid var(--border);
 }
-.logo-area { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-.logo-img { 
-    height: 40px; 
+/* flex-shrink: 1 (not 0) on purpose — this is what lets the title truncate
+   with an ellipsis instead of forcing the whole page to scroll sideways on
+   narrow phones. The header-actions icons stay flex-shrink: 0 since those
+   need to stay fully tappable. */
+.logo-area { display: flex; align-items: center; gap: 10px; flex-shrink: 1; min-width: 0; }
+.logo-img {
+    height: 40px;
     width: 40px; /* Keep it perfectly square so it rounds evenly */
     border-radius: 50%; /* This makes it a perfect circle! */
-    object-fit: cover; 
+    object-fit: cover;
+    flex-shrink: 0;
 }
-.header-title h1 { font-size: 1.8rem; margin: 0; white-space: nowrap; }
+.header-title { min-width: 0; overflow: hidden; }
+.header-title h1 { font-size: 1.8rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
 .icon-btn {
@@ -351,12 +364,15 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 
 /* Lists */
 ul li, ol li { margin-bottom: 12px; line-height: 1.6; cursor: pointer; transition: opacity 0.2s; color: var(--primary); }
-.is-done { text-decoration: line-through; color: #9ca3af; opacity: 0.6; }
+li.checked { text-decoration: line-through; color: #9ca3af; opacity: 0.6; }
 ul li:hover, ol li:hover { background-color: var(--bg-body); border-radius: 4px; }
 
 @media (max-width: 600px) {
-    .header-title h1 { display: block; font-size: 1.4rem; }
-    .header-container { padding: 10px; }
+    .header-title h1 { display: block; font-size: 1.2rem; }
+    .header-container { padding: 8px 10px; }
+    .header-actions { gap: 4px; }
+    .icon-btn { padding: 6px; }
+    .profile-img { width: 32px; height: 32px; }
     .week-grid { grid-template-columns: repeat(3, 1fr); }
     .day-card:last-child { grid-column: span 3; }
     #recipes { grid-template-columns: 1fr; }
@@ -503,12 +519,34 @@ input:checked + .slider:before {
     font-style: italic;
 }
 
+/* Inline "Personalize This Recipe" edit mode — the ingredient list item
+   that holds the ingredients textarea shouldn't look/act like a normal
+   crossable ingredient line */
+.inline-edit-li {
+    list-style: none;
+    cursor: default;
+}
+.inline-edit-li:hover { background: none; }
+.inline-edit-li textarea.form-input { min-height: 150px; }
+
+/* Kitchen Tools section labels (Actions / Display / etc) */
+.kt-section-label {
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #94a3b8;
+    margin: 14px 0 6px 0;
+}
+
 /* Recipe scale (0.5x/1x/2x/3x) and altitude buttons */
 .scale-btn { padding: 6px 14px; font-size: 0.8rem; opacity: 0.65; }
 .scale-btn.scale-active { opacity: 1; background: var(--accent-teal); color: white; }
 .altitude-badge { font-size: 0.8em; cursor: help; opacity: 0.8; }
 
-/* Substitution hints under an ingredient line */
+/* Substitution hints under an ingredient line (off by default via the
+   Kitchen Tools "Substitution Hints" toggle) */
 .sub-hint {
     font-size: 0.75rem;
     color: var(--accent-teal);
@@ -516,6 +554,7 @@ input:checked + .slider:before {
     margin-top: 2px;
     font-style: italic;
 }
+.hide-substitutions .sub-hint { display: none !important; }
 
 /* Visual feedback for the Stay Awake toggle button */
 .cook-mode-active {

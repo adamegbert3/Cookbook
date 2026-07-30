@@ -77,6 +77,8 @@
             </div>
         </div>
 
+        <!-- Keep this list in sync with submit.html's #category, edit-recipe.html's
+             #e-category, and the admin filter pills + SCAN_CATEGORIES in scripts/dashboard.js. -->
         <div class="folders">
             <button class="cat-blue">Appetizers & Snacks</button>
             <button class="cat-brown">Breads & Rolls</button>
@@ -86,6 +88,7 @@
             <button class="cat-red">Main Dishes</button>
             <button class="cat-gray">Miscellaneous</button>
             <button class="cat-teal">Sauces, Dressings & Marinades</button>
+            <button class="cat-green">Sides & Veggies</button>
             <button class="cat-purple">Soups & Salads</button>
         </div>
         <div class="folders" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
@@ -163,10 +166,45 @@
 
     </div>
 
-    <div style="text-align: center; display: flex; justify-content: center; gap: 10px; margin-top: 15px;">
+    <div style="text-align: center; display: flex; justify-content: center; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
         <a href="shopping-list.html" style="background: var(--accent-teal); color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block;">
             🛒 View Shopping List
         </a>
+        <button onclick="openCustomMealModal()" class="pill-btn btn-slate">+ Add Custom Meal</button>
+    </div>
+</div>
+
+<div id="customMealModal" class="modal hidden">
+    <div style="background: var(--bg-card); padding: 25px; border-radius: 12px; width: 300px; max-width: 90%; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-top: 0; color: var(--accent-teal);">+ Custom Meal</h3>
+        <p style="font-size: 12px; color: #94a3b8; margin-top: -8px;">For leftovers, takeout, or anything not in the cookbook.</p>
+
+        <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">What is it?</label>
+        <input type="text" id="customMealName" class="form-input" placeholder="e.g. Leftovers, Pizza Night" style="margin-bottom: 15px;">
+
+        <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">Day:</label>
+        <select id="customMealDay" class="form-input" style="margin-bottom: 15px;">
+            <option value="Sunday">Sunday</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+        </select>
+
+        <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">Meal Type:</label>
+        <select id="customMealType" class="form-input" style="margin-bottom: 20px;">
+            <option value="Dinner">Dinner</option>
+            <option value="Lunch">Lunch</option>
+            <option value="Breakfast">Breakfast</option>
+            <option value="Snack">Snack</option>
+        </select>
+
+        <div style="display: flex; gap: 10px;">
+            <button onclick="closeCustomMealModal()" class="pill-btn btn-slate" style="flex: 1; justify-content: center;">Cancel</button>
+            <button onclick="confirmAddCustomMeal()" class="pill-btn btn-teal" style="flex: 1; justify-content: center;">Save</button>
+        </div>
     </div>
 </div>
 
@@ -180,6 +218,12 @@
                     <button type="submit" id="search-submit">GO</button>
                 </form>
             </div>
+        </div>
+
+        <div id="active-search-chip" class="hidden" style="text-align:center; margin-bottom:15px;">
+            <button onclick="clearHomepageSearch()" class="pill-btn btn-slate" style="font-size:0.8rem;">
+                🔍 Searching: "<span id="active-search-term"></span>" ✕
+            </button>
         </div>
 
         <div id="recipes"></div>
