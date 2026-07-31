@@ -126,6 +126,36 @@ service cloud.firestore {
                     && resource.data.used == false;
     }
 
+    // --- HOUSEHOLDS (shared weekly menu + shopping list) ---
+    // A household is a couple or family who plan meals together. Members
+    // share the weekly_plan and shopping list stored underneath it.
+    //
+    // Read is open to any signed-in user on purpose: joining by code
+    // requires querying households by their `code` field, which can't work
+    // if you must already be a member to read. The documents hold nothing
+    // sensitive (a name, a join code, and a list of uids), and knowing a
+    // code is what grants entry — same as the invite links above.
+    match /households/{householdId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.auth.uid in request.resource.data.members;
+      // Members can update their own household; anyone signed in may add
+      // THEMSELVES (that's joining by code) but not rewrite the rest.
+      allow update: if isLoggedIn() && (
+        request.auth.uid in resource.data.members
+        || request.resource.data.members.hasOnly(resource.data.members.concat([request.auth.uid]))
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      // Shared meal plan + shopping state — members only.
+      match /{document=**} {
+        allow read, write: if isLoggedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members
+          || isAdmin()
+        );
+      }
+    }
+
     // --- USERS (profile, favorites, settings, weekly plan, private
     // notes, and personal recipe_overrides — everything under a user's
     // own uid, at any depth) ---

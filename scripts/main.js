@@ -8,6 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { DIETARY_TAGS, getDietaryTags, matchesFamilyFilter } from './recipe-model.js';
+import { getPlanPath } from './household.js';
 
 let allRecipes = [];
 let userFavorites = [];
@@ -1035,7 +1036,8 @@ setTimeout(() => { setupSearch(); setupCategoryFilters(); setupDietaryFilters();
 // ==========================================
 async function loadHomepageMenu(user) {
     try {
-        const querySnapshot = await getDocs(collection(db, "users", user.uid, "weekly_plan"));
+        const { segments } = await getPlanPath(user.uid);
+        const querySnapshot = await getDocs(collection(db, ...segments, "weekly_plan"));
         
         querySnapshot.forEach((doc) => {
             const dayFull = doc.id; 
@@ -1097,7 +1099,8 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
     if(box) box.style.opacity = "0.5";
 
     try {
-        const docRef = doc(db, "users", user.uid, "weekly_plan", dayFull);
+        const { segments } = await getPlanPath(user.uid);
+        const docRef = doc(db, ...segments, "weekly_plan", dayFull);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -1149,7 +1152,8 @@ window.confirmAddCustomMeal = async function() {
 
     try {
         const mealData = { id: null, name, ingredients: [], type: mealType, addedAt: Date.now() };
-        const docRef = doc(db, "users", user.uid, "weekly_plan", day);
+        const { segments } = await getPlanPath(user.uid);
+        const docRef = doc(db, ...segments, "weekly_plan", day);
         await setDoc(docRef, { meals: arrayUnion(mealData) }, { merge: true });
 
         console.log("✅ [CUSTOM MEAL] Saved.");

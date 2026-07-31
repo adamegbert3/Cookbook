@@ -93,6 +93,8 @@
         </div>
     </div>
 
+    <div id="household-banner" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af; padding:10px 14px; border-radius:8px; margin-bottom:15px; font-size:13px; text-align:center;"></div>
+
     <div id="shopping-container">
         <p style="text-align:center; color: var(--primary); opacity: 0.6;">Loading your list...</p>
     </div>
@@ -106,25 +108,42 @@
         import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
         import { groupIngredients } from './scripts/ingredient-utils.js';
+        import { getPlanPath, getHousehold } from './scripts/household.js';
 
-        onAuthStateChanged(auth, user => {
+        // Where this person's plan + shopping state live (their household if
+        // they're in one, otherwise their own account). Resolved once on load.
+        let planSegments = null;
+
+        onAuthStateChanged(auth, async user => {
             if (user) {
-                loadShoppingList(user.uid);
+                const { segments, householdId } = await getPlanPath(user.uid);
+                planSegments = segments;
+
+                if (householdId) {
+                    const household = await getHousehold(householdId);
+                    const banner = document.getElementById('household-banner');
+                    if (banner && household) {
+                        banner.style.display = 'block';
+                        banner.innerHTML = `🏠 Shared list for <strong>${household.name}</strong> — everyone in your household sees the same items.`;
+                    }
+                }
+
+                loadShoppingList();
             } else {
                 document.getElementById('shopping-container').innerHTML = "<p style='text-align:center; color: var(--primary);'>Please sign in to see your list.</p>";
             }
         });
 
         // --- 1. LOAD LIST ---
-        function loadShoppingList(uid) {
+        function loadShoppingList() {
             const container = document.getElementById('shopping-container');
-            
+
             // Listen to the weekly_plan collection
-            onSnapshot(collection(db, "users", uid, "weekly_plan"), (snapshot) => {
+            onSnapshot(collection(db, ...planSegments, "weekly_plan"), (snapshot) => {
                 container.innerHTML = "";
-                
+
                 // Get checked items first
-                getDoc(doc(db, "users", uid, "settings", "shopping_state")).then(stateSnap => {
+                getDoc(doc(db, ...planSegments, "settings", "shopping_state")).then(stateSnap => {
                     const checkedItems = stateSnap.exists() ? (stateSnap.data().checked || []) : [];
 
                     if (snapshot.empty) {
@@ -222,8 +241,8 @@
             element.classList.toggle('checked');
             element.querySelector('.checkbox').innerText = isNowChecked ? '✅' : '⬜';
 
-            // Save to Firestore
-            const stateRef = doc(db, "users", user.uid, "settings", "shopping_state");
+            // Save to Firestore (shared with the household when in one)
+            const stateRef = doc(db, ...planSegments, "settings", "shopping_state");
             try {
                 if (isNowChecked) {
                     await setDoc(stateRef, { checked: arrayUnion(itemText) }, { merge: true });
@@ -240,7 +259,7 @@
             if (!text || !auth.currentUser) return;
 
             // We treat "Custom" as a special day in the database
-            const ref = doc(db, "users", auth.currentUser.uid, "weekly_plan", "Custom");
+            const ref = doc(db, ...planSegments, "weekly_plan", "Custom");
             
             // Add as a "meal" with one ingredient
             const fakeMeal = {

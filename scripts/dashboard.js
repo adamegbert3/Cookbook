@@ -6,6 +6,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { getSections, hasRealSections } from './recipe-model.js';
+import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } from './household.js';
 
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
@@ -71,6 +72,7 @@ async function loadAdminDashboard() {
     loadUsageStats();
     loadPendingInvites();
     loadAdminUsersList();
+    loadAdminHouseholds();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -700,6 +702,122 @@ window.demoteToUser = async function(uid, label) {
     } catch (e) {
         console.error("🔥 [ADMIN ACCESS] Demote failed:", e);
         alert("Could not demote: " + e.message);
+    }
+};
+
+// ==========================================
+// HOUSEHOLDS (admin side)
+// People can create/join their own household with a code in Settings; this
+// is the "just set it up for me" path for anyone who'd rather not.
+// ==========================================
+window.adminCreateHousehold = async function() {
+    const input = document.getElementById('new-household-name');
+    const name = input.value.trim();
+    if (!name) return alert("Give the household a name first.");
+
+    try {
+        const user = auth.currentUser;
+        const created = await createHousehold(user.uid, name);
+        // The admin creating a household on someone else's behalf shouldn't
+        // silently move their OWN menu into it — drop back out immediately,
+        // leaving the household in place with its join code.
+        await assignUserToHousehold(user.uid, null);
+
+        input.value = "";
+        alert(`Created "${name}".\nJoin code: ${created.code}`);
+        loadAdminHouseholds();
+    } catch (e) {
+        console.error("🔥 [HOUSEHOLD] Create failed:", e);
+        alert("Could not create household: " + e.message);
+    }
+};
+
+window.loadAdminHouseholds = async function() {
+    const listEl = document.getElementById('admin-households-list');
+    if (!listEl) return;
+
+    try {
+        const [households, usersSnap] = await Promise.all([
+            listHouseholds(),
+            getDocs(collection(db, "users"))
+        ]);
+
+        const users = [];
+        usersSnap.forEach(d => users.push({ uid: d.id, ...d.data() }));
+        users.sort((a, b) => (a.Name || a.email || "").localeCompare(b.Name || b.email || ""));
+
+        console.log(`🏠 [HOUSEHOLD] Loaded ${households.length} household(s).`);
+
+        const householdOptions = (selectedId) =>
+            `<option value="">— Not in a household —</option>` +
+            households.map(h => `<option value="${h.id}" ${h.id === selectedId ? 'selected' : ''}>${h.name}</option>`).join('');
+
+        const householdsHtml = households.length === 0
+            ? `<p style="font-size:12px; color:#9ca3af;">No households yet.</p>`
+            : households.map(h => {
+                const memberNames = (h.members || [])
+                    .map(uid => (users.find(u => u.uid === uid) || {}).Name || "Unknown")
+                    .join(', ');
+                return `
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
+                        <div>
+                            <div style="font-weight:700;">${h.name}</div>
+                            <div style="font-size:11px; color:#9ca3af;">
+                                Code <strong style="font-family:monospace;">${h.code}</strong>
+                                · ${(h.members || []).length} member${(h.members || []).length === 1 ? '' : 's'}
+                                ${memberNames ? `· ${memberNames}` : ''}
+                            </div>
+                        </div>
+                        <button onclick="adminDeleteHousehold('${h.id}', '${(h.name || '').replace(/'/g, "\\'")}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Delete</button>
+                    </div>`;
+            }).join('');
+
+        const assignHtml = users.map(u => `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid #f9fafb; font-size:13px; flex-wrap:wrap;">
+                <span style="font-weight:600;">${u.Name || u.email || u.uid}</span>
+                <select onchange="adminAssignHousehold('${u.uid}', this.value)" style="padding:4px 8px; border:1px solid #ddd; border-radius:4px; font-size:12px; max-width:220px;">
+                    ${householdOptions(u.householdId || "")}
+                </select>
+            </div>`).join('');
+
+        listEl.innerHTML = `
+            ${householdsHtml}
+            <details style="margin-top:14px;">
+                <summary style="cursor:pointer; font-size:12px; font-weight:bold; color:#0e7490;">👥 Assign people to a household</summary>
+                <div style="margin-top:10px;">${assignHtml}</div>
+            </details>`;
+    } catch (e) {
+        console.error("🔥 [HOUSEHOLD] Could not load households:", e);
+        listEl.innerHTML = `<p style="color:red; font-size:13px;">Could not load households: ${e.message}</p>`;
+    }
+};
+
+window.adminAssignHousehold = async function(uid, householdId) {
+    try {
+        await assignUserToHousehold(uid, householdId || null);
+        console.log(`🏠 [HOUSEHOLD] Assigned ${uid} to ${householdId || 'no household'}.`);
+        loadAdminHouseholds();
+    } catch (e) {
+        console.error("🔥 [HOUSEHOLD] Assign failed:", e);
+        alert("Could not change household: " + e.message);
+    }
+};
+
+window.adminDeleteHousehold = async function(id, name) {
+    if (!confirm(`Delete "${name}"?\n\nEveryone in it goes back to their own private menu and shopping list. The shared menu/list for this household is removed.`)) return;
+    try {
+        // Take everyone out first so nobody is left pointing at a household
+        // that no longer exists.
+        const household = await getHousehold(id);
+        for (const uid of (household?.members || [])) {
+            await assignUserToHousehold(uid, null);
+        }
+        await deleteDoc(doc(db, "households", id));
+        console.log(`🗑️ [HOUSEHOLD] Deleted "${name}".`);
+        loadAdminHouseholds();
+    } catch (e) {
+        console.error("🔥 [HOUSEHOLD] Delete failed:", e);
+        alert("Could not delete: " + e.message);
     }
 };
 

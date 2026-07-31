@@ -5,6 +5,7 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe } from './main.js';
 import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags } from './recipe-model.js';
+import { getPlanPath } from './household.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -1048,11 +1049,14 @@ window.confirmAddToPlan = async function() {
             addedAt: Date.now() 
         };
 
-        const docRef = doc(db, "users", user.uid, "weekly_plan", day);
+        // Goes to the shared household plan when you're in one, otherwise
+        // your own — getPlanPath() is the single place that decides.
+        const { segments, householdId } = await getPlanPath(user.uid);
+        const docRef = doc(db, ...segments, "weekly_plan", day);
         await setDoc(docRef, { meals: arrayUnion(mealData) }, { merge: true });
 
-        console.log(`✅ [MENU] Added "${mealData.name}" to ${day} (${mealType}).`);
-        alert(`Success! Added to ${day} for ${mealType}.`);
+        console.log(`✅ [MENU] Added "${mealData.name}" to ${day} (${mealType})${householdId ? ' — shared with your household' : ''}.`);
+        alert(`Success! Added to ${day} for ${mealType}.${householdId ? "\nEveryone in your household will see it." : ""}`);
         closePlannerModal();
 
     } catch (e) {
