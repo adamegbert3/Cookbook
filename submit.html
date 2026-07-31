@@ -65,6 +65,21 @@
             </div>
 
             <div class="input-group">
+                <label>Family</label>
+                <select id="family" class="form-input">
+                    <option value="Both">Both families</option>
+                    <option value="Egbert">Egbert only</option>
+                    <option value="Wheeler">Wheeler only</option>
+                </select>
+                <p class="section-hint">"Both" is usually right — this only matters if someone turns on family filtering in Settings.</p>
+            </div>
+
+            <div class="input-group">
+                <label>Dietary / Allergy Tags (Optional)</label>
+                <div id="dietary" class="dietary-checkboxes"></div>
+            </div>
+
+            <div class="input-group">
                 <label>Chef's Notes (Optional)</label>
                 <textarea id="notes" class="form-input" rows="2" placeholder="Best served warm..."></textarea>
             </div>

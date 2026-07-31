@@ -868,6 +868,8 @@ window.generateMegaIndex = async function() {
             c: data.category || "Misc",
             r: data.reviewed || false,
             h: data.isHidden === true,
+            fam: data.family || 'Both',          // family separation filter
+            d: Array.isArray(data.dietary) ? data.dietary : [],  // dietary/allergy tags
             // Compact lowercase ingredient text so homepage search can match ingredients too
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         });

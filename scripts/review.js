@@ -10,7 +10,10 @@ import {
     collection, getDocs, doc, getDoc, updateDoc, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { buildRecipeFields, getEditableText } from './recipe-model.js';
+import { buildRecipeFields, getEditableText, DIETARY_TAGS, getDietaryTags, getRecipeFamily } from './recipe-model.js';
+
+document.getElementById('r-dietary').innerHTML = DIETARY_TAGS.map(tag => `
+    <label class="dietary-check"><input type="checkbox" value="${tag}"> ${tag}</label>`).join('');
 
 window.addSection = function(fieldId) {
     const box = document.getElementById(fieldId);
@@ -182,6 +185,10 @@ function populateForm(recipe) {
     document.getElementById('r-fav-egbert').checked = tagsList.includes("Egbert Favorite");
     document.getElementById('r-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
 
+    document.getElementById('r-family').value = getRecipeFamily(recipe);
+    const diet = getDietaryTags(recipe);
+    document.querySelectorAll('#r-dietary input').forEach(cb => { cb.checked = diet.includes(cb.value); });
+
     document.getElementById('r-ingredients').value = getEditableText(recipe, 'ingredients');
     document.getElementById('r-instructions').value = getEditableText(recipe, 'instructions');
 
@@ -203,7 +210,9 @@ function readFormFields() {
         ...buildRecipeFields(document.getElementById('r-instructions').value, 'instructions'),
         notes: document.getElementById('r-notes').value.trim(),
         driveUrl: document.getElementById('r-drive-link').value.trim(),
-        sourceUrl: document.getElementById('r-source-url').value.trim()
+        sourceUrl: document.getElementById('r-source-url').value.trim(),
+        family: document.getElementById('r-family').value,
+        dietary: Array.from(document.querySelectorAll('#r-dietary input:checked')).map(cb => cb.value)
     };
 }
 

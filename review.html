@@ -115,6 +115,16 @@
         <label>Original Recipe URL <span class="hint">(optional)</span></label>
         <input type="url" id="r-source-url" placeholder="https://example.com/the-recipe-i-adapted-this-from">
 
+        <label>Family <span class="hint">("Both" shows for everyone)</span></label>
+        <select id="r-family">
+            <option value="Both">Both families</option>
+            <option value="Egbert">Egbert only</option>
+            <option value="Wheeler">Wheeler only</option>
+        </select>
+
+        <label>Dietary / Allergy Tags <span class="hint">(optional)</span></label>
+        <div id="r-dietary" class="dietary-checkboxes"></div>
+
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
             <label style="margin: 0; font-weight: 600; color: #0369a1; cursor: pointer; display: flex; align-items: center; gap: 6px;">

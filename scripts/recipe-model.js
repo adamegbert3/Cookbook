@@ -30,6 +30,50 @@
 
 export const SECTION_MARKER = '##';
 
+// ==========================================
+// FAMILY OWNERSHIP
+// Which side of the family a recipe belongs to. Everything defaults to
+// "Both" — including every recipe that predates this field — so turning the
+// Settings filter on can never make the cookbook look empty. Note this is
+// separate from the "Egbert Favorite" / "Wheeler Favorite" hall-of-fame
+// tags, which mark standout recipes rather than ownership.
+// ==========================================
+export const FAMILIES = ['Both', 'Egbert', 'Wheeler'];
+
+export function getRecipeFamily(recipe) {
+    const value = recipe && (recipe.family || recipe.fam);
+    return FAMILIES.includes(value) ? value : 'Both';
+}
+
+// True if a recipe should be visible under the given filter
+// ('all' | 'Egbert' | 'Wheeler').
+export function matchesFamilyFilter(recipe, filter) {
+    if (!filter || filter === 'all') return true;
+    const family = getRecipeFamily(recipe);
+    return family === 'Both' || family === filter;
+}
+
+// ==========================================
+// DIETARY / ALLERGY TAGS
+// Free-standing from the category tags so filtering on "Gluten-Free" can
+// never disturb the Appetizers/Desserts/etc structure.
+// ==========================================
+export const DIETARY_TAGS = [
+    'Vegetarian',
+    'Vegan',
+    'Gluten-Free',
+    'Dairy-Free',
+    'Nut-Free',
+    'Kid-Friendly',
+    'Freezer-Friendly'
+];
+
+export function getDietaryTags(recipe) {
+    const raw = recipe && (recipe.dietary || recipe.d);
+    if (!Array.isArray(raw)) return [];
+    return raw.filter(tag => DIETARY_TAGS.includes(tag));
+}
+
 // Splits "## Crust\n2 cups flour\n## Filling\n4 apples" into
 // [{ title: 'Crust', items: [...] }, { title: 'Filling', items: [...] }].
 // Lines before any heading become an untitled leading section, so a plain

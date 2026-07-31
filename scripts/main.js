@@ -7,6 +7,7 @@ import {
     serverTimestamp, arrayUnion, arrayRemove, query, orderBy, limit, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { DIETARY_TAGS, getDietaryTags, matchesFamilyFilter } from './recipe-model.js';
 
 let allRecipes = [];
 let userFavorites = [];
@@ -380,6 +381,8 @@ function renderFromOfflineStore(container) {
             c: data.category || data.c || "Misc",
             r: data.reviewed || data.r || false,
             h: data.isHidden === true || data.h === true,
+            fam: data.family || data.fam || 'Both',
+            d: Array.isArray(data.dietary || data.d) ? (data.dietary || data.d) : [],
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         };
     });
@@ -423,6 +426,8 @@ async function loadAllRecipesDirect(container) {
             c: data.category || "Misc",
             r: data.reviewed || false,
             h: data.isHidden === true,
+            fam: data.family || 'Both',
+            d: Array.isArray(data.dietary) ? data.dietary : [],
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         });
     });
@@ -534,6 +539,9 @@ function buildRecipeCardHtml(item) {
                     ${recTags
                         .filter(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite")
                         .map(t => `<span class="tag-pill">${t}</span>`)
+                        .join('')}
+                    ${getDietaryTags({ dietary: item.d || item.dietary })
+                        .map(t => `<span class="diet-pill">${t}</span>`)
                         .join('')}
                 </div>
             </div>
@@ -840,13 +848,21 @@ function resetProfileIcon() {
 // ==========================================
 let currentCategoryFilter = null;
 let currentFavFilter = null; // 🚀 NEW: Tracks favorites independently!
+let currentDietFilter = null; // Vegetarian / Gluten-Free / etc
 
 window.applyHomepageFilters = function() {
     const searchInput = document.getElementById('searchbar');
     const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
     const showReviewedOnly = document.getElementById('reviewed-toggle') ? document.getElementById('reviewed-toggle').checked : false;
-    
+
     let filtered = allRecipes;
+
+    // 0. Family separation (a Settings preference, not an on-page filter).
+    //    Recipes marked "Both" — which is the default, including everything
+    //    that predates the field — always show, so this can never empty the
+    //    cookbook out.
+    const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+    filtered = filtered.filter(r => matchesFamilyFilter(r, settings.familyFilter));
 
     // 1. Filter by Reviewed Status
     if (showReviewedOnly) {
@@ -867,6 +883,11 @@ window.applyHomepageFilters = function() {
             const tags = r.t || [];
             return tags.includes(currentFavFilter);
         });
+    }
+
+    // 3b. Filter by dietary/allergy tag (stacks with everything else)
+    if (currentDietFilter) {
+        filtered = filtered.filter(r => (r.d || r.dietary || []).includes(currentDietFilter));
     }
 
     // 4. Filter by Search Term (matches recipe name OR ingredients)
@@ -934,7 +955,9 @@ function setupSearch() {
 }
 
 function setupCategoryFilters() {
-    const buttons = document.querySelectorAll('.folders button');
+    // Scoped to exclude #dietary-filters — those chips share the .folders
+    // styling but are a separate, independently-stacking filter.
+    const buttons = document.querySelectorAll('.folders:not(#dietary-filters) button');
     buttons.forEach(btn => {
         btn.onclick = () => {
             const tag = btn.innerText.trim();
@@ -976,7 +999,36 @@ function setupCategoryFilters() {
     });
 }
 
-setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
+// Dietary/allergy chips are generated from the shared DIETARY_TAGS list so
+// adding a new one only means editing scripts/recipe-model.js.
+function setupDietaryFilters() {
+    const wrap = document.getElementById('dietary-filters');
+    if (!wrap) return;
+
+    wrap.innerHTML = DIETARY_TAGS.map(tag =>
+        `<button class="cat-green diet-filter-btn" style="font-size:0.78rem; padding:6px 14px;">${tag}</button>`
+    ).join('');
+
+    wrap.querySelectorAll('button').forEach(btn => {
+        btn.onclick = () => {
+            const tag = btn.innerText.trim();
+            const wasActive = btn.classList.contains('active-filter');
+
+            wrap.querySelectorAll('button').forEach(b => b.classList.remove('active-filter'));
+
+            if (wasActive) {
+                currentDietFilter = null;
+            } else {
+                btn.classList.add('active-filter');
+                currentDietFilter = tag;
+            }
+            console.log("🥗 [FILTER] Dietary filter:", currentDietFilter || "off");
+            applyHomepageFilters();
+        };
+    });
+}
+
+setTimeout(() => { setupSearch(); setupCategoryFilters(); setupDietaryFilters(); }, 500);
 
 // ==========================================
 // 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)

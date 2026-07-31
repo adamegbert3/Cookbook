@@ -1,7 +1,10 @@
 import { db, auth } from './firebase-config.js';
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { buildRecipeFields } from './recipe-model.js';
+import { buildRecipeFields, DIETARY_TAGS } from './recipe-model.js';
+
+document.getElementById('dietary').innerHTML = DIETARY_TAGS.map(tag => `
+    <label class="dietary-check"><input type="checkbox" value="${tag}"> ${tag}</label>`).join('');
 
 // Inserts a "## Part Name" heading at the end of a textarea, so people can
 // discover multi-part recipes without knowing the syntax up front.
@@ -83,6 +86,8 @@ if (form) {
                 notes: notes,
                 driveUrl: driveUrl,
                 sourceUrl: sourceUrl,
+                family: document.getElementById('family').value,
+                dietary: Array.from(document.querySelectorAll('#dietary input:checked')).map(cb => cb.value),
                 timestamp: serverTimestamp(),
                 status: "pending"
             });

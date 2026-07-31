@@ -69,6 +69,16 @@
         <label>Original Recipe URL <span class="hint">(optional — different from the PDF/Drive link above)</span></label>
         <input type="url" id="e-source-url" placeholder="https://example.com/the-recipe-i-adapted-this-from">
 
+        <label>Family <span class="hint">(who does this recipe belong to? "Both" shows for everyone)</span></label>
+        <select id="e-family">
+            <option value="Both">Both families</option>
+            <option value="Egbert">Egbert only</option>
+            <option value="Wheeler">Wheeler only</option>
+        </select>
+
+        <label>Dietary / Allergy Tags <span class="hint">(optional — helps people filter)</span></label>
+        <div id="e-dietary" class="dietary-checkboxes"></div>
+
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
             <label style="margin: 0; font-weight: 600; color: #0369a1; cursor: pointer; display: flex; align-items: center; gap: 6px;">
@@ -100,7 +110,21 @@
         import { db, auth } from './scripts/firebase-config.js';
         import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-        import { buildRecipeFields, getEditableText } from './scripts/recipe-model.js';
+        import { buildRecipeFields, getEditableText, DIETARY_TAGS, getDietaryTags, getRecipeFamily } from './scripts/recipe-model.js';
+
+        // Build the dietary checkbox row from the shared list
+        document.getElementById('e-dietary').innerHTML = DIETARY_TAGS.map(tag => `
+            <label class="dietary-check">
+                <input type="checkbox" value="${tag}"> ${tag}
+            </label>`).join('');
+
+        function setDietaryChecks(tags) {
+            const selected = tags || [];
+            document.querySelectorAll('#e-dietary input').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        }
+        function readDietaryChecks() {
+            return Array.from(document.querySelectorAll('#e-dietary input:checked')).map(cb => cb.value);
+        }
 
         // Inserts a "## Part Name" heading so multi-part recipes are
         // discoverable without knowing the syntax.
@@ -182,6 +206,8 @@
                     document.getElementById('e-notes').value = data.notes || "";
                     document.getElementById('e-drive-link').value = data.driveUrl || "";
                     document.getElementById('e-source-url').value = data.sourceUrl || "";
+                    document.getElementById('e-family').value = getRecipeFamily(data);
+                    setDietaryChecks(getDietaryTags(data));
 
                     // --- LOAD REVIEW STATUS ---
                     document.getElementById('e-reviewed').checked = data.reviewed === true;
@@ -247,6 +273,8 @@
             document.getElementById('e-notes').value = v.notes || "";
             document.getElementById('e-drive-link').value = v.driveUrl || "";
             document.getElementById('e-source-url').value = v.sourceUrl || "";
+            document.getElementById('e-family').value = getRecipeFamily(v);
+            setDietaryChecks(getDietaryTags(v));
             document.getElementById('e-reviewed').checked = v.reviewed === true;
 
             const tagsList = v.tags || [];
@@ -308,6 +336,8 @@
                     notes: notes,
                     driveUrl: driveUrl,
                     sourceUrl: sourceUrl,
+                    family: document.getElementById('e-family').value,
+                    dietary: readDietaryChecks(),
 
                     // SAVE VERIFICATION STATUS
                     reviewed: isReviewed,

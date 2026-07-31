@@ -4,7 +4,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe } from './main.js';
-import { getSections, hasRealSections, flattenSections } from './recipe-model.js';
+import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags } from './recipe-model.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -608,6 +608,15 @@ function renderRecipeHTML(recipe) {
     if (recTags.includes("Wheeler Favorite")) {
         statusBarHtml += `<span style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #4ade80;">⭐ Wheeler Family Favorite</span>`;
     }
+
+    const family = getRecipeFamily(recipe);
+    if (family !== 'Both') {
+        statusBarHtml += `<span style="background: #f5f3ff; color: #5b21b6; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #c4b5fd;">👨‍👩‍👧 ${family} Family Recipe</span>`;
+    }
+
+    getDietaryTags(recipe).forEach(tag => {
+        statusBarHtml += `<span class="diet-pill" style="padding: 4px 12px; border-radius: 16px; font-size: 0.85rem;">${tag}</span>`;
+    });
 
     statusBarHtml += `</div>`;
 

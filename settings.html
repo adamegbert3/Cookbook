@@ -71,6 +71,20 @@
             </div>
 
             <div class="setting-row">
+                <label>
+                    👨‍👩‍👧 Show Recipes From
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Recipes marked "Both" always show, so nothing disappears.
+                    </div>
+                </label>
+                <select id="familyFilterSelect">
+                    <option value="all">Both families</option>
+                    <option value="Egbert">Egbert only</option>
+                    <option value="Wheeler">Wheeler only</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
                 <label>🔤 Font Style</label>
                 <select id="fontStyleSelect">
                     <option value="inter">Modern (Inter)</option>
@@ -134,6 +148,9 @@
 
                         if(document.getElementById('fontStyleSelect'))
                             document.getElementById('fontStyleSelect').value = settings.fontStyle || 'inter';
+
+                        if(document.getElementById('familyFilterSelect'))
+                            document.getElementById('familyFilterSelect').value = settings.familyFilter || 'all';
                     }
                 });
 
@@ -146,7 +163,8 @@
                         const newSettings = {
                             theme: document.getElementById('darkModeToggle').checked ? 'dark' : 'light',
                             fontSize: currentFontPx,
-                            fontStyle: document.getElementById('fontStyleSelect').value
+                            fontStyle: document.getElementById('fontStyleSelect').value,
+                            familyFilter: document.getElementById('familyFilterSelect').value
                         };
 
                         const msg = document.getElementById('saveMsg');
