@@ -70,9 +70,86 @@ export function getOfflineRecipeIds() {
 }
 
 // ==========================================
-// 2. AUTH & STARTUP
+// OFFLINE CHEF'S NOTES
+// Your private notes are the one part of a recipe you wrote yourself, so
+// they're the worst thing to lose in a kitchen with no signal. They're
+// mirrored to localStorage the same way recipe content is, and edits made
+// while offline are queued and pushed up next time you're online.
 // ==========================================
+const OFFLINE_NOTES_KEY = 'offlineRecipeNotes';
+const PENDING_NOTES_KEY = 'pendingRecipeNotes';
+
+function readJson(key, fallback) {
+    try { return JSON.parse(localStorage.getItem(key) || fallback); } catch (e) { return JSON.parse(fallback); }
+}
+
+export function cacheNoteLocally(recipeId, text) {
+    if (!recipeId) return;
+    const store = readJson(OFFLINE_NOTES_KEY, "{}");
+    if (text) store[recipeId] = text; else delete store[recipeId];
+    try { localStorage.setItem(OFFLINE_NOTES_KEY, JSON.stringify(store)); } catch (e) {}
+}
+
+export function getCachedNote(recipeId) {
+    return readJson(OFFLINE_NOTES_KEY, "{}")[recipeId] || "";
+}
+
+// Notes edited offline, awaiting upload. Stored as { recipeId: recipeName }
+// so the sync can still write the recipeName field the cloud copy expects.
+function markNotePending(recipeId, recipeName) {
+    const pending = readJson(PENDING_NOTES_KEY, "{}");
+    pending[recipeId] = recipeName || "";
+    try { localStorage.setItem(PENDING_NOTES_KEY, JSON.stringify(pending)); } catch (e) {}
+}
+
+function isNotePending(recipeId) {
+    return Object.prototype.hasOwnProperty.call(readJson(PENDING_NOTES_KEY, "{}"), recipeId);
+}
+
+function clearNotePending(recipeId) {
+    const pending = readJson(PENDING_NOTES_KEY, "{}");
+    delete pending[recipeId];
+    try { localStorage.setItem(PENDING_NOTES_KEY, JSON.stringify(pending)); } catch (e) {}
+}
+
+// Pushes any notes written while offline up to the cloud.
+async function syncPendingNotes(user) {
+    const pending = readJson(PENDING_NOTES_KEY, "{}");
+    const ids = Object.keys(pending);
+    if (ids.length === 0 || !user || !navigator.onLine) return;
+
+    console.log(`📝 [NOTES] Syncing ${ids.length} note(s) written while offline...`);
+    for (const recipeId of ids) {
+        try {
+            await setDoc(doc(db, "users", user.uid, "private_notes", recipeId), {
+                text: getCachedNote(recipeId),
+                updatedAt: serverTimestamp(),
+                recipeName: pending[recipeId]
+            });
+            clearNotePending(recipeId);
+            console.log("✅ [NOTES] Synced note for", recipeId);
+        } catch (e) {
+            console.warn("⚠️ [NOTES] Could not sync note for", recipeId, e.message);
+        }
+    }
+}
+
+// ==========================================
+// 2. AUTH & STARTUP
+//
+// ⚠️ Offline note: Firebase Auth pulls https://apis.google.com/js/api.js at
+// startup. With no connection that request fails, Auth throws
+// auth/internal-error, and onAuthStateChanged NEVER FIRES — not even with
+// null. Everything below used to live solely inside that callback, so the
+// homepage simply never started loading offline and sat on "Opening
+// Cookbook..." forever. (recipe.html always worked offline because
+// recipePage.js races the same callback against a 3s timeout — that's the
+// pattern mirrored here.)
+// ==========================================
+let contentStarted = false;
+
 onAuthStateChanged(auth, async (user) => {
+    contentStarted = true;
     const notSignedMsg = document.getElementById("notsigned");
     const recipeGrid = document.getElementById('recipes');
     const adminBtn = document.getElementById('admin-btn');
@@ -100,6 +177,7 @@ onAuthStateChanged(auth, async (user) => {
         // 3. Load User Preferences & Profile in background
         loadUserSettings(user);
         loadHomepageMenu(user);
+        syncPendingNotes(user);
 
         // 4. Everything below is background work — none of it blocks the
         // recipe list appearing.
@@ -138,8 +216,66 @@ onAuthStateChanged(auth, async (user) => {
 
         if (notSignedMsg) notSignedMsg.classList.remove('hidden');
         if (recipeGrid) recipeGrid.style.display = 'none';
-        
+
         resetProfileIcon();
+    }
+}, (authError) => {
+    // Auth failed outright — offline is by far the most common cause.
+    console.warn("⚠️ [AUTH] Could not reach the sign-in service:", authError.code || authError.message);
+    startOfflineMode();
+});
+
+// Safety net: if Auth hasn't settled shortly after load, assume we're offline
+// and render whatever is cached rather than leaving the page stuck. Crucially
+// this does NOT bounce anyone to the login page — being offline shouldn't log
+// you out of a cookbook you already downloaded.
+setTimeout(() => {
+    if (!contentStarted) {
+        console.warn("⚠️ [AUTH] Sign-in didn't respond in time — starting in offline mode.");
+        startOfflineMode();
+    }
+}, 3000);
+
+function startOfflineMode() {
+    if (contentStarted) return;
+    contentStarted = true;
+
+    // Anything network-bound would otherwise sit on "Loading..." forever.
+    // These run on every page (main.js is loaded site-wide), so they must
+    // happen BEFORE the homepage-only early return below.
+    const feed = document.getElementById('family-feed');
+    if (feed) feed.innerHTML = `<p class="empty-feed">📴 Announcements need a connection.</p>`;
+
+    const commentsList = document.getElementById('commentsList');
+    if (commentsList) commentsList.innerHTML = `<p class="empty-feed">💬 Family Discussion needs a connection — reconnect to read or post comments.</p>`;
+
+    // Your own notes DO work offline — they're cached on this device.
+    if (document.getElementById('chefNotes')) loadUserNote();
+
+    // Everything below is homepage-only (the recipe grid).
+    const recipeGrid = document.getElementById('recipes');
+    if (!recipeGrid) return;
+
+    recipeGrid.style.display = 'grid';
+
+    if (!renderFromOfflineStore(recipeGrid)) {
+        recipeGrid.innerHTML = `
+            <div style="text-align:center; width:100%;">
+                <p>📴 You're offline, and no recipes are saved on this device yet.</p>
+                <p style="font-size:12px; color:#94a3b8;">Next time you have signal, open the cookbook and tap "⛺ Download All Recipes for Offline".</p>
+                <button onclick="location.reload()" class="pill-btn btn-teal">🔄 Try Again</button>
+            </div>`;
+    }
+}
+
+// Firebase's internal auth/internal-error surfaces as an unhandled rejection
+// when offline. It's expected in that situation and already handled above —
+// keep it out of the console so real errors stay visible.
+window.addEventListener('unhandledrejection', (event) => {
+    const msg = String(event.reason && (event.reason.code || event.reason.message) || '');
+    if (msg.includes('auth/internal-error') || msg.includes('auth/network-request-failed')) {
+        console.warn("⚠️ [AUTH] Ignoring expected offline auth error:", msg);
+        event.preventDefault();
     }
 });
 
@@ -161,6 +297,13 @@ async function loadAllRecipes() {
     if(!container) return;
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Opening Cookbook...</p>';
+
+    // Offline, Firestore reads hang instead of failing, so skip straight to
+    // the saved copy rather than waiting out the timeout below.
+    if (!navigator.onLine && renderFromOfflineStore(container)) {
+        console.warn("📴 [HOME] Offline — showing the saved cookbook.");
+        return;
+    }
 
     try {
         const docRef = doc(db, "static_assets", "cookbook_index");
@@ -571,65 +714,109 @@ window.postComment = async function() {
 // ==========================================
 // 6. NOTES & UTILS
 // ==========================================
-async function loadUserNote() {
+// Reflects a note into the textarea + the print-only copy, and decides
+// whether the notes block should appear on a printout at all.
+function applyNoteToPage(text) {
     const noteSection = document.getElementById('notes-section');
     const noteBox = document.getElementById('chefNotes');
     const printNotes = document.getElementById('print-chef-notes');
-    
+
+    if (noteBox) noteBox.value = text || "";
+    if (printNotes) printNotes.innerText = text || "";
+    if (noteSection) noteSection.classList.toggle('no-print', !text);
+}
+
+async function loadUserNote() {
+    const noteSection = document.getElementById('notes-section');
+    const noteBox = document.getElementById('chefNotes');
     if (!noteSection || !noteBox) return;
-    
-    const user = auth.currentUser;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    
-    if (!user || !currentRecipe) {
+
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData") || "null");
+    if (!currentRecipe) {
         noteSection.classList.add('hidden');
         return;
     }
 
     noteSection.classList.remove('hidden');
 
+    // 1. Show the locally cached note immediately. This is what makes notes
+    //    usable offline, and it also means they appear instantly rather than
+    //    after a network round-trip when online.
+    const cached = getCachedNote(currentRecipe.id);
+    if (cached) {
+        console.log("📝 [NOTES] Loaded your saved note from this device.");
+        applyNoteToPage(cached);
+    }
+
+    // 2. Then refresh from the cloud if we actually can.
+    const user = auth.currentUser;
+    if (!user || !navigator.onLine) return;
+
     try {
         const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
-        const docSnap = await getDoc(noteRef);
-        
-        if (docSnap.exists() && docSnap.data().text) {
-            const text = docSnap.data().text;
-            noteBox.value = text;
-            if(printNotes) printNotes.innerText = text;
-            noteSection.classList.remove('no-print'); 
-        } else {
-            if(printNotes) printNotes.innerText = "";
-            noteSection.classList.add('no-print'); 
+        const docSnap = await withTimeout(getDoc(noteRef), 8000, "Notes request timed out.");
+
+        // An edit made offline hasn't been uploaded yet — don't let the
+        // older cloud copy overwrite it.
+        if (isNotePending(currentRecipe.id)) {
+            console.log("📝 [NOTES] Keeping your unsynced local edit.");
+            return;
         }
-    } catch (e) { console.error(e); }
+
+        const text = docSnap.exists() ? (docSnap.data().text || "") : "";
+        cacheNoteLocally(currentRecipe.id, text);
+        applyNoteToPage(text);
+    } catch (e) {
+        console.warn("⚠️ [NOTES] Could not refresh from the cloud, keeping the saved copy:", e.message);
+    }
 }
 
 window.saveNote = async function() {
-    const noteSection = document.getElementById('notes-section');
     const noteBox = document.getElementById('chefNotes');
-    const printNotes = document.getElementById('print-chef-notes');
-    
-    const user = auth.currentUser;
-    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
-    
-    if (!user || !noteBox || !currentRecipe) return alert("Please log in to save notes.");
-    
+    const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData") || "null");
+    if (!noteBox || !currentRecipe) return;
+
     const textValue = noteBox.value.trim();
+    const recipeName = currentRecipe.name || currentRecipe.n || "";
+    const status = document.getElementById('saveStatus');
+    const setStatus = (msg, colour = '#10b981', holdMs = 2500) => {
+        if (!status) return;
+        status.style.color = colour;
+        status.innerText = msg;
+        if (holdMs) setTimeout(() => { status.innerText = ""; }, holdMs);
+    };
 
+    // 1. ALWAYS save on this device first, so a note can never be lost to a
+    //    failed/absent connection — this is the whole point of the feature.
+    cacheNoteLocally(currentRecipe.id, textValue);
+    applyNoteToPage(textValue);
+
+    const user = auth.currentUser;
+
+    // 2. Offline (or signed out because auth couldn't load): queue it.
+    if (!user || !navigator.onLine) {
+        markNotePending(currentRecipe.id, recipeName);
+        console.log("📝 [NOTES] Saved on this device; queued to sync when back online.");
+        setStatus("Saved on this device — syncs when you're back online.", '#b45309', 4000);
+        return;
+    }
+
+    // 3. Online: push it up.
     try {
-        const noteRef = doc(db, "users", user.uid, "private_notes", currentRecipe.id);
-        await setDoc(noteRef, { text: textValue, updatedAt: serverTimestamp(), recipeName: currentRecipe.name || currentRecipe.n });
-        
-        if(printNotes) printNotes.innerText = textValue;
-        if (textValue && noteSection) {
-            noteSection.classList.remove('no-print');
-        } else if (noteSection) {
-            noteSection.classList.add('no-print');
-        }
-
-        const status = document.getElementById('saveStatus');
-        if(status) { status.innerText = "Saved!"; setTimeout(() => status.innerText = "", 2000); }
-    } catch (e) { alert("Error saving note."); }
+        await setDoc(doc(db, "users", user.uid, "private_notes", currentRecipe.id), {
+            text: textValue,
+            updatedAt: serverTimestamp(),
+            recipeName
+        });
+        clearNotePending(currentRecipe.id);
+        console.log("✅ [NOTES] Saved and synced.");
+        setStatus("Saved!");
+    } catch (e) {
+        // Still safe on this device — just not uploaded yet.
+        markNotePending(currentRecipe.id, recipeName);
+        console.warn("⚠️ [NOTES] Save to cloud failed, kept locally:", e.message);
+        setStatus("Saved on this device — will retry syncing later.", '#b45309', 4000);
+    }
 };
 
 function updateProfileIcon(name) {
@@ -1060,6 +1247,28 @@ window.downloadAllForOffline = async function(event) {
 
         const count = Object.keys(store).length;
         console.log(`✅ ${count} recipes are now cached for offline use.`);
+
+        // Grab this person's private Chef's Notes too, so notes are readable
+        // offline even for recipes they haven't opened on this device yet.
+        const user = auth.currentUser;
+        if (user) {
+            try {
+                const notesSnap = await getDocs(collection(db, "users", user.uid, "private_notes"));
+                let noteCount = 0;
+                notesSnap.forEach((noteDoc) => {
+                    const text = noteDoc.data().text;
+                    // Don't stomp on a note edited offline that hasn't synced yet
+                    if (text && !isNotePending(noteDoc.id)) {
+                        cacheNoteLocally(noteDoc.id, text);
+                        noteCount++;
+                    }
+                });
+                console.log(`📝 ${noteCount} of your Chef's Notes are now available offline.`);
+            } catch (e) {
+                console.warn("⚠️ Could not download your notes for offline use:", e.message);
+            }
+        }
+
         if (btn) {
             btn.innerHTML = `⛺ All ${count} Recipes Ready Offline!`;
             btn.style.backgroundColor = "#15803d";
