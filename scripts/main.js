@@ -71,8 +71,20 @@ export function getOfflineRecipeIds() {
 
 // ==========================================
 // 2. AUTH & STARTUP
+//
+// ⚠️ Offline note: Firebase Auth pulls https://apis.google.com/js/api.js at
+// startup. With no connection that request fails, Auth throws
+// auth/internal-error, and onAuthStateChanged NEVER FIRES — not even with
+// null. Everything below used to live solely inside that callback, so the
+// homepage simply never started loading offline and sat on "Opening
+// Cookbook..." forever. (recipe.html always worked offline because
+// recipePage.js races the same callback against a 3s timeout — that's the
+// pattern mirrored here.)
 // ==========================================
+let contentStarted = false;
+
 onAuthStateChanged(auth, async (user) => {
+    contentStarted = true;
     const notSignedMsg = document.getElementById("notsigned");
     const recipeGrid = document.getElementById('recipes');
     const adminBtn = document.getElementById('admin-btn');
@@ -138,8 +150,57 @@ onAuthStateChanged(auth, async (user) => {
 
         if (notSignedMsg) notSignedMsg.classList.remove('hidden');
         if (recipeGrid) recipeGrid.style.display = 'none';
-        
+
         resetProfileIcon();
+    }
+}, (authError) => {
+    // Auth failed outright — offline is by far the most common cause.
+    console.warn("⚠️ [AUTH] Could not reach the sign-in service:", authError.code || authError.message);
+    startOfflineMode();
+});
+
+// Safety net: if Auth hasn't settled shortly after load, assume we're offline
+// and render whatever is cached rather than leaving the page stuck. Crucially
+// this does NOT bounce anyone to the login page — being offline shouldn't log
+// you out of a cookbook you already downloaded.
+setTimeout(() => {
+    if (!contentStarted) {
+        console.warn("⚠️ [AUTH] Sign-in didn't respond in time — starting in offline mode.");
+        startOfflineMode();
+    }
+}, 3000);
+
+function startOfflineMode() {
+    if (contentStarted) return;
+    contentStarted = true;
+
+    // Anything that needs the network would otherwise sit on "Loading..."
+    const feed = document.getElementById('family-feed');
+    if (feed) feed.innerHTML = `<p class="empty-feed">📴 Announcements need a connection.</p>`;
+
+    const recipeGrid = document.getElementById('recipes');
+    if (!recipeGrid) return;
+
+    recipeGrid.style.display = 'grid';
+
+    if (!renderFromOfflineStore(recipeGrid)) {
+        recipeGrid.innerHTML = `
+            <div style="text-align:center; width:100%;">
+                <p>📴 You're offline, and no recipes are saved on this device yet.</p>
+                <p style="font-size:12px; color:#94a3b8;">Next time you have signal, open the cookbook and tap "⛺ Download All Recipes for Offline".</p>
+                <button onclick="location.reload()" class="pill-btn btn-teal">🔄 Try Again</button>
+            </div>`;
+    }
+}
+
+// Firebase's internal auth/internal-error surfaces as an unhandled rejection
+// when offline. It's expected in that situation and already handled above —
+// keep it out of the console so real errors stay visible.
+window.addEventListener('unhandledrejection', (event) => {
+    const msg = String(event.reason && (event.reason.code || event.reason.message) || '');
+    if (msg.includes('auth/internal-error') || msg.includes('auth/network-request-failed')) {
+        console.warn("⚠️ [AUTH] Ignoring expected offline auth error:", msg);
+        event.preventDefault();
     }
 });
 

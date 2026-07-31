@@ -233,10 +233,10 @@ async function loadRecipe() {
             const offlineCopy = getOfflineRecipe(recipeId);
             if (offlineCopy) {
                 renderRecipeHTML(offlineCopy);
-                maybeShowCookPrompt();
+                markOfflineRecipeView();
             } else if(localData && localData.id === recipeId) {
                 renderRecipeHTML(localData);
-                maybeShowCookPrompt();
+                markOfflineRecipeView();
             } else {
                 recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
             }
@@ -248,12 +248,12 @@ async function loadRecipe() {
         const offlineCopy = getOfflineRecipe(recipeId);
         if (offlineCopy) {
             renderRecipeHTML(offlineCopy);
-            maybeShowCookPrompt();
+            markOfflineRecipeView();
             return;
         }
         if (localData && localData.id === recipeId && (localData.ingredients || localData.recipeIngredient)) {
             renderRecipeHTML(localData);
-            maybeShowCookPrompt();
+            markOfflineRecipeView();
             return;
         }
 
@@ -264,6 +264,19 @@ async function loadRecipe() {
                 <p style="font-size:12px; color:#94a3b8;">(${reason})</p>
                 <button onclick="location.reload()" class="pill-btn btn-teal">🔄 Try Again</button>
             </div>`;
+    }
+}
+
+// Shared tail-end for every offline/cached render path. The cook counter
+// reads from localStorage so it still works with no signal, but comments
+// need Firestore — without this they both sat on "Loading..." forever.
+function markOfflineRecipeView() {
+    loadCookStats();
+    maybeShowCookPrompt();
+
+    const commentsList = document.getElementById('commentsList');
+    if (commentsList && commentsList.innerText.includes('Loading')) {
+        commentsList.innerHTML = `<p class="empty-feed">💬 Family Discussion needs a connection — reconnect to read or post comments.</p>`;
     }
 }
 

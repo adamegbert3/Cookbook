@@ -348,10 +348,30 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         visitSnap.forEach(d => visitDocs.push(d.data()));
     } catch (e) { console.error("Could not load site-visit history for the activity roster:", e); }
 
-    // Group per person — prefer uid (added to recipe_views going forward,
-    // and always present on site_visits_log), fall back to their display
-    // name for older recipe_views/global_cooks records that predate it.
-    const personKey = (uid, name) => uid || `name:${name || "Guest"}`;
+    // Group per person.
+    //
+    // The tricky part: `uid` was only added to recipe_views recently, so one
+    // person's history is a mix of newer records that HAVE a uid and older
+    // ones that only have a display name. Keying naively on `uid || name`
+    // therefore split the same person into two rows — which is exactly the
+    // "some people are on there multiple times" problem.
+    //
+    // So: first learn every name→uid pairing from the records that do carry
+    // a uid, then use that to attach the older name-only records to the same
+    // person instead of stranding them in their own row.
+    const normalize = (name) => String(name || "").trim().toLowerCase();
+    const nameToUid = {};
+    const learnName = (uid, name) => {
+        if (uid && normalize(name)) nameToUid[normalize(name)] = uid;
+    };
+
+    viewDocs.forEach(v => learnName(v.uid, v.viewer));
+    cookDocs.forEach(c => learnName(c.uid, c.chef));
+    visitDocs.forEach(v => learnName(v.uid, v.viewerName));
+
+    const personKey = (uid, name) =>
+        uid || nameToUid[normalize(name)] || `name:${normalize(name) || "guest"}`;
+
     const people = {};
 
     viewDocs.forEach(v => {
