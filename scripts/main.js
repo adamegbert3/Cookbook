@@ -174,10 +174,16 @@ function startOfflineMode() {
     if (contentStarted) return;
     contentStarted = true;
 
-    // Anything that needs the network would otherwise sit on "Loading..."
+    // Anything network-bound would otherwise sit on "Loading..." forever.
+    // These run on every page (main.js is loaded site-wide), so they must
+    // happen BEFORE the homepage-only early return below.
     const feed = document.getElementById('family-feed');
     if (feed) feed.innerHTML = `<p class="empty-feed">📴 Announcements need a connection.</p>`;
 
+    const commentsList = document.getElementById('commentsList');
+    if (commentsList) commentsList.innerHTML = `<p class="empty-feed">💬 Family Discussion needs a connection — reconnect to read or post comments.</p>`;
+
+    // Everything below is homepage-only (the recipe grid).
     const recipeGrid = document.getElementById('recipes');
     if (!recipeGrid) return;
 
@@ -222,6 +228,13 @@ async function loadAllRecipes() {
     if(!container) return;
 
     container.innerHTML = '<p style="text-align:center; width:100%;">Opening Cookbook...</p>';
+
+    // Offline, Firestore reads hang instead of failing, so skip straight to
+    // the saved copy rather than waiting out the timeout below.
+    if (!navigator.onLine && renderFromOfflineStore(container)) {
+        console.warn("📴 [HOME] Offline — showing the saved cookbook.");
+        return;
+    }
 
     try {
         const docRef = doc(db, "static_assets", "cookbook_index");

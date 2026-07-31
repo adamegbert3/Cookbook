@@ -215,9 +215,23 @@ async function loadRecipe() {
 
     console.log("🍳 [RECIPE] Loading recipe:", recipeId);
 
+    // ⚠️ Offline, Firestore's getDoc() does NOT fail — it queues the request
+    // and waits indefinitely for a network that isn't coming. Without this
+    // short-circuit the await below never settles, so neither the `else`
+    // branch nor the `catch` ever ran and the page sat blank forever with a
+    // lone "Loading recipe" in the console. Skip the network entirely when
+    // the browser already knows we're offline.
+    if (!navigator.onLine && renderCachedRecipe(localData, recipeContainer)) {
+        console.warn("📴 [RECIPE] Offline — rendered the saved copy instead.");
+        return;
+    }
+
     try {
         const docRef = doc(db, "recipes", recipeId);
-        const docSnap = await getDoc(docRef);
+        // Backstop for the "technically online but nothing is getting
+        // through" case (hotel wifi, dead zone), where navigator.onLine is
+        // still true but the request would hang just the same.
+        const docSnap = await withRecipeTimeout(getDoc(docRef), 8000);
 
         if (docSnap.exists()) {
             const fullData = { id: recipeId, ...docSnap.data() };
@@ -229,42 +243,59 @@ async function loadRecipe() {
             logViewToDatabase(fullData);
             applyPersonalizationIfAny(fullData);
             maybeShowCookPrompt();
-        } else {
-            const offlineCopy = getOfflineRecipe(recipeId);
-            if (offlineCopy) {
-                renderRecipeHTML(offlineCopy);
-                markOfflineRecipeView();
-            } else if(localData && localData.id === recipeId) {
-                renderRecipeHTML(localData);
-                markOfflineRecipeView();
-            } else {
-                recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
-            }
+        } else if (!renderCachedRecipe(localData, recipeContainer)) {
+            recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
         }
     } catch (error) {
         console.error("Recipe load failed:", error);
 
         // Fall back to a locally cached copy if we have one (offline / rules trouble)
-        const offlineCopy = getOfflineRecipe(recipeId);
-        if (offlineCopy) {
-            renderRecipeHTML(offlineCopy);
-            markOfflineRecipeView();
-            return;
-        }
-        if (localData && localData.id === recipeId && (localData.ingredients || localData.recipeIngredient)) {
-            renderRecipeHTML(localData);
-            markOfflineRecipeView();
-            return;
-        }
+        if (renderCachedRecipe(localData, recipeContainer)) return;
 
         const reason = error.code || error.message || "unknown error";
         recipeContainer.innerHTML = `
             <div style="text-align:center; padding: 40px 20px;">
                 <h2>Couldn't load this recipe.</h2>
                 <p style="font-size:12px; color:#94a3b8;">(${reason})</p>
+                <p style="font-size:12px; color:#94a3b8;">If you're offline, this recipe hasn't been saved to this device yet. Tap "⛺ Download All Recipes for Offline" on the homepage next time you have signal.</p>
                 <button onclick="location.reload()" class="pill-btn btn-teal">🔄 Try Again</button>
             </div>`;
     }
+}
+
+// Firestore hangs rather than erroring when it can't reach the network, so
+// every read on this page races a timeout to guarantee we always fall
+// through to the cached copy instead of leaving the page blank.
+function withRecipeTimeout(promise, ms) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+            setTimeout(() => reject(Object.assign(new Error("Recipe request timed out."), { code: 'timeout' })), ms))
+    ]);
+}
+
+// Renders this recipe from whatever we already have on the device: the full
+// offline store first, then the lighter "last opened recipe" snapshot.
+// Returns true if it managed to render something real.
+function renderCachedRecipe(localData, recipeContainer) {
+    const offlineCopy = getOfflineRecipe(recipeId);
+    if (offlineCopy) {
+        originalRecipeData = offlineCopy;
+        renderRecipeHTML(offlineCopy);
+        markOfflineRecipeView();
+        return true;
+    }
+
+    // The lightweight snapshot only has a name/id unless a full copy was
+    // saved, so only use it if it actually carries the recipe content.
+    if (localData && localData.id === recipeId && (localData.ingredients || localData.recipeIngredient)) {
+        originalRecipeData = localData;
+        renderRecipeHTML(localData);
+        markOfflineRecipeView();
+        return true;
+    }
+
+    return false;
 }
 
 // Shared tail-end for every offline/cached render path. The cook counter
@@ -1389,6 +1420,14 @@ window.closeMobileToolsModal = function() {
 // a signed-in user (the "works on the second refresh" symptom). Waiting on
 // the first onAuthStateChanged tick closes that race for good.
 const authReady = new Promise((resolve) => {
+    // Offline there's nothing to wait for — Auth can't reach
+    // apis.google.com, so onAuthStateChanged never fires at all. Don't make
+    // people stare at a blank page for 3 seconds first.
+    if (!navigator.onLine) {
+        console.warn("📴 [RECIPE] Offline — skipping the sign-in wait.");
+        resolve();
+        return;
+    }
     const unsubscribe = onAuthStateChanged(auth, () => { unsubscribe(); resolve(); });
     // Never hang the page if auth itself stalls
     setTimeout(resolve, 3000);
