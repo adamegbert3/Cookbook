@@ -539,6 +539,46 @@ input:checked + .slider:before {
 .inline-edit-li:hover { background: none; }
 .inline-edit-li textarea.form-input { min-height: 150px; }
 
+/* ==========================================================================
+   MULTI-PART RECIPES (crust / filling / topping)
+   ========================================================================== */
+/* Hint text under the section-aware textareas in the recipe editors */
+.section-hint {
+    font-size: 12px;
+    color: #94a3b8;
+    margin: 6px 0 0 0;
+    font-family: var(--font-main);
+}
+.section-hint code {
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 5px;
+    font-size: 11px;
+}
+
+/* Ingredient group heading — a styled <li> so it sits inside the same <ul>
+   and can't break the list semantics */
+.recipe-subsection {
+    list-style: none;
+    margin: 18px 0 6px -20px;
+    font-family: var(--font-header);
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--accent-warm);
+    cursor: default;
+}
+.recipe-subsection:first-child { margin-top: 0; }
+.recipe-subsection:hover { background: none; }
+
+/* Instruction group heading */
+.recipe-subsection-header {
+    font-family: var(--font-header);
+    font-size: 1.35rem;
+    color: var(--accent-warm);
+    margin: 22px 0 4px 0;
+}
+
 /* Kitchen Tools section labels (Actions / Display / etc) */
 .kt-section-label {
     text-align: center;

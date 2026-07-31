@@ -4,6 +4,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe } from './main.js';
+import { getSections, hasRealSections, flattenSections } from './recipe-model.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -630,13 +631,29 @@ function renderRecipeHTML(recipe) {
         ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
         : rawIng;
 
+    // Renders one ingredient line (scaling/altitude already applied upstream)
+    const ingredientLineHtml = (line) => {
+        const sub = findSubstitution(line);
+        const subHtml = sub ? `<div class="sub-hint no-print">🔄 No ${sub.key}? Try: ${sub.sub}</div>` : '';
+        return `<li>${line}${subHtml}</li>`;
+    };
+
+    // Multi-part recipes (crust / filling / topping) render each group under
+    // its own heading. Everything else falls back to a single flat list.
+    const ingSections = getSections(recipe, 'ingredients').map(s => ({
+        title: s.title,
+        items: (s.items || []).map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
+    }));
+    const ingredientsAreSectioned = hasRealSections(ingSections);
+
     let ingHtml = "";
-    if (Array.isArray(scaledIng)) {
-        ingHtml = scaledIng.map(i => {
-            const sub = findSubstitution(i);
-            const subHtml = sub ? `<div class="sub-hint no-print">🔄 No ${sub.key}? Try: ${sub.sub}</div>` : '';
-            return `<li>${i}${subHtml}</li>`;
-        }).join("");
+    if (ingredientsAreSectioned) {
+        ingHtml = ingSections.map(s => `
+            ${s.title ? `<li class="recipe-subsection">${s.title}</li>` : ''}
+            ${s.items.map(ingredientLineHtml).join('')}
+        `).join('');
+    } else if (Array.isArray(scaledIng)) {
+        ingHtml = scaledIng.map(ingredientLineHtml).join("");
     } else if (typeof scaledIng === 'string') {
         ingHtml = `<pre>${scaledIng}</pre>`;
     }
@@ -669,12 +686,21 @@ function renderRecipeHTML(recipe) {
     const showStepIngredients = localStorage.getItem('showStepIngredients') === 'true';
     const showSubstitutions = localStorage.getItem('showSubstitutions') === 'true';
 
+    const stepHtml = (s) => {
+        const matched = matchIngredientsForStep(s, ingredientsArr);
+        return `<li class="instruction-step">${s}${stepIngredientsHtml(matched)}</li>`;
+    };
+
+    const instSections = getSections(recipe, 'instructions');
     let instHtml = "";
-    if (Array.isArray(rawInst)) {
-        instHtml = `<ol id="normal-instructions">${rawInst.map(s => {
-            const matched = matchIngredientsForStep(s, ingredientsArr);
-            return `<li class="instruction-step">${s}${stepIngredientsHtml(matched)}</li>`;
-        }).join("")}</ol>`;
+    if (hasRealSections(instSections)) {
+        // A separate <ol> per group so each part's steps number from 1 again
+        instHtml = instSections.map(s => `
+            ${s.title ? `<h4 class="recipe-subsection-header">${s.title}</h4>` : ''}
+            <ol>${(s.items || []).map(stepHtml).join('')}</ol>
+        `).join('');
+    } else if (Array.isArray(rawInst)) {
+        instHtml = `<ol id="normal-instructions">${rawInst.map(stepHtml).join("")}</ol>`;
     } else if (typeof rawInst === 'string') {
         instHtml = `<p style="white-space: pre-wrap;">${rawInst}</p>`;
     }
@@ -798,6 +824,7 @@ window.toggleSubstitutions = function(forceState) {
 // FULLSCREEN SWIPEABLE COOK MODE
 // ==========================================
 let cookModeSteps = [];
+let cookModeStepSections = []; // which part ("Crust") each step belongs to, index-aligned
 let cookModeIngredients = [];
 let cookModeIndex = 0;
 let cookModeWakeLock = null;
@@ -806,12 +833,27 @@ window.startCookMode = function() {
     const current = JSON.parse(localStorage.getItem("currentRecipeData")) || {};
 
     const rawInst = current.instructions || current.recipeInstructions;
-    const rawIng = current.ingredients || current.recipeIngredient;
 
-    cookModeSteps = Array.isArray(rawInst) ? rawInst : (typeof rawInst === 'string' ? rawInst.split('\n').filter(Boolean) : []);
-    cookModeIngredients = Array.isArray(rawIng)
-        ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
-        : [];
+    // Flatten a multi-part recipe into one continuous run of steps, but
+    // remember which part each step came from so cook mode can show
+    // "Crust · Step 2 of 4" rather than losing that context entirely.
+    const instSections = getSections(current, 'instructions');
+    if (hasRealSections(instSections)) {
+        cookModeSteps = [];
+        cookModeStepSections = [];
+        instSections.forEach(section => {
+            (section.items || []).forEach(step => {
+                cookModeSteps.push(step);
+                cookModeStepSections.push(section.title || '');
+            });
+        });
+    } else {
+        cookModeSteps = Array.isArray(rawInst) ? rawInst : (typeof rawInst === 'string' ? rawInst.split('\n').filter(Boolean) : []);
+        cookModeStepSections = cookModeSteps.map(() => '');
+    }
+
+    cookModeIngredients = flattenSections(getSections(current, 'ingredients'))
+        .map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand));
 
     if (cookModeSteps.length === 0) return alert("No instructions found for this recipe yet.");
 
@@ -915,7 +957,10 @@ function buildCookModeOverlay(title) {
 function renderCookModeStep() {
     const stepText = cookModeSteps[cookModeIndex];
 
-    document.getElementById('cook-mode-step-count').innerText = `Step ${cookModeIndex + 1} of ${cookModeSteps.length}`;
+    // Prefix the part name on multi-part recipes ("Crust · Step 2 of 7")
+    const sectionTitle = cookModeStepSections[cookModeIndex];
+    document.getElementById('cook-mode-step-count').innerText =
+        `${sectionTitle ? sectionTitle + ' · ' : ''}Step ${cookModeIndex + 1} of ${cookModeSteps.length}`;
     document.getElementById('cook-mode-step-text').innerText = stepText;
     document.getElementById('cook-mode-progress-bar').style.width = `${((cookModeIndex + 1) / cookModeSteps.length) * 100}%`;
 

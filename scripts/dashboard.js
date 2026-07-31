@@ -5,6 +5,7 @@ import {
     arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { getSections, hasRealSections } from './recipe-model.js';
 
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
@@ -488,13 +489,21 @@ async function loadPendingRecipes() {
             const instructions = data.instructions || data.recipeInstructions || [];
             const category = (data.tags && data.tags[0]) || data.category || "Uncategorized";
 
-            const ingHtml = Array.isArray(ingredients) && ingredients.length > 0
-                ? `<ul>${ingredients.map(i => `<li>${i}</li>`).join('')}</ul>`
-                : `<p class="pending-empty">No ingredients listed.</p>`;
+            // Show multi-part submissions with their group headings intact
+            const ingSections = getSections(data, 'ingredients');
+            const instSections = getSections(data, 'instructions');
 
-            const instHtml = Array.isArray(instructions) && instructions.length > 0
-                ? `<ol>${instructions.map(s => `<li>${s}</li>`).join('')}</ol>`
-                : `<p class="pending-empty">No instructions listed.</p>`;
+            const ingHtml = hasRealSections(ingSections)
+                ? ingSections.map(s => `${s.title ? `<h5 style="margin:8px 0 2px 0; color:#b45309;">${s.title}</h5>` : ''}<ul>${(s.items || []).map(i => `<li>${i}</li>`).join('')}</ul>`).join('')
+                : (Array.isArray(ingredients) && ingredients.length > 0
+                    ? `<ul>${ingredients.map(i => `<li>${i}</li>`).join('')}</ul>`
+                    : `<p class="pending-empty">No ingredients listed.</p>`);
+
+            const instHtml = hasRealSections(instSections)
+                ? instSections.map(s => `${s.title ? `<h5 style="margin:8px 0 2px 0; color:#b45309;">${s.title}</h5>` : ''}<ol>${(s.items || []).map(i => `<li>${i}</li>`).join('')}</ol>`).join('')
+                : (Array.isArray(instructions) && instructions.length > 0
+                    ? `<ol>${instructions.map(s => `<li>${s}</li>`).join('')}</ol>`
+                    : `<p class="pending-empty">No instructions listed.</p>`);
 
             const notesHtml = data.notes ? `<div class="pending-notes"><strong>📝 Notes:</strong> ${data.notes}</div>` : '';
 

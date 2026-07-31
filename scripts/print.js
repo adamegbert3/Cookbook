@@ -1,6 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { doc, getDoc, getDocs, collection, query, where, documentId } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { getSections, hasRealSections } from './recipe-model.js';
 
 let indexedRecipes = [];
 
@@ -135,13 +136,25 @@ function recipeToPrintHtml(recipe) {
     const rawIng = recipe.ingredients || recipe.recipeIngredient;
     const rawInst = recipe.instructions || recipe.recipeInstructions;
 
-    const ingHtml = Array.isArray(rawIng)
-        ? `<ul>${rawIng.map(i => `<li>${i}</li>`).join('')}</ul>`
-        : `<p>${rawIng || ''}</p>`;
+    // Multi-part recipes print with their group headings intact
+    const ingSections = getSections(recipe, 'ingredients');
+    const instSections = getSections(recipe, 'instructions');
 
-    const instHtml = Array.isArray(rawInst)
-        ? `<ol>${rawInst.map(s => `<li>${s}</li>`).join('')}</ol>`
-        : `<p>${rawInst || ''}</p>`;
+    const ingHtml = hasRealSections(ingSections)
+        ? ingSections.map(s => `
+            ${s.title ? `<h4 class="print-subsection">${s.title}</h4>` : ''}
+            <ul>${(s.items || []).map(i => `<li>${i}</li>`).join('')}</ul>`).join('')
+        : (Array.isArray(rawIng)
+            ? `<ul>${rawIng.map(i => `<li>${i}</li>`).join('')}</ul>`
+            : `<p>${rawIng || ''}</p>`);
+
+    const instHtml = hasRealSections(instSections)
+        ? instSections.map(s => `
+            ${s.title ? `<h4 class="print-subsection">${s.title}</h4>` : ''}
+            <ol>${(s.items || []).map(step => `<li>${step}</li>`).join('')}</ol>`).join('')
+        : (Array.isArray(rawInst)
+            ? `<ol>${rawInst.map(s => `<li>${s}</li>`).join('')}</ol>`
+            : `<p>${rawInst || ''}</p>`);
 
     const notesHtml = recipe.notes && String(recipe.notes).trim()
         ? `<h3 class="section-header">📝 Recipe Notes</h3><p style="white-space:pre-wrap;">${recipe.notes}</p>`

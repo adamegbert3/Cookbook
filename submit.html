@@ -32,12 +32,18 @@
             <div class="input-group">
                 <label>Ingredients (New line for each)</label>
                 <textarea id="ingredients" class="form-input" rows="5" placeholder="2 Cups Flour&#10;1 tsp Salt" required></textarea>
+                <button type="button" onclick="addSection('ingredients')" class="pill-btn btn-slate" style="margin-top:8px; font-size:0.75rem; padding:6px 12px;">➕ Add a Part (Crust, Filling…)</button>
+                <p class="section-hint">Making something with parts? Start a line with <code>## Crust</code> to group what follows under that heading.</p>
             </div>
 
             <div class="input-group">
                 <label>Instructions (New line for each)</label>
                 <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix..." required></textarea>
-                <button type="button" onclick="autoSplitInstructions()" class="pill-btn btn-slate" style="margin-top:8px; font-size:0.75rem; padding:6px 12px;">✂️ Auto-split into steps</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                    <button type="button" onclick="autoSplitInstructions()" class="pill-btn btn-slate" style="font-size:0.75rem; padding:6px 12px;">✂️ Auto-split into steps</button>
+                    <button type="button" onclick="addSection('instructions')" class="pill-btn btn-slate" style="font-size:0.75rem; padding:6px 12px;">➕ Add a Part</button>
+                </div>
+                <p class="section-hint">Steps under each <code>## Heading</code> are numbered separately.</p>
             </div>
             <div class="input-group">
                 <label>Category</label>

@@ -97,12 +97,14 @@
             <option value="Soups & Salads">Soups & Salads</option>
         </select>
 
-        <label>Ingredients <span class="hint">(one per line)</span></label>
+        <label>Ingredients <span class="hint">(one per line — start a line with <code>## Crust</code> to begin a new part)</span></label>
         <textarea id="r-ingredients" rows="8"></textarea>
+        <button type="button" class="btn-tool" onclick="addSection('r-ingredients')">➕ Add a Part (Crust, Filling…)</button>
 
-        <label>Instructions <span class="hint">(one step per line)</span></label>
+        <label>Instructions <span class="hint">(one step per line — <code>## Headings</code> restart numbering)</span></label>
         <textarea id="r-instructions" rows="8"></textarea>
         <button type="button" class="btn-tool" onclick="autoSplitInstructions()">✂️ Auto-split into steps</button>
+        <button type="button" class="btn-tool" onclick="addSection('r-instructions')">➕ Add a Part</button>
 
         <label>Chef's Notes <span class="hint">(optional)</span></label>
         <textarea id="r-notes" rows="3"></textarea>
