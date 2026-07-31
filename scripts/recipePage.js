@@ -521,9 +521,54 @@ window.revertPersonalization = async function() {
     }
 };
 
+// ==========================================
+// ADMIN TEST MODE
+// Checking that a recipe renders correctly shouldn't inflate its view count
+// or the family leaderboard. While this is on, views and cooks are skipped
+// entirely. It's a per-device localStorage flag, so it can't accidentally
+// affect anyone else.
+// ==========================================
+export function isTestModeOn() {
+    return localStorage.getItem('adminTestMode') === 'true';
+}
+
+window.toggleTestMode = function() {
+    const next = !isTestModeOn();
+    localStorage.setItem('adminTestMode', next);
+    console.log(`🧪 [TEST MODE] ${next ? 'ON — views and cooks will NOT be recorded.' : 'OFF — back to normal tracking.'}`);
+    updateTestModeUi();
+};
+
+function updateTestModeUi() {
+    const on = isTestModeOn();
+    document.querySelectorAll('.js-test-mode-btn').forEach(b => {
+        b.innerText = `🧪 Test Mode: ${on ? 'ON' : 'OFF'}`;
+        b.classList.toggle('cook-mode-active', on);
+    });
+
+    let banner = document.getElementById('test-mode-banner');
+    if (on && !banner) {
+        banner = document.createElement('div');
+        banner.id = 'test-mode-banner';
+        banner.className = 'no-print';
+        banner.style.cssText = `background:#fef3c7; border-bottom:2px solid #f59e0b; color:#92400e;
+            padding:6px 14px; font-size:12px; font-weight:700; text-align:center;
+            position:sticky; top:0; z-index:120;`;
+        banner.innerText = "🧪 Test Mode is ON — views and cooks aren't being counted.";
+        document.body.prepend(banner);
+    } else if (!on && banner) {
+        banner.remove();
+    }
+}
+
 async function logViewToDatabase(recipeData) {
+    if (isTestModeOn()) {
+        console.log("🧪 [TEST MODE] Skipped logging this view.");
+        return;
+    }
+
     const sessionKey = `viewed-${recipeData.id}`;
-    if (sessionStorage.getItem(sessionKey)) return; 
+    if (sessionStorage.getItem(sessionKey)) return;
 
     try {
         const user = auth.currentUser;
@@ -1099,18 +1144,29 @@ window.answerCookPrompt = function(isCooking) {
 
 // --- COOK COUNTER ---
 function loadCookStats() {
-    const count = localStorage.getItem(`cook-${recipeId}`) || 0;
+    const count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     const el = document.getElementById('cook-counter');
-    if(el) el.innerHTML = count > 0 ? `You've cooked this <b>${count}</b> times!` : "You haven't cooked this yet.";
+    if (!el) return;
+
+    el.innerHTML = count > 0
+        ? `You've cooked this <b>${count}</b> time${count === 1 ? '' : 's'}!
+           <button onclick="undoCook()" class="no-print" style="background:none; border:none; color:#94a3b8; text-decoration:underline; cursor:pointer; font-size:0.8rem; margin-left:6px;">Undo</button>`
+        : "You haven't cooked this yet.";
 }
 
 window.recordCook = async function() {
+    if (isTestModeOn()) {
+        console.log("🧪 [TEST MODE] Skipped recording this cook.");
+        alert("Test Mode is on — this cook wasn't counted.");
+        return;
+    }
+
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
     localStorage.setItem(`cook-${recipeId}`, count);
     console.log(`🎉 [COOK] Recording cook #${count} for recipe:`, recipeId);
     loadCookStats();
-    
+
     const btn = document.querySelector('.celebration-area button');
     if(btn) btn.innerText = "🎉 Yay!";
 
@@ -1130,14 +1186,46 @@ window.recordCook = async function() {
             } catch (err) { console.log("Could not fetch profile name for cook record"); }
         }
 
-        await addDoc(collection(db, "global_cooks"), {
+        const cookRef = await addDoc(collection(db, "global_cooks"), {
             recipeId: recipeId,
             timestamp: serverTimestamp(),
             uid: uid,
             chef: chefName
         });
+        // Remember the last one so "Undo" can remove it from the leaderboard
+        // too, not just the local counter.
+        localStorage.setItem(`lastCookDoc-${recipeId}`, cookRef.id);
     } catch (e) { console.error("Could not record cook to DB:", e); }
 }
+
+// Mis-taps happen — this rolls back the most recent "I Made This" for this
+// recipe, both the local counter and the leaderboard record behind it.
+window.undoCook = async function() {
+    let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
+    if (count <= 0) return;
+    if (!confirm("Undo your most recent \"I Made This\" for this recipe?")) return;
+
+    count--;
+    if (count > 0) localStorage.setItem(`cook-${recipeId}`, count);
+    else localStorage.removeItem(`cook-${recipeId}`);
+
+    const lastDocId = localStorage.getItem(`lastCookDoc-${recipeId}`);
+    if (lastDocId) {
+        try {
+            await deleteDoc(doc(db, "global_cooks", lastDocId));
+            localStorage.removeItem(`lastCookDoc-${recipeId}`);
+            console.log("↩️ [COOK] Removed the last cook record.");
+        } catch (e) {
+            console.warn("⚠️ [COOK] Local count undone, but the leaderboard record couldn't be removed:", e.message);
+        }
+    } else {
+        console.log("↩️ [COOK] Local count undone (no leaderboard record saved for this one).");
+    }
+
+    loadCookStats();
+    const btn = document.querySelector('.celebration-area button');
+    if (btn) btn.innerText = "🎉 I Made This!";
+};
 
 // ==========================================
 // 3. REPORTING LOGIC
@@ -1410,6 +1498,7 @@ const MOBILE_TOOL_GROUPS = [
     { label: '⚖️ Scale Recipe', match: text => /^\d+(\.\d+)?x$/.test(text.trim()) },
     { label: '🏔️ High Altitude', match: text => text.trim() === 'Off' || /ft$/.test(text.trim()) },
     { label: '🚩 Report an Issue', match: text => text.includes('Report') },
+    { label: '🛠️ Admin', match: text => text.includes('Test Mode') },
     { label: '🖥️ Display', match: text => /Text \+|Text -|Day Mode|Night Mode|Ingredients in Steps|Substitution Hints/.test(text) },
     { label: '🎬 Actions', match: () => true } // fallback: Share/Print, Stay Awake, Cook Mode, Menu, Personalize
 ];
@@ -1426,7 +1515,11 @@ window.openMobileToolsModal = function() {
 
     if (modal && inlineTools) {
         const allToolButtons = Array.from(inlineTools.querySelectorAll('button'))
-            .filter(btn => btn.id !== 'mobile-tool-fab');
+            .filter(btn => btn.id !== 'mobile-tool-fab')
+            // Skip buttons inside a hidden container — otherwise the
+            // admin-only Test Mode button would get cloned into the sheet
+            // for everyone, since querySelectorAll still finds hidden nodes.
+            .filter(btn => !btn.closest('.hidden'));
         modalBody.innerHTML = '';
 
         // Group first (Actions, Display, Scale, Altitude, Report), preserving
@@ -1477,6 +1570,34 @@ window.closeMobileToolsModal = function() {
 // attached, so under login-required security rules it got denied even for
 // a signed-in user (the "works on the second refresh" symptom). Waiting on
 // the first onAuthStateChanged tick closes that race for good.
+// Reveal the admin-only Kitchen Tools (Test Mode) for admins. Uses the same
+// built-in list + role lookup as everywhere else; a non-admin simply never
+// sees the section.
+const ADMIN_UIDS = [
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
+    "NrY491PYN3MIrqJp4rhu5S86w2R2",
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
+];
+
+async function revealAdminToolsIfAdmin(user) {
+    if (!user) return;
+    let isAdmin = ADMIN_UIDS.includes(user.uid);
+    if (!isAdmin) {
+        try {
+            const snap = await getDoc(doc(db, "users", user.uid));
+            isAdmin = snap.exists() && snap.data().role === 'admin';
+        } catch (e) { return; }
+    }
+    if (!isAdmin) return;
+
+    document.getElementById('admin-tools-slot')?.classList.remove('hidden');
+    updateTestModeUi();
+}
+
+onAuthStateChanged(auth, (user) => { if (user) revealAdminToolsIfAdmin(user); });
+updateTestModeUi(); // show the warning banner immediately if it was left on
+
 const authReady = new Promise((resolve) => {
     // Offline there's nothing to wait for — Auth can't reach
     // apis.google.com, so onAuthStateChanged never fires at all. Don't make

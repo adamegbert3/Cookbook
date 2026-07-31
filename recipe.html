@@ -55,6 +55,13 @@
             <div id="kt-scale-slot" style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:15px;"></div>
             <div id="kt-altitude-slot" style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
 
+            <!-- Admin-only: revealed by scripts/recipePage.js for admins -->
+            <div id="admin-tools-slot" class="hidden" style="margin-top:15px;">
+                <p class="kt-section-label">🛠️ Admin</p>
+                <button onclick="toggleTestMode()" class="pill-btn btn-slate js-test-mode-btn" style="font-size:0.8rem;">🧪 Test Mode: OFF</button>
+                <p style="font-size:11px; color:#94a3b8; margin:6px 0 0 0;">While on, opening or cooking recipes won't count toward views or the leaderboard.</p>
+            </div>
+
             <div style="margin-top:15px;">
                 <button onclick="openReportModal()" class="pill-btn btn-red-outline" style="font-size:0.8rem;">🚩 Report Issue</button>
             </div>
