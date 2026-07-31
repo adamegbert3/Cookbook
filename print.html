@@ -34,9 +34,50 @@
         #print-output { display: none; }
         .print-recipe-block { page-break-after: always; margin-bottom: 40px; }
         .print-recipe-block:last-child { page-break-after: auto; }
+
+        /* ============================================================
+           GIFT-ABLE COOKBOOK LAYOUT (cover / contents / dividers)
+           Only rendered when "Make a Cookbook" is used.
+           ============================================================ */
+        .book-cover {
+            page-break-after: always;
+            text-align: center;
+            padding: 18% 40px 0 40px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .book-cover img { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; margin-bottom: 30px; }
+        .book-cover h1 { font-size: 4rem; margin: 0 0 8px 0; line-height: 1.1; }
+        .book-cover .book-subtitle { font-size: 1.2rem; font-style: italic; opacity: 0.75; margin: 0 0 30px 0; }
+        .book-cover .book-meta { font-size: 0.95rem; opacity: 0.6; }
+        .book-cover .book-rule { width: 120px; border: 0; border-top: 2px solid currentColor; margin: 24px auto; opacity: 0.35; }
+
+        .book-toc { page-break-after: always; padding: 40px; }
+        .book-toc h2 { font-size: 2.6rem; text-align: center; margin-bottom: 30px; }
+        .book-toc-category { font-weight: 800; margin: 18px 0 6px 0; font-size: 1.05rem; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
+        .book-toc-item { font-size: 0.92rem; padding: 2px 0 2px 14px; display: flex; justify-content: space-between; gap: 10px; }
+        .book-toc-item .toc-author { opacity: 0.55; font-style: italic; white-space: nowrap; }
+
+        /* Only break AFTER — the preceding element (contents page, or the
+           previous recipe block) already breaks after itself, so adding
+           page-break-before here would insert a blank page between them. */
+        .book-divider {
+            page-break-after: always;
+            text-align: center;
+            padding: 38% 40px 0 40px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        .book-divider h2 { font-size: 3.2rem; margin: 0; }
+        .book-divider .divider-count { font-size: 1rem; opacity: 0.6; font-style: italic; margin-top: 10px; }
+
+        .print-subsection { margin: 14px 0 4px 0; font-size: 1.1rem; }
+
         @media print {
             .no-print { display: none !important; }
             #print-output { display: block !important; }
+            /* Cover/divider pages rely on real page height when printing */
+            .book-cover, .book-divider { height: auto; min-height: 8in; }
         }
     </style>
 </head>
@@ -63,10 +104,27 @@
             Pick individual recipes, whole categories, or the entire cookbook, then print or save as a PDF.
         </p>
 
+        <div style="background: var(--bg-card); border: 2px dashed var(--accent-warm); border-radius: 12px; padding: 20px; max-width: 640px; margin: 0 auto 24px auto; text-align: center;">
+            <h3 style="margin-top: 0; color: var(--accent-warm);">📖 Make a Real Cookbook</h3>
+            <p style="font-size: 13px; color: var(--primary); opacity: 0.8; margin-top: -4px;">
+                Adds a title page with the family logo, a table of contents, and a divider before each
+                category — so a PDF or printout actually reads like a bound book. Perfect for gifting.
+            </p>
+            <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:6px;">
+                <input type="text" id="book-title" placeholder="Cookbook title" value="Our Family Cookbook"
+                       style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; max-width:230px;">
+                <input type="text" id="book-subtitle" placeholder="Subtitle (optional)" value="Recipes we actually make"
+                       style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; max-width:230px;">
+            </div>
+            <button class="pill-btn btn-orange" style="margin-top:12px;" onclick="printSelected({ asBook: true })">
+                📖 Build Cookbook from Selection
+            </button>
+        </div>
+
         <div class="print-toolbar">
             <button class="pill-btn btn-dark" onclick="selectAll(true)">☑️ Select Everything</button>
             <button class="pill-btn btn-slate" onclick="selectAll(false)">☐ Clear Selection</button>
-            <button class="pill-btn btn-teal" onclick="printSelected()">🖨️ Print Selected</button>
+            <button class="pill-btn btn-teal" onclick="printSelected()">🖨️ Print Selected (plain)</button>
         </div>
 
         <div id="print-pick-list" class="print-pick-list">

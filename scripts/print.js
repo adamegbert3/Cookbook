@@ -94,7 +94,8 @@ function chunkArray(arr, size) {
     return out;
 }
 
-window.printSelected = async function() {
+window.printSelected = async function(options = {}) {
+    const asBook = options.asBook === true;
     const ids = Array.from(document.querySelectorAll('.print-pick-checkbox:checked')).map(cb => cb.value);
     if (ids.length === 0) return alert("Pick at least one recipe first.");
 
@@ -119,9 +120,11 @@ window.printSelected = async function() {
         // Keep the order the user picked them in — object key order from the
         // batched fetch above isn't guaranteed to match.
         const recipes = ids.map(id => recipesById[id]).filter(Boolean);
-        console.log(`✅ [PRINT] Fetched ${recipes.length} of ${ids.length} recipe(s). Building print layout...`);
+        console.log(`✅ [PRINT] Fetched ${recipes.length} of ${ids.length} recipe(s). Building ${asBook ? 'cookbook' : 'print'} layout...`);
 
-        output.innerHTML = recipes.map(recipeToPrintHtml).join('');
+        output.innerHTML = asBook
+            ? buildCookbookHtml(recipes)
+            : recipes.map(recipeToPrintHtml).join('');
 
         console.log("🖨️ [PRINT] Opening the print dialog now...");
         setTimeout(() => window.print(), 300);
@@ -131,6 +134,71 @@ window.printSelected = async function() {
         alert("Could not prepare recipes for printing.");
     }
 };
+
+// ==========================================
+// GIFT-ABLE COOKBOOK LAYOUT
+// Title page → table of contents → a divider before each category →
+// the recipes, grouped and alphabetised within each category.
+// ==========================================
+function recipeCategory(recipe) {
+    if (Array.isArray(recipe.tags) && recipe.tags.length > 0) return recipe.tags[0];
+    return recipe.category || "Miscellaneous";
+}
+
+function buildCookbookHtml(recipes) {
+    const title = (document.getElementById('book-title')?.value || "Our Family Cookbook").trim();
+    const subtitle = (document.getElementById('book-subtitle')?.value || "").trim();
+
+    // Group by category, alphabetise categories and recipes within them
+    const byCategory = {};
+    recipes.forEach(r => {
+        const cat = recipeCategory(r);
+        (byCategory[cat] = byCategory[cat] || []).push(r);
+    });
+    const categories = Object.keys(byCategory).sort();
+    categories.forEach(cat => byCategory[cat].sort((a, b) => (a.name || "").localeCompare(b.name || "")));
+
+    const printedOn = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // 1. Cover
+    const cover = `
+        <div class="book-cover">
+            <img src="images/logo.jpg" alt="">
+            <h1>${title}</h1>
+            ${subtitle ? `<p class="book-subtitle">${subtitle}</p>` : ''}
+            <hr class="book-rule">
+            <p class="book-meta">${recipes.length} recipes · ${categories.length} sections</p>
+            <p class="book-meta">${printedOn}</p>
+        </div>`;
+
+    // 2. Table of contents
+    const toc = `
+        <div class="book-toc">
+            <h2>Contents</h2>
+            ${categories.map(cat => `
+                <div class="book-toc-category">${cat}</div>
+                ${byCategory[cat].map(r => `
+                    <div class="book-toc-item">
+                        <span>${r.name || "Untitled"}</span>
+                        <span class="toc-author">${r.author || "Family"}</span>
+                    </div>`).join('')}
+            `).join('')}
+        </div>`;
+
+    // 3. Divider + recipes per category
+    const body = categories.map(cat => {
+        const count = byCategory[cat].length;
+        return `
+            <div class="book-divider">
+                <h2>${cat}</h2>
+                <p class="divider-count">${count} recipe${count === 1 ? '' : 's'}</p>
+            </div>
+            ${byCategory[cat].map(recipeToPrintHtml).join('')}`;
+    }).join('');
+
+    console.log(`📖 [COOKBOOK] Built "${title}" — ${recipes.length} recipes across ${categories.length} sections.`);
+    return cover + toc + body;
+}
 
 function recipeToPrintHtml(recipe) {
     const rawIng = recipe.ingredients || recipe.recipeIngredient;
