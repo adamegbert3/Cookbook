@@ -42,12 +42,13 @@ password" link at any time.
 
 ### Making someone an Admin
 
-The website checks a hardcoded `ADMIN_UIDS` list in a few files (this was
-already the pattern before this tool existed). If you say "yes" to the Admin
-prompt, the script prints the new UID and reminds you to paste it into the
-`ADMIN_UIDS` array in:
+If you say "yes" to the Admin prompt, this script sets `role: "admin"` on
+their profile directly — no code changes or redeploy needed, it takes effect
+the next time they sign in. A handful of "built-in" admins are still
+hardcoded in an `ADMIN_UIDS` list across a few files + `firestore.rules`
+(so the site never loses all its admins if a database write ever fails),
+but that's no longer the normal way to grant someone Admin.
 
-- `scripts/dashboard.js`
-- `scripts/main.js`
-- `scripts/profile.js`
-- `edit-recipe.html`
+For anyone who already has an account, it's easier to just promote/demote
+them from the admin console's "Manage Admin Access" widget instead of
+running this script again.

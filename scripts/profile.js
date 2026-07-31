@@ -6,19 +6,34 @@ import {
     doc, getDoc, collection, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-// ⚠️ LIST OF ADMINS (Copy your exact list from main.js here)
+// "Built-in" admins — keep in sync with firestore.rules and the ADMIN_UIDS
+// arrays in scripts/dashboard.js, scripts/main.js, scripts/review.js, and
+// edit-recipe.html. Everyone else is promoted live via the admin console's
+// "Manage Admin Access" widget (no code changes needed).
 const ADMIN_UIDS = [
-    "n5aAU1g1tBY04Ut0HnhqegSgZe92", 
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
     "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
 ];
+
+async function checkIsAdmin(uid) {
+    if (ADMIN_UIDS.includes(uid)) return true;
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        return snap.exists() && snap.data().role === 'admin';
+    } catch (e) {
+        console.error("Could not check admin role:", e);
+        return false;
+    }
+}
 
 // STARTUP
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         console.log("👤 [PROFILE] Loading profile for:", user.email);
         // --- NEW: REVEAL ADMIN BUTTON ---
-        if (ADMIN_UIDS.includes(user.uid)) {
+        if (await checkIsAdmin(user.uid)) {
             const adminBtn = document.getElementById('profile-admin-btn');
             if(adminBtn) {
                 adminBtn.style.display = 'inline-flex';

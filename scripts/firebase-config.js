@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { initializeFirestore, doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA7ILMR7YRqydfCMi-wnQ7QAXTZIGlYP6o",
@@ -14,7 +14,27 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// ==========================================
+// FIRESTORE TRANSPORT
+// Firestore's default streaming connection (WebChannel) is what produced
+// the constant console error:
+//   "Fetch API cannot load https://firestore.googleapis.com/...Listen/channel...
+//    due to access control checks."
+// That request is the live-updates channel used by onSnapshot (family
+// comments, the shopping list). Safari, some VPNs, and content blockers
+// routinely break that streaming transport, which leaves the listener
+// retrying forever and spamming the console — and can make the first load
+// after sign-in feel slow while it retries.
+//
+// autoDetectLongPolling lets the SDK notice the streaming channel isn't
+// working and quietly fall back to ordinary long-polling requests, which
+// those environments allow. Everything else behaves identically.
+// ==========================================
+export const db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    useFetchStreams: false
+});
 
 // ==========================================
 // OFFLINE MODE
@@ -65,11 +85,17 @@ if ('serviceWorker' in navigator && !isLocalDev) {
 
 // ==========================================
 // FREE USAGE TRACKING (no Cloud Functions / no billing required)
-// One doc per calendar day in "site_visits", incremented once per signed-in
-// browser session so the admin dashboard can show day/week/month usage
-// without needing Firebase's paid Cloud Monitoring access.
+// Two things get written once per signed-in browser session per day:
+//  1. An anonymous daily counter in "site_visits" (no identity) — feeds the
+//     admin dashboard's Site Usage chart.
+//  2. A per-person doc in "site_visits_log" (one per person per day, via a
+//     deterministic id) — feeds the Activity roster, so simply opening the
+//     site (not just opening a specific recipe) shows up there too. This
+//     was previously missing, which made Site Usage's count and the
+//     Activity roster look mismatched even though nothing was broken —
+//     they were just measuring different things.
 // ==========================================
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     if (!user) return;
 
     try {
@@ -77,17 +103,31 @@ onAuthStateChanged(auth, (user) => {
         const sessionFlag = `visit-logged-${todayKey}`;
         if (sessionStorage.getItem(sessionFlag)) return;
 
-        setDoc(doc(db, "site_visits", todayKey), {
-            date: todayKey,
-            count: increment(1),
-            lastUpdated: serverTimestamp()
-        }, { merge: true }).then(() => {
-            // Only mark today as logged once the write actually succeeds —
-            // otherwise a blocked write (e.g. rules not deployed yet) would
-            // silently mark the session as done and never retry.
-            sessionStorage.setItem(sessionFlag, "true");
-        }).catch((err) => {
-            console.warn("[Usage] Could not record today's visit:", err.code || err.message);
-        });
-    } catch (e) { /* Never let usage tracking break the app */ }
+        let viewerName = user.email ? user.email.split('@')[0] : "Family Member";
+        try {
+            const userSnap = await getDoc(doc(db, "users", user.uid));
+            if (userSnap.exists() && userSnap.data().Name) viewerName = userSnap.data().Name;
+        } catch (e) { /* fall back to the email-based name above */ }
+
+        await Promise.all([
+            setDoc(doc(db, "site_visits", todayKey), {
+                date: todayKey,
+                count: increment(1),
+                lastUpdated: serverTimestamp()
+            }, { merge: true }),
+            setDoc(doc(db, "site_visits_log", `${user.uid}_${todayKey}`), {
+                uid: user.uid,
+                viewerName,
+                date: todayKey,
+                timestamp: serverTimestamp()
+            }, { merge: true })
+        ]);
+
+        // Only mark today as logged once both writes actually succeed —
+        // otherwise a blocked write (e.g. rules not deployed yet) would
+        // silently mark the session as done and never retry.
+        sessionStorage.setItem(sessionFlag, "true");
+    } catch (err) {
+        console.warn("[Usage] Could not record today's visit:", err.code || err.message);
+    }
 });

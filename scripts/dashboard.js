@@ -7,40 +7,59 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 // --- CONFIGURATION ---
+// "Built-in" admins — always work even if their users/{uid} doc is ever
+// missing or corrupted. Keep in sync with firestore.rules and the
+// ADMIN_UIDS arrays in scripts/main.js, scripts/profile.js, scripts/review.js,
+// and edit-recipe.html. Everyone else is promoted live via "Manage Admin
+// Access" below, which just sets role:'admin' on their users/{uid} doc —
+// no code changes needed.
 const ADMIN_UIDS = [
     "n5aAU1g1tBY04Ut0HnhqegSgZe92",
     "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
 ];
+
+// Checks the hardcoded list first (instant, no network call), then falls
+// back to the user's Firestore role field for admins promoted via the console.
+async function checkIsAdmin(uid) {
+    if (ADMIN_UIDS.includes(uid)) return true;
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        return snap.exists() && snap.data().role === 'admin';
+    } catch (e) {
+        console.error("Could not check admin role:", e);
+        return false;
+    }
+}
 
 // Global Variables
 let currentActivityLimit = 200; // higher than before so the per-person Activity roster has enough history to be useful
-let allRecipeData = []; 
+let allRecipeData = [];
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
     console.log("🔐 [AUTH STATE CHANGED] Fired!");
-    
+
     if (user) {
         console.log("👤 [AUTH SUCCESS] Logged in as:", user.email);
         console.log("🆔 [AUTH UID]:", user.uid);
-        console.log("📋 [ADMIN LIST]:", ADMIN_UIDS);
-        
-        const isAdmin = ADMIN_UIDS.includes(user.uid);
+
+        const isAdmin = await checkIsAdmin(user.uid);
         console.log("🛡️ [IS ADMIN?]:", isAdmin);
 
         if (isAdmin) {
             console.log("👨‍🍳 Welcome, Chef! Initializing Dashboard...");
-            loadAdminDashboard(); 
+            loadAdminDashboard();
             loadReportedIssues();
         } else {
-            console.warn("⚠️ [ACCESS DENIED] User is logged in, but UID is not in ADMIN_UIDS!");
+            console.warn("⚠️ [ACCESS DENIED] User is logged in, but isn't an admin (not in ADMIN_UIDS and no role:'admin' on their profile)!");
             // Comment out the redirect temporarily so you can read the console!
-            // window.location.href = "index.html"; 
+            // window.location.href = "index.html";
         }
     } else {
         console.error("❌ [AUTH FAIlED] No user detected. Acting as logged out.");
         // Comment out the redirect temporarily so we can debug!
-        // window.location.href = "index.html"; 
+        // window.location.href = "index.html";
     }
 });
 
@@ -50,6 +69,7 @@ async function loadAdminDashboard() {
     loadReports();
     loadUsageStats();
     loadPendingInvites();
+    loadAdminUsersList();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -307,6 +327,10 @@ async function loadAnalytics(allRecipes) {
 // ==========================================
 // ACTIVITY ROSTER (who's been doing what, grouped per person instead of
 // one flat "X viewed Y" feed) — click a person to see their full history.
+// Combines three sources: recipe_views (opened a specific recipe),
+// global_cooks ("I Made This"), and site_visits_log (just opened the site
+// at all — added so people who only browse without opening a recipe still
+// show up here instead of only counting toward the anonymous Site Usage tally).
 // ==========================================
 async function renderActivityRoster(viewDocs, allRecipes) {
     const activityList = document.getElementById('activity-list');
@@ -318,29 +342,44 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         cookSnap.forEach(d => cookDocs.push(d.data()));
     } catch (e) { console.error("Could not load cook history for the activity roster:", e); }
 
-    // Group per person — prefer uid (added to recipe_views going forward),
-    // fall back to their display name for older records that predate it.
+    let visitDocs = [];
+    try {
+        const visitSnap = await getDocs(query(collection(db, "site_visits_log"), orderBy("timestamp", "desc"), limit(currentActivityLimit)));
+        visitSnap.forEach(d => visitDocs.push(d.data()));
+    } catch (e) { console.error("Could not load site-visit history for the activity roster:", e); }
+
+    // Group per person — prefer uid (added to recipe_views going forward,
+    // and always present on site_visits_log), fall back to their display
+    // name for older recipe_views/global_cooks records that predate it.
     const personKey = (uid, name) => uid || `name:${name || "Guest"}`;
     const people = {};
 
     viewDocs.forEach(v => {
         const key = personKey(v.uid, v.viewer);
-        if (!people[key]) people[key] = { key, name: v.viewer || "Guest", views: [], cooks: [] };
+        if (!people[key]) people[key] = { key, name: v.viewer || "Guest", views: [], cooks: [], visits: [] };
         if (v.viewer) people[key].name = v.viewer;
         people[key].views.push(v);
     });
 
     cookDocs.forEach(c => {
         const key = personKey(c.uid, c.chef);
-        if (!people[key]) people[key] = { key, name: c.chef || "Family Member", views: [], cooks: [] };
+        if (!people[key]) people[key] = { key, name: c.chef || "Family Member", views: [], cooks: [], visits: [] };
         if (c.chef) people[key].name = c.chef;
         people[key].cooks.push(c);
+    });
+
+    visitDocs.forEach(v => {
+        const key = personKey(v.uid, v.viewerName);
+        if (!people[key]) people[key] = { key, name: v.viewerName || "Family Member", views: [], cooks: [], visits: [] };
+        if (v.viewerName) people[key].name = v.viewerName;
+        people[key].visits.push(v);
     });
 
     const roster = Object.values(people).map(p => {
         const lastViewMillis = p.views[0] ? tsToMillis(p.views[0].timestamp) : 0;
         const lastCookMillis = p.cooks[0] ? tsToMillis(p.cooks[0].timestamp) : 0;
-        return { ...p, lastViewMillis, lastCookMillis, lastActivityMillis: Math.max(lastViewMillis, lastCookMillis) };
+        const lastVisitMillis = p.visits[0] ? tsToMillis(p.visits[0].timestamp) : 0;
+        return { ...p, lastViewMillis, lastCookMillis, lastVisitMillis, lastActivityMillis: Math.max(lastViewMillis, lastCookMillis, lastVisitMillis) };
     }).sort((a, b) => b.lastActivityMillis - a.lastActivityMillis);
 
     personActivityMap = {};
@@ -352,23 +391,29 @@ async function renderActivityRoster(viewDocs, allRecipes) {
     }
 
     activityList.innerHTML = roster.map(p => {
-        const lastIsView = p.lastViewMillis >= p.lastCookMillis;
         let lastActivityText = "No recent activity";
+        let lastActivityTs = null;
+
         if (p.lastActivityMillis > 0) {
-            if (lastIsView) {
-                lastActivityText = `👀 viewed <strong>${p.views[0].recipeTitle || "a recipe"}</strong>`;
-            } else {
+            if (p.lastActivityMillis === p.lastCookMillis) {
                 const recipeName = (allRecipes.find(r => r.id === p.cooks[0].recipeId) || {}).name;
                 lastActivityText = `🎉 cooked <strong>${recipeName || "a recipe"}</strong>`;
+                lastActivityTs = p.cooks[0].timestamp;
+            } else if (p.lastActivityMillis === p.lastViewMillis) {
+                lastActivityText = `👀 viewed <strong>${p.views[0].recipeTitle || "a recipe"}</strong>`;
+                lastActivityTs = p.views[0].timestamp;
+            } else {
+                lastActivityText = `🏠 visited the site`;
+                lastActivityTs = p.visits[0].timestamp;
             }
         }
-        const timeStr = p.lastActivityMillis ? tsToStr(lastIsView ? p.views[0].timestamp : p.cooks[0].timestamp) : "";
+        const timeStr = lastActivityTs ? tsToStr(lastActivityTs) : "";
 
         return `
             <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; cursor: pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                     <strong>${p.name}</strong>
-                    <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'}</span>
+                    <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'} · ${p.visits.length} visit${p.visits.length === 1 ? '' : 's'}</span>
                 </div>
                 <div style="color: #6b7280; margin-top: 2px;">${lastActivityText}</div>
                 <div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>
@@ -387,13 +432,16 @@ window.openPersonActivity = function(key) {
 
     const combined = [
         ...person.views.map(v => ({ type: 'view', title: v.recipeTitle || 'a recipe', ts: v.timestamp })),
-        ...person.cooks.map(c => ({ type: 'cook', title: (allRecipeData.find(r => r.id === c.recipeId) || {}).name || 'a recipe', ts: c.timestamp }))
+        ...person.cooks.map(c => ({ type: 'cook', title: (allRecipeData.find(r => r.id === c.recipeId) || {}).name || 'a recipe', ts: c.timestamp })),
+        ...person.visits.map(v => ({ type: 'visit', title: '', ts: v.timestamp }))
     ].sort((a, b) => tsToMillis(b.ts) - tsToMillis(a.ts));
+
+    const LABELS = { cook: '🎉 Cooked', view: '👀 Viewed', visit: '🏠 Visited the site' };
 
     bodyEl.innerHTML = combined.length
         ? combined.map(item => `
             <div style="padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
-                <strong>${item.type === 'cook' ? '🎉 Cooked' : '👀 Viewed'}</strong> ${item.title}
+                <strong>${LABELS[item.type]}</strong> ${item.title}
                 <div style="color: #9ca3af; font-size: 11px;">🕒 ${tsToStr(item.ts)}</div>
             </div>`).join('')
         : "<p>No activity found.</p>";
@@ -474,7 +522,6 @@ window.rejectRecipe = async function(id) {
 window.createInvite = async function() {
     const nameInput = document.getElementById('invite-name');
     const emailInput = document.getElementById('invite-email');
-    const isAdminCheckbox = document.getElementById('invite-is-admin');
 
     const name = nameInput.value.trim();
     const email = emailInput.value.trim().toLowerCase();
@@ -483,10 +530,12 @@ window.createInvite = async function() {
     console.log(`👪 [INVITE] Creating invite for ${name} <${email}>...`);
 
     try {
+        // Invites always create a normal user account — Admin access is
+        // never granted at signup (see firestore.rules), only afterward via
+        // "Manage Admin Access" once they've signed up.
         const inviteRef = await addDoc(collection(db, "invites"), {
             name,
             email,
-            role: isAdminCheckbox.checked ? 'admin' : 'user',
             used: false,
             createdAt: serverTimestamp()
         });
@@ -499,8 +548,6 @@ window.createInvite = async function() {
         console.log("✅ [INVITE] Created:", inviteRef.id);
         nameInput.value = "";
         emailInput.value = "";
-        isAdminCheckbox.checked = false;
-        document.getElementById('invite-admin-hint').style.display = 'none';
         loadPendingInvites();
     } catch (e) {
         console.error("🔥 [INVITE] Could not create invite:", e);
@@ -527,7 +574,7 @@ window.loadPendingInvites = async function() {
         list.innerHTML = `<p style="font-size:11px; color:#6b7280; margin-bottom:6px;">Pending invites (not signed up yet):</p>` +
             pending.map(inv => `
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px;">
-                    <span>${inv.name} (${inv.email})${inv.role === 'admin' ? ' <strong>· Admin</strong>' : ''}</span>
+                    <span>${inv.name} (${inv.email})</span>
                     <button onclick="revokeInvite('${inv.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; white-space:nowrap;">Revoke</button>
                 </div>`).join('');
     } catch (e) {
@@ -542,6 +589,89 @@ window.revokeInvite = async function(id) {
         console.log("🗑️ [INVITE] Revoked:", id);
         loadPendingInvites();
     } catch (e) { alert("Could not revoke: " + e.message); }
+};
+
+// ==========================================
+// MANAGE ADMIN ACCESS — promote/demote anyone straight from the console,
+// no code edits or redeploy needed (unlike the original 3 ADMIN_UIDS, which
+// stay hardcoded on purpose — see the comment on ADMIN_UIDS above).
+// ==========================================
+window.loadAdminUsersList = async function() {
+    const listEl = document.getElementById('admin-users-list');
+    if (!listEl) return;
+
+    listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>Loading users...</p>";
+
+    try {
+        const snap = await getDocs(collection(db, "users"));
+        const users = [];
+        snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
+        users.sort((a, b) => (a.Name || a.email || "").localeCompare(b.Name || b.email || ""));
+
+        console.log(`👑 [ADMIN ACCESS] Loaded ${users.length} user(s).`);
+
+        if (users.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>No users found.</p>";
+            return;
+        }
+
+        listEl.innerHTML = users.map(u => {
+            const isBuiltIn = ADMIN_UIDS.includes(u.uid);
+            const isRoleAdmin = u.role === 'admin';
+            const label = u.Name || u.email || u.uid;
+
+            let statusBadge, actionBtn;
+            if (isBuiltIn) {
+                statusBadge = `<span style="background:#e0e7ff; color:#3730a3; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;" title="Set in code (ADMIN_UIDS) — can't be changed here">🔒 Admin (built-in)</span>`;
+                actionBtn = '';
+            } else if (isRoleAdmin) {
+                statusBadge = `<span style="background:#d1fae5; color:#065f46; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;">👑 Admin</span>`;
+                actionBtn = `<button onclick="demoteToUser('${u.uid}', '${label.replace(/'/g, "\\'")}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; white-space:nowrap;">Demote to User</button>`;
+            } else {
+                statusBadge = `<span style="background:#f3f4f6; color:#374151; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;">User</span>`;
+                actionBtn = `<button onclick="promoteToAdmin('${u.uid}', '${label.replace(/'/g, "\\'")}')" style="background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; white-space:nowrap;">Promote to Admin</button>`;
+            }
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
+                    <div>
+                        <div style="font-weight:600;">${label}</div>
+                        ${u.email && u.Name ? `<div style="font-size:11px; color:#9ca3af;">${u.email}</div>` : ''}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        ${statusBadge}
+                        ${actionBtn}
+                    </div>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        console.error("🔥 [ADMIN ACCESS] Could not load users:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load users: " + e.message + "</p>";
+    }
+};
+
+window.promoteToAdmin = async function(uid, label) {
+    if (!confirm(`Give ${label} Admin access? They'll be able to edit/delete recipes, manage users, and see all dashboard data.`)) return;
+    try {
+        await updateDoc(doc(db, "users", uid), { role: 'admin' });
+        console.log(`✅ [ADMIN ACCESS] Promoted ${label} (${uid}) to admin.`);
+        loadAdminUsersList();
+    } catch (e) {
+        console.error("🔥 [ADMIN ACCESS] Promote failed:", e);
+        alert("Could not promote: " + e.message);
+    }
+};
+
+window.demoteToUser = async function(uid, label) {
+    if (!confirm(`Remove Admin access from ${label}?`)) return;
+    try {
+        await updateDoc(doc(db, "users", uid), { role: 'user' });
+        console.log(`✅ [ADMIN ACCESS] Demoted ${label} (${uid}) to user.`);
+        loadAdminUsersList();
+    } catch (e) {
+        console.error("🔥 [ADMIN ACCESS] Demote failed:", e);
+        alert("Could not demote: " + e.message);
+    }
 };
 
 window.postAnnouncement = async function() {

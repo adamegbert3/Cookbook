@@ -396,16 +396,26 @@ ul li:hover, ol li:hover { background-color: var(--bg-body); border-radius: 4px;
         background: white !important;
     }
 
-    /* 2. Hide UI Junk */
-    .header-container, 
-    .kitchen-tools-section, 
-    .comments-section, 
-    .celebration-area, 
+    /* 2. Hide UI Junk.
+       The [id$="-modal"] / .modal catch-alls matter: the mobile Kitchen
+       Tools sheet is built in JS (setupMobileKitchenTools in
+       scripts/recipePage.js), so it was never in this list — and being
+       position:fixed/inset:0 it printed *on top of* the recipe, which is
+       why "Save as Clean PDF" produced a page of tool buttons instead of
+       the recipe. Anything modal-shaped is now excluded by default. */
+    .header-container,
+    .kitchen-tools-section,
+    .comments-section,
+    .celebration-area,
     .admin-pill,
     .no-print,
-    #share-modal,
-    #report-modal,
-    #plannerModal {
+    .modal,
+    [id$="-modal"],
+    #mobile-tools-modal,
+    #mobile-tool-fab,
+    #cook-mode-overlay,
+    #search-overlay,
+    #floating-back-btn {
         display: none !important;
     }
 

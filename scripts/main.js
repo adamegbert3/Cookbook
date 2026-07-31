@@ -8,16 +8,35 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-let allRecipes = []; 
-let userFavorites = []; 
+let allRecipes = [];
+let userFavorites = [];
 let isAdmin = false; // <-- ADD THIS
 
-// ⚠️ LIST OF ADMINS (Array of Strings)
+// "Built-in" admins — always work even if their users/{uid} doc is ever
+// missing or corrupted. Keep in sync with firestore.rules and the
+// ADMIN_UIDS arrays in scripts/dashboard.js, scripts/profile.js,
+// scripts/review.js, and edit-recipe.html. Everyone else is promoted live
+// via the admin console's "Manage Admin Access" widget (sets role:'admin'
+// on their users/{uid} doc — no code changes needed).
 const ADMIN_UIDS = [
-    "n5aAU1g1tBY04Ut0HnhqegSgZe92", 
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
     "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
 ];
+
+// Checks the hardcoded list first (instant, no network call), then falls
+// back to the user's Firestore role field for admins promoted via the console.
+async function checkIsAdmin(uid) {
+    if (ADMIN_UIDS.includes(uid)) return true;
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        return snap.exists() && snap.data().role === 'admin';
+    } catch (e) {
+        console.error("Could not check admin role:", e);
+        return false;
+    }
+}
 
 console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
 
@@ -59,17 +78,21 @@ onAuthStateChanged(auth, async (user) => {
     const adminBtn = document.getElementById('admin-btn');
 
     if (user) {
-        isAdmin = ADMIN_UIDS.includes(user.uid);
-
         // 1. UI Updates
         if (notSignedMsg) notSignedMsg.classList.add('hidden');
         if (recipeGrid) recipeGrid.style.display = 'grid';
-        if (isAdmin && adminBtn) {
-            adminBtn.classList.add('visible');
-        }
-        
-        // 2. Load Content First (Don't block UI!)
-        loadAllRecipes(); 
+
+        // 2. Load content IMMEDIATELY.
+        // Note we deliberately do NOT await the admin check here: for anyone
+        // who isn't a built-in admin it costs a Firestore round-trip, and
+        // blocking on it delayed the whole recipe list for every normal user
+        // (a big chunk of the "login is hit and miss" slowness). Admin status
+        // only controls whether hidden recipes are shown, so we start with
+        // "not admin" and re-render below if that turns out to be wrong.
+        isAdmin = ADMIN_UIDS.includes(user.uid);
+        if (isAdmin && adminBtn) adminBtn.classList.add('visible');
+
+        loadAllRecipes();
         if (document.getElementById('family-feed')) loadFamilyFeed();
         if (document.getElementById('commentsList')) loadComments();
         if (document.getElementById('chefNotes')) loadUserNote();
@@ -77,17 +100,31 @@ onAuthStateChanged(auth, async (user) => {
         // 3. Load User Preferences & Profile in background
         loadUserSettings(user);
         loadHomepageMenu(user);
-        
-        try {
-            const userSnap = await getDoc(doc(db, "users", user.uid));
+
+        // 4. Everything below is background work — none of it blocks the
+        // recipe list appearing.
+        if (!isAdmin) {
+            checkIsAdmin(user.uid).then(result => {
+                if (!result) return;
+                isAdmin = true;
+                if (adminBtn) adminBtn.classList.add('visible');
+                // Re-render so hidden recipes appear for the admin
+                if (allRecipes.length > 0) renderLocalList(allRecipes);
+            });
+        }
+
+        getDoc(doc(db, "users", user.uid)).then(userSnap => {
             let userName = user.displayName || user.email.split('@')[0];
-            
             if (userSnap.exists()) {
                 userName = userSnap.data().Name || userName;
-                userFavorites = userSnap.data().favorites || []; 
+                userFavorites = userSnap.data().favorites || [];
+                // Hearts render from userFavorites, so refresh once we have
+                // them — but only if there are any, to avoid a pointless
+                // re-render (and scroll reset) for people with no favorites.
+                if (userFavorites.length > 0 && allRecipes.length > 0) renderLocalList(allRecipes);
             }
-            updateProfileIcon(userName); 
-        } catch (err) { console.error("Profile Error:", err); }
+            updateProfileIcon(userName);
+        }).catch(err => console.error("Profile Error:", err));
 
     } else {
         // --- 🚨 UPGRADED GUEST HANDLING (The Bouncer) ---
@@ -151,17 +188,78 @@ async function loadAllRecipes() {
             await loadAllRecipesDirect(container);
         } catch (e2) {
             console.error("Recipe Load Error (direct):", e2);
+
+            // LAST RESORT: both network paths failed (offline, or Firestore
+            // is unreachable). recipe.html has always fallen back to the
+            // localStorage copy that saveRecipeOffline() maintains, but the
+            // homepage never did — which is why offline mode "only worked
+            // online": you could never get past this screen to a recipe.
+            if (renderFromOfflineStore(container)) return;
+
             const reason = e2.code || e2.message || e.code || e.message || "unknown error";
             container.innerHTML = `
                 <div style="text-align:center; width:100%;">
                     <p>Connection trouble loading recipes.</p>
                     <p style="font-size:11px; color:#94a3b8;">(${reason})</p>
+                    <p style="font-size:12px; color:#94a3b8;">No offline copy saved on this device yet — next time you're online, tap "⛺ Download All Recipes for Offline".</p>
                     <button onclick="loadAllRecipes()" class="pill-btn btn-teal">🔄 Retry</button>
                     <button onclick="emergencyCacheReset()" class="pill-btn btn-slate">🧹 Fix & Reload</button>
                     <p style="font-size:11px; color:#94a3b8; margin-top:8px;">"Fix & Reload" clears this device's cached copy of the site and fetches everything fresh.</p>
                 </div>`;
         }
     }
+}
+
+// Rebuilds the homepage list from the full recipe copies already sitting in
+// localStorage (written by saveRecipeOffline() whenever a recipe is opened,
+// and en masse by "Download All Recipes for Offline"). Reshapes them into
+// the same compact form the online index uses so everything downstream —
+// search, category filters, cards — works unchanged.
+// Returns true if it managed to render something.
+function renderFromOfflineStore(container) {
+    let store = {};
+    try {
+        store = JSON.parse(localStorage.getItem(OFFLINE_DATA_KEY) || "{}");
+    } catch (e) { return false; }
+
+    const saved = Object.values(store);
+    if (saved.length === 0) return false;
+
+    console.log(`⛺ [OFFLINE] Network unavailable — showing ${saved.length} recipe(s) saved on this device.`);
+
+    allRecipes = saved.map(data => {
+        const ingredients = data.ingredients || data.recipeIngredient || [];
+        return {
+            id: data.id,
+            n: data.name || data.n || "Untitled",
+            a: data.author || data.a || "Family",
+            t: data.tags || data.t || [],
+            c: data.category || data.c || "Misc",
+            r: data.reviewed || data.r || false,
+            h: data.isHidden === true || data.h === true,
+            ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
+        };
+    });
+
+    renderLocalList(allRecipes);
+    updateOfflineStatusLine();
+    showOfflineBanner(saved.length);
+    return true;
+}
+
+function showOfflineBanner(count) {
+    if (document.getElementById('offline-mode-banner')) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'offline-mode-banner';
+    banner.style.cssText = `
+        background:#fef08a; border:1px solid #eab308; color:#854d0e;
+        padding:10px 14px; border-radius:8px; margin:0 0 15px 0;
+        font-size:13px; text-align:center; font-weight:600;`;
+    banner.innerHTML = `⛺ <strong>Offline mode</strong> — showing the ${count} recipe${count === 1 ? '' : 's'} saved on this device. Reconnect to see everything.`;
+
+    const recipesEl = document.getElementById('recipes');
+    if (recipesEl && recipesEl.parentNode) recipesEl.parentNode.insertBefore(banner, recipesEl);
 }
 window.loadAllRecipes = loadAllRecipes;
 

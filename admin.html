@@ -163,17 +163,12 @@
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
                 Works from anywhere, including your phone — no computer or Ollama-style local setup needed.
                 Creates a private signup link; the person sets their own password when they open it (nothing with admin access ever touches this page).
+                Creates a regular account — use "Manage Admin Access" below afterward if they need Admin, too.
             </p>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                 <input type="text" id="invite-name" placeholder="Full name (e.g. Aunt Sally)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                 <input type="email" id="invite-email" placeholder="Email address" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
-            <label style="display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 13px; color: #374151;">
-                <input type="checkbox" id="invite-is-admin" onchange="document.getElementById('invite-admin-hint').style.display = this.checked ? 'block' : 'none';" style="width: 16px; height: 16px; margin: 0;"> Make this person an Admin
-            </label>
-            <p id="invite-admin-hint" style="display:none; font-size: 11px; background:#fffbeb; border:1px solid #fcd34d; color:#92400e; padding:8px 10px; border-radius:6px; margin-top:6px;">
-                Admin access still needs one manual step after they sign up: add their UID to the <code>ADMIN_UIDS</code> list in scripts/dashboard.js, scripts/main.js, scripts/profile.js, edit-recipe.html, and firestore.rules, then redeploy. This just gets their account created.
-            </p>
             <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite Link</button>
             <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
                 <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Send this link to them (text, email, whatever's easiest):</p>
@@ -183,6 +178,15 @@
                 </div>
             </div>
             <div id="pending-invites-list" style="margin-top: 15px;"></div>
+        </div>
+
+        <div class="pending-card widget-card" style="border-left: 5px solid #4f46e5;">
+            <h3 style="margin-top:0; color: #3730a3;">👑 Manage Admin Access</h3>
+            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
+                Promote or demote anyone with one click — takes effect immediately, no code changes or redeploy needed.
+                The 3 built-in admins are set in code and can't be changed here.
+            </p>
+            <div id="admin-users-list" style="max-height: 320px; overflow-y: auto; margin-top: 10px;"></div>
         </div>
 
         <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">
@@ -210,7 +214,7 @@
                     <button class="pill-btn usage-range-btn btn-slate" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('month', this)">Monthly</button>
                 </div>
             </div>
-            <p style="font-size: 12px; color: #6b7280; margin: 8px 0 15px 0;">Counts one visit per signed-in family member per day (free, no Firebase billing plan needed).</p>
+            <p style="font-size: 12px; color: #6b7280; margin: 8px 0 15px 0;">A raw count of signed-in visits per day (same person on 2 devices counts twice) — free, no Firebase billing plan needed. For who specifically visited, see Activity below.</p>
             <div style="overflow-x: auto; padding-bottom: 4px;">
                 <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px; min-width: 460px;">
                     <p style="color:#9ca3af; font-size: 13px;">Loading usage stats...</p>
@@ -279,7 +283,7 @@
         
         <div class="pending-card widget-card">
             <h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3>
-            <p style="font-size: 12px; color: #6b7280; margin: -8px 0 10px 0;">Tap anyone to see everything they've viewed and cooked.</p>
+            <p style="font-size: 12px; color: #6b7280; margin: -8px 0 10px 0;">Everyone who's signed in shows up here, even if they only browsed — tap anyone to see everything they've visited, viewed, and cooked.</p>
             <div id="activity-list" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
 
