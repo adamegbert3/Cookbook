@@ -8,16 +8,35 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-let allRecipes = []; 
-let userFavorites = []; 
+let allRecipes = [];
+let userFavorites = [];
 let isAdmin = false; // <-- ADD THIS
 
-// ⚠️ LIST OF ADMINS (Array of Strings)
+// "Built-in" admins — always work even if their users/{uid} doc is ever
+// missing or corrupted. Keep in sync with firestore.rules and the
+// ADMIN_UIDS arrays in scripts/dashboard.js, scripts/profile.js,
+// scripts/review.js, and edit-recipe.html. Everyone else is promoted live
+// via the admin console's "Manage Admin Access" widget (sets role:'admin'
+// on their users/{uid} doc — no code changes needed).
 const ADMIN_UIDS = [
-    "n5aAU1g1tBY04Ut0HnhqegSgZe92", 
+    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
     "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
 ];
+
+// Checks the hardcoded list first (instant, no network call), then falls
+// back to the user's Firestore role field for admins promoted via the console.
+async function checkIsAdmin(uid) {
+    if (ADMIN_UIDS.includes(uid)) return true;
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        return snap.exists() && snap.data().role === 'admin';
+    } catch (e) {
+        console.error("Could not check admin role:", e);
+        return false;
+    }
+}
 
 console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
 
@@ -59,7 +78,7 @@ onAuthStateChanged(auth, async (user) => {
     const adminBtn = document.getElementById('admin-btn');
 
     if (user) {
-        isAdmin = ADMIN_UIDS.includes(user.uid);
+        isAdmin = await checkIsAdmin(user.uid);
 
         // 1. UI Updates
         if (notSignedMsg) notSignedMsg.classList.add('hidden');

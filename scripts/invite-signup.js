@@ -83,7 +83,11 @@ formEl.addEventListener('submit', async (e) => {
         await setDoc(doc(db, "users", cred.user.uid), {
             Name: inviteData.name,
             email: inviteData.email,
-            role: inviteData.role || 'user',
+            // Every invite creates a regular account — never role:'admin'
+            // (firestore.rules enforces this server-side too). Admin access
+            // is always a separate step an existing admin takes afterward
+            // from the admin console's "Manage Admin Access" widget.
+            role: 'user',
             favorites: [],
             createdAt: serverTimestamp()
         });
@@ -100,11 +104,6 @@ formEl.addEventListener('submit', async (e) => {
         }
 
         console.log("✅ [INVITE SIGNUP] Account created:", cred.user.uid);
-
-        if (inviteData.role === 'admin') {
-            alert("Account created! One more thing for whoever manages the site: your UID needs to be added to the ADMIN_UIDS list in the code before Admin features show up for you.");
-        }
-
         window.location.href = "homepage.html";
     } catch (error) {
         console.error("🔥 [INVITE SIGNUP] Account creation failed:", error);

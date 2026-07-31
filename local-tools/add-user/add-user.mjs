@@ -67,12 +67,10 @@ async function main() {
         console.log(`UID: ${userRecord.uid}`);
 
         if (makeAdmin) {
-            console.log('\nOne manual step left: this site checks a hardcoded ADMIN_UIDS list,');
-            console.log('so add the UID above to the ADMIN_UIDS array in:');
-            console.log('  - scripts/dashboard.js');
-            console.log('  - scripts/main.js');
-            console.log('  - scripts/profile.js');
-            console.log('  - edit-recipe.html');
+            console.log('\nAdmin access is set (role: "admin" on their profile) — no code changes or');
+            console.log('redeploy needed, it takes effect the next time they sign in. You can also');
+            console.log('promote/demote anyone later from the admin console\'s "Manage Admin Access"');
+            console.log('widget instead of this script.');
         }
 
         console.log('\nGive them the email + temporary password so they can sign in at the site.');

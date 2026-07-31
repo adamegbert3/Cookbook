@@ -6,14 +6,27 @@ service cloud.firestore {
     // SECURITY FUNCTIONS
     // =========================================================
 
-    // Keep this in sync with the ADMIN_UIDS arrays in scripts/dashboard.js,
-    // scripts/main.js, scripts/profile.js, and edit-recipe.html.
+    // Keep the hardcoded list in sync with the ADMIN_UIDS arrays in
+    // scripts/dashboard.js, scripts/main.js, scripts/profile.js,
+    // scripts/review.js, and edit-recipe.html. These three are "built-in"
+    // admins that always work even if the users/{uid} doc is ever deleted
+    // or corrupted — everyone else is promoted live via the admin console's
+    // "Manage Admin Access" widget, which just sets role:'admin' on their
+    // users/{uid} doc (see the users/{userId} rules below for how that's
+    // protected from self-promotion).
     function isAdmin() {
-      return request.auth != null && request.auth.uid in [
-        "n5aAU1g1tBY04Ut0HnhqegSgZe92",
-        "NrY491PYN3MIrqJp4rhu5S86w2R2",
-        "mPBrypCN9ab1LCEQ578E5YrX8DI2"
-      ];
+      return request.auth != null && (
+        request.auth.uid in [
+          "n5aAU1g1tBY04Ut0HnhqegSgZe92", // Adam
+          "NrY491PYN3MIrqJp4rhu5S86w2R2",
+          "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+          "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
+        ]
+        || (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid))
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin'
+        )
+      );
     }
 
     function isLoggedIn() {
@@ -73,6 +86,13 @@ service cloud.firestore {
       allow read: if isAdmin();
     }
 
+    // --- ANALYTICS: per-person "visited the site today" log (feeds the
+    // admin Activity roster, alongside recipe_views/global_cooks) ---
+    match /site_visits_log/{logId} {
+      allow create, update: if isLoggedIn() && request.resource.data.uid == request.auth.uid;
+      allow read: if isAdmin();
+    }
+
     // --- LEADERBOARD / TOTAL MEALS COOKED ---
     match /global_cooks/{docId} {
       allow read, write: if true;
@@ -110,7 +130,28 @@ service cloud.firestore {
     // notes, and personal recipe_overrides — everything under a user's
     // own uid, at any depth) ---
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // Owners can always read their own doc; admins can read everyone's —
+      // needed for the "Manage Admin Access" list on the admin console.
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+
+      // Creating your own doc (signup) is always allowed, but it can never
+      // arrive already flagged admin=true — that would let anyone grant
+      // themselves admin by calling the Auth SDK directly instead of going
+      // through the invite/signup page. Becoming an admin only ever happens
+      // as a separate step an existing admin takes afterward (see "update").
+      allow create: if request.auth != null && request.auth.uid == userId
+                    && request.resource.data.get('role', 'user') != 'admin';
+
+      // Admins can update ANY user's doc (that's how promote/demote works).
+      // Non-admins can update their own doc for everything EXCEPT their own
+      // role field — otherwise anyone could self-promote with one write.
+      allow update: if request.auth != null && (
+        isAdmin()
+        || (request.auth.uid == userId
+            && request.resource.data.get('role', 'user') == resource.data.get('role', 'user'))
+      );
+
+      allow delete: if isAdmin();
 
       match /{document=**} {
         allow read, write: if request.auth != null && request.auth.uid == userId;

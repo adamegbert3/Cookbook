@@ -7,23 +7,37 @@
 // ==========================================
 import { db, auth } from './firebase-config.js';
 import {
-    collection, getDocs, doc, updateDoc, addDoc, serverTimestamp
+    collection, getDocs, doc, getDoc, updateDoc, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-// Keep this in sync with the ADMIN_UIDS arrays in scripts/dashboard.js,
-// scripts/main.js, scripts/profile.js, and edit-recipe.html.
+// "Built-in" admins — keep in sync with firestore.rules and the ADMIN_UIDS
+// arrays in scripts/dashboard.js, scripts/main.js, scripts/profile.js, and
+// edit-recipe.html. Everyone else is promoted live via the admin console's
+// "Manage Admin Access" widget (no code changes needed).
 const ADMIN_UIDS = [
     "n5aAU1g1tBY04Ut0HnhqegSgZe92",
     "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
 ];
+
+async function checkIsAdmin(uid) {
+    if (ADMIN_UIDS.includes(uid)) return true;
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        return snap.exists() && snap.data().role === 'admin';
+    } catch (e) {
+        console.error("Could not check admin role:", e);
+        return false;
+    }
+}
 
 let allRecipes = [];       // every recipe, kept in sync locally after each save
 let currentRecipeId = null;
 
-onAuthStateChanged(auth, (user) => {
-    if (user && ADMIN_UIDS.includes(user.uid)) {
+onAuthStateChanged(auth, async (user) => {
+    if (user && await checkIsAdmin(user.uid)) {
         console.log("👨‍🍳 [REVIEW] Admin confirmed. Loading recipes...");
         loadAllRecipes();
     } else {

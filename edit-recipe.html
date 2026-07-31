@@ -99,18 +99,34 @@
         import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
-        // ⚠️ PASTE YOUR ADMIN UIDS HERE ⚠️
+        // "Built-in" admins — keep in sync with firestore.rules and the
+        // ADMIN_UIDS arrays in scripts/dashboard.js, scripts/main.js,
+        // scripts/profile.js, and scripts/review.js. Everyone else is
+        // promoted live via the admin console's "Manage Admin Access"
+        // widget (no code changes needed).
         const ADMIN_UIDS = [
             "n5aAU1g1tBY04Ut0HnhqegSgZe92",
             "NrY491PYN3MIrqJp4rhu5S86w2R2",
-            "mPBrypCN9ab1LCEQ578E5YrX8DI2"
+            "mPBrypCN9ab1LCEQ578E5YrX8DI2",
+            "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
         ];
+
+        async function checkIsAdmin(uid) {
+            if (ADMIN_UIDS.includes(uid)) return true;
+            try {
+                const snap = await getDoc(doc(db, "users", uid));
+                return snap.exists() && snap.data().role === 'admin';
+            } catch (e) {
+                console.error("Could not check admin role:", e);
+                return false;
+            }
+        }
 
         let recipeId = null;
 
         // 1. Check Auth & Get ID
         onAuthStateChanged(auth, async (user) => {
-            if (user && ADMIN_UIDS.includes(user.uid)) {
+            if (user && await checkIsAdmin(user.uid)) {
                 const urlParams = new URLSearchParams(window.location.search);
                 recipeId = urlParams.get('id');
 
