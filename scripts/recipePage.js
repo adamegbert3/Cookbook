@@ -370,11 +370,62 @@ function enterEditMode() {
         ${revertBtnHtml}
     `);
 
+    showEditModeBar(current.isPersonalized);
     document.getElementById('edit-ingredients-inline')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// Sticky bottom action bar. The Kitchen Tools buttons live far below the
+// ingredient/instruction boxes, so on a phone "Save" was a scroll hunt once
+// you'd typed anything — this keeps it pinned in view the whole time you're
+// editing.
+function showEditModeBar(isPersonalized) {
+    if (document.getElementById('edit-mode-bar')) return;
+
+    if (!document.getElementById('edit-mode-bar-style')) {
+        const style = document.createElement('style');
+        style.id = 'edit-mode-bar-style';
+        style.innerHTML = `
+            #edit-mode-bar {
+                position: fixed; bottom: 0; left: 0; right: 0; z-index: 1500;
+                background: var(--bg-card); border-top: 2px solid var(--accent-teal);
+                box-shadow: 0 -4px 14px rgba(0,0,0,0.18);
+                padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px)) 14px;
+                display: flex; gap: 10px; align-items: center; justify-content: center;
+                flex-wrap: wrap;
+            }
+            #edit-mode-bar .edit-mode-hint {
+                width: 100%; text-align: center; font-size: 11px;
+                color: #94a3b8; margin: 0 0 2px 0;
+            }
+            #edit-mode-bar .pill-btn { flex: 1; justify-content: center; min-width: 120px; }
+            /* The floating tools button would sit on top of this bar */
+            body.edit-mode-active #mobile-tool-fab { display: none !important; }
+            body.edit-mode-active { padding-bottom: 120px !important; }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const bar = document.createElement('div');
+    bar.id = 'edit-mode-bar';
+    bar.className = 'no-print';
+    bar.innerHTML = `
+        <p class="edit-mode-hint">✏️ Editing your own copy — only you will see these changes.</p>
+        <button onclick="saveInlinePersonalization()" class="pill-btn btn-teal">💾 Save</button>
+        <button onclick="toggleEditMode()" class="pill-btn btn-slate">✖️ Cancel</button>
+        ${isPersonalized ? `<button onclick="revertPersonalization()" class="pill-btn btn-slate">↩️ Revert</button>` : ''}
+    `;
+    document.body.appendChild(bar);
+    document.body.classList.add('edit-mode-active');
+}
+
+function hideEditModeBar() {
+    document.getElementById('edit-mode-bar')?.remove();
+    document.body.classList.remove('edit-mode-active');
 }
 
 function exitEditMode() {
     editModeActive = false;
+    hideEditModeBar();
     setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
     renderRecipeHTML(lastRenderedRecipe || originalRecipeData);
 }
@@ -397,6 +448,7 @@ window.saveInlinePersonalization = async function() {
 
         console.log("✅ [PERSONALIZE] Saved personal version for recipe:", recipeId);
         editModeActive = false;
+        hideEditModeBar();
         setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
         renderRecipeHTML({ ...originalRecipeData, ingredients: ingArray, instructions: instArray, notes, isPersonalized: true });
     } catch (e) {
@@ -414,6 +466,7 @@ window.revertPersonalization = async function() {
         await deleteDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId));
         console.log("↩️ [PERSONALIZE] Reverted to the original recipe.");
         editModeActive = false;
+        hideEditModeBar();
         setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
         renderRecipeHTML(originalRecipeData);
     } catch (e) {
@@ -1049,6 +1102,11 @@ window.submitReport = async function(event) {
 // 4. Sharing
 // ==========================================
 window.openShareModal = function() {
+    // Point the print link at this specific recipe so print.html opens with
+    // it already ticked (they can add more there before printing).
+    const printLink = document.getElementById('share-print-link');
+    if (printLink && recipeId) printLink.href = `print.html?id=${recipeId}`;
+
     document.getElementById('share-modal').classList.remove('hidden');
 };
 
@@ -1063,9 +1121,15 @@ window.copyRecipeLink = function() {
     });
 };
 window.triggerPrint = function() {
+    // Close BOTH overlays first. On a phone this is usually reached from
+    // inside the mobile Kitchen Tools sheet, and leaving that open used to
+    // print the tool menu on top of the recipe. @media print now hides it
+    // too, but closing it here keeps the on-screen state sane as well.
     closeShareModal();
-    setTimeout(() => { 
-        window.print(); 
+    if (window.closeMobileToolsModal) window.closeMobileToolsModal();
+    console.log("🖨️ [PRINT] Opening the print dialog for this recipe...");
+    setTimeout(() => {
+        window.print();
     }, 300);
 };
 
@@ -1140,23 +1204,29 @@ function setupMobileKitchenTools() {
                 gap: 12px;
             }
 
-            /* 🚀 UNIFORM PILL STYLING: Forces every button to identical dimensions */
+            /* 🚀 UNIFORM PILL STYLING.
+               Uses min-height + wrapping rather than a fixed height with
+               nowrap/ellipsis: the long labels ("Ingredients in Steps",
+               "Substitution Hints", "Personalize This Recipe") were being
+               chopped mid-word and became unreadable. Now they wrap to a
+               second line and the pill grows to fit. */
             .mobile-tool-pill {
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
                 width: 100% !important;
-                height: 48px !important;
+                min-height: 52px !important;
+                height: auto !important;
                 margin: 0 !important;
-                padding: 0 12px !important;
-                border-radius: 24px !important;
-                font-size: 0.95rem !important;
+                padding: 8px 14px !important;
+                border-radius: 26px !important;
+                font-size: 0.85rem !important;
                 font-weight: 600 !important;
+                line-height: 1.25 !important;
                 text-align: center;
                 box-sizing: border-box;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
+                white-space: normal;
+                overflow-wrap: anywhere;
             }
 
             /* Make wide buttons (like Report Issue or Cook Mode) span across both columns! */
@@ -1280,8 +1350,9 @@ window.openMobileToolsModal = function() {
             clone.removeAttribute('id');
             clone.classList.add('mobile-tool-pill');
 
-            // 🚀 Only Report Issue stretches across both columns
-            if (clone.innerText.includes('Report')) {
+            // Long-labelled buttons get the full width so their text stays
+            // readable instead of wrapping awkwardly in a half-width pill.
+            if (/Report|Ingredients in Steps|Substitution Hints|Personalize/.test(clone.innerText)) {
                 clone.classList.add('mobile-tool-pill-wide');
             }
 

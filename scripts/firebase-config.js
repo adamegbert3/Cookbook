@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { initializeFirestore, doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA7ILMR7YRqydfCMi-wnQ7QAXTZIGlYP6o",
@@ -14,7 +14,27 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// ==========================================
+// FIRESTORE TRANSPORT
+// Firestore's default streaming connection (WebChannel) is what produced
+// the constant console error:
+//   "Fetch API cannot load https://firestore.googleapis.com/...Listen/channel...
+//    due to access control checks."
+// That request is the live-updates channel used by onSnapshot (family
+// comments, the shopping list). Safari, some VPNs, and content blockers
+// routinely break that streaming transport, which leaves the listener
+// retrying forever and spamming the console — and can make the first load
+// after sign-in feel slow while it retries.
+//
+// autoDetectLongPolling lets the SDK notice the streaming channel isn't
+// working and quietly fall back to ordinary long-polling requests, which
+// those environments allow. Everything else behaves identically.
+// ==========================================
+export const db = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    useFetchStreams: false
+});
 
 // ==========================================
 // OFFLINE MODE

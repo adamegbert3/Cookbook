@@ -51,6 +51,19 @@ async function loadPickList() {
             </div>
         `).join('');
 
+        // Arriving from a single recipe's Share dialog (print.html?id=…) —
+        // pre-tick that recipe and scroll to it, so "print just this one"
+        // stays one tap even though printing now lives on this page.
+        const preselectId = new URLSearchParams(window.location.search).get('id');
+        if (preselectId) {
+            const box = container.querySelector(`.print-pick-checkbox[value="${CSS.escape(preselectId)}"]`);
+            if (box) {
+                box.checked = true;
+                box.closest('.print-pick-row').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                console.log("🖨️ [PRINT] Pre-selected recipe from the share link:", preselectId);
+            }
+        }
+
     } catch (e) {
         console.error("Print pick list error:", e);
         container.innerHTML = "<p style='text-align:center; color:red;'>Could not load recipes.</p>";

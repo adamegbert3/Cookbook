@@ -184,14 +184,15 @@
         <button onclick="closeShareModal()" class="close-btn">✕</button>
         <h2 style="margin-top: 0;">Share this Recipe</h2>
         <p style="font-size: 14px; color: #666; margin-bottom: 20px;">How would you like to share?</p>
-        
-        <button onclick="triggerPrint()" class="pill-btn btn-teal" style="width: 100%; margin-bottom: 10px; justify-content: center;">
-            📄 Save as Clean PDF
-        </button>
-        
-        <button onclick="copyRecipeLink()" class="pill-btn btn-blue" style="width: 100%; margin-bottom: 20px; justify-content: center;">
+
+        <button onclick="copyRecipeLink()" class="pill-btn btn-blue" style="width: 100%; margin-bottom: 10px; justify-content: center;">
             🔗 Copy Recipe Link
         </button>
+
+        <a id="share-print-link" href="print.html" class="pill-btn btn-slate" style="width: 100%; margin-bottom: 20px; justify-content: center; text-decoration: none;">
+            🖨️ Print / Save as PDF
+        </a>
+        <p style="font-size: 11px; color: #94a3b8; margin: -12px 0 20px 0;">Opens the print page with this recipe already ticked — you can add more there.</p>
 
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
         
