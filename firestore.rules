@@ -84,8 +84,11 @@ service cloud.firestore {
     }
 
     // --- ANALYTICS: per-recipe views (admin dashboard only) ---
+    // Signed-in only, so a stranger can't flood the Activity feed and the
+    // view counts with fabricated entries. recipe.html already redirects
+    // signed-out visitors, so nothing legitimate is affected.
     match /recipe_views/{viewId} {
-      allow create: if true;
+      allow create: if isLoggedIn();
       allow read: if isAdmin();
     }
 
@@ -103,8 +106,16 @@ service cloud.firestore {
     }
 
     // --- LEADERBOARD / TOTAL MEALS COOKED ---
+    // Was `read, write: if true`, meaning anyone on the internet — signed in
+    // or not — could read, forge, overwrite or DELETE every cook record.
+    // The leaderboard could have been wiped or stuffed by a stranger.
+    // Now: you may only record a cook as yourself, and only delete your own
+    // (which is what the "Undo" on I Made This does).
     match /global_cooks/{docId} {
-      allow read, write: if true;
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isLoggedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
     }
 
     // --- ANNOUNCEMENTS ---

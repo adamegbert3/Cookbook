@@ -104,6 +104,21 @@
             <p id="saveMsg" style="text-align:center; color:var(--accent-teal); margin-top:10px; opacity:0; transition:opacity 0.5s;"></p>
         </div>
 
+        <!-- ============ ACCOUNT ============ -->
+        <div class="settings-container" style="margin-top:20px;">
+            <h3 style="margin-top:0; color:var(--accent-teal);">🔐 Account</h3>
+            <div class="setting-row">
+                <label>
+                    Change your password
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        We'll email you a secure link — no one, including the Chef, ever sees your password.
+                    </div>
+                </label>
+                <button onclick="sendMyPasswordReset()" class="pill-btn btn-slate">📧 Send Link</button>
+            </div>
+            <p id="passwordMsg" style="text-align:center; margin-top:10px; font-size:13px;"></p>
+        </div>
+
         <!-- ============ HOUSEHOLD ============ -->
         <div class="settings-container" style="margin-top:20px;">
             <h3 style="margin-top:0; color:var(--accent-teal);">🏠 Household</h3>
@@ -234,6 +249,41 @@
         }
 
         initSettings();
+
+        // ==========================================
+        // CHANGE PASSWORD
+        // Uses Firebase's emailed reset link rather than an in-page "new
+        // password" box on purpose: the link proves the person still
+        // controls the mailbox, so a walked-away-from unlocked phone can't
+        // be used to silently take over the account. Nothing here ever
+        // handles the password itself.
+        // ==========================================
+        window.sendMyPasswordReset = async function() {
+            const msg = document.getElementById('passwordMsg');
+            try {
+                const { auth } = await import('./scripts/firebase-config.js');
+                const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
+
+                const user = auth.currentUser;
+                if (!user || !user.email) {
+                    msg.style.color = '#ef4444';
+                    msg.innerText = "Please sign in again first.";
+                    return;
+                }
+
+                msg.style.color = '#64748b';
+                msg.innerText = "Sending...";
+                await sendPasswordResetEmail(auth, user.email);
+
+                console.log("📧 [RESET] Password reset email sent to:", user.email);
+                msg.style.color = 'var(--accent-teal)';
+                msg.innerText = `📧 Sent to ${user.email}. Check spam if it doesn't arrive.`;
+            } catch (e) {
+                console.error("🔥 [RESET] Failed:", e);
+                msg.style.color = '#ef4444';
+                msg.innerText = "Couldn't send that — check your connection and try again.";
+            }
+        };
 
         // ==========================================
         // HOUSEHOLD SECTION

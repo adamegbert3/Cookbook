@@ -39,6 +39,13 @@
             </button>
         </form>
 
+        <p style="margin: 15px 0 0 0;">
+            <button type="button" id="forgot-btn" style="background:none; border:none; padding:0; color:var(--accent-teal); font-weight:600; font-size:0.9rem; font-family:var(--font-main); cursor:pointer; text-decoration:underline;">
+                Forgot your password?
+            </button>
+        </p>
+        <p id="reset-message" style="font-size:13px; margin:10px 0 0 0; min-height:18px;"></p>
+
         <hr style="border: 0; border-top: 1px solid var(--border); margin: 25px 0 15px 0;">
 
         <p style="font-size: 13px; color: #64748b; margin: 0;">
@@ -50,7 +57,7 @@
     <script type="module">
         import { auth } from './scripts/firebase-config.js'; 
         // 🚨 NEW IMPORTS: We are bringing in the Persistence tools!
-        import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
         const loginForm = document.getElementById('login-form');
         const loginBtn = document.getElementById('login-btn');
@@ -82,6 +89,56 @@
                 window.location.href = "homepage.html";
             }
         });
+
+        // 1b. FORGOT PASSWORD
+        // Firebase emails a one-time reset link using the "Password reset"
+        // template configured under Authentication → Templates. Nothing here
+        // ever sees or sets a password, and we deliberately give the same
+        // confirmation whether or not the address has an account, so this
+        // can't be used to discover who's in the cookbook.
+        const forgotBtn = document.getElementById('forgot-btn');
+        const resetMsg = document.getElementById('reset-message');
+
+        if (forgotBtn) {
+            forgotBtn.addEventListener('click', async () => {
+                const email = emailInput.value.trim();
+
+                if (!email) {
+                    resetMsg.style.color = '#b45309';
+                    resetMsg.innerText = "Type your email address above first, then tap this again.";
+                    emailInput.focus();
+                    return;
+                }
+
+                forgotBtn.disabled = true;
+                resetMsg.style.color = '#64748b';
+                resetMsg.innerText = "Sending...";
+
+                try {
+                    await withTimeout(sendPasswordResetEmail(auth, email), 15000, "That's taking too long — try again.");
+                    console.log("📧 [RESET] Password reset email requested for:", email);
+                } catch (error) {
+                    // auth/user-not-found is swallowed on purpose (see above).
+                    if (error.code !== 'auth/user-not-found' && error.code !== 'auth/invalid-email') {
+                        console.error("🔥 [RESET] Failed:", error);
+                        resetMsg.style.color = '#ef4444';
+                        resetMsg.innerText = "Couldn't send that — check your connection and try again.";
+                        forgotBtn.disabled = false;
+                        return;
+                    }
+                    if (error.code === 'auth/invalid-email') {
+                        resetMsg.style.color = '#b45309';
+                        resetMsg.innerText = "That doesn't look like a valid email address.";
+                        forgotBtn.disabled = false;
+                        return;
+                    }
+                }
+
+                resetMsg.style.color = '#0d9488';
+                resetMsg.innerText = `📧 If ${email} has an account, a reset link is on its way. Check spam if you don't see it.`;
+                forgotBtn.disabled = false;
+            });
+        }
 
         // 2. BULLETPROOF LOGIN (with a timeout so it can never hang forever)
         if (loginForm) {
