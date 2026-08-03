@@ -2,7 +2,7 @@ import { db, auth } from './firebase-config.js';
 import { 
     collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc, 
     query, orderBy, limit, where, serverTimestamp, 
-    arrayUnion, arrayRemove
+    arrayUnion, arrayRemove, deleteField
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { getSections, hasRealSections, getEditableText, buildRecipeFields } from './recipe-model.js';
@@ -980,15 +980,25 @@ window.demoteToUser = async function(uid, label) {
 // non-array `favorites` is a real bug waiting to happen.
 //
 // Keep in sync with scripts/invite-signup.js and local-tools/add-user.
+//
+// There is deliberately NO `notes` field: a person's private Chef's Notes
+// are stored one per recipe in the users/{uid}/private_notes/{recipeId}
+// subcollection. Firestore's console lists subcollections below the fields
+// rather than among them, so they can look absent — but a `notes` field
+// here would be a second, unread place that looks like it holds them.
 // ==========================================
 const USER_DOC_SHAPE = {
     Name:        { type: 'string', fallback: (d, uid) => d.Name || (d.email || '').split('@')[0] || 'Family Member' },
     email:       { type: 'string', fallback: (d) => d.email || '' },
     role:        { type: 'string', fallback: (d) => (d.role === 'admin' ? 'admin' : 'user') },
     favorites:   { type: 'array',  fallback: () => [] },
-    notes:       { type: 'string', fallback: (d) => typeof d.notes === 'string' ? d.notes : '' },
     householdId: { type: 'nullable-string', fallback: (d) => d.householdId || null }
 };
+
+// Fields that shouldn't be on a user document at all. A stray `notes: ""`
+// (added by hand, or by an earlier version of this file) is misleading
+// because it looks like it should hold the recipe notes but never does.
+const OBSOLETE_USER_FIELDS = ['notes'];
 
 // Returns the fields on this doc that are missing or the wrong type.
 function findUserDocProblems(data, uid) {
@@ -1014,6 +1024,13 @@ function findUserDocProblems(data, uid) {
     if (!data.createdAt || typeof data.createdAt.toDate !== 'function') {
         problems.push({ field: 'createdAt', missing: !data.createdAt, was: data.createdAt, fix: 'serverTimestamp' });
     }
+
+    // Strip fields that shouldn't exist
+    OBSOLETE_USER_FIELDS.forEach(field => {
+        if (data[field] !== undefined) {
+            problems.push({ field, missing: false, obsolete: true, was: data[field], fix: 'delete' });
+        }
+    });
 
     return problems;
 }
@@ -1041,7 +1058,8 @@ window.repairUserDocs = async function() {
         }
 
         const summary = broken.map(b =>
-            `• <strong>${escapeAttr(b.name)}</strong>: ${b.problems.map(p => `${p.field} ${p.missing ? '(missing)' : '(wrong type)'}`).join(', ')}`
+            `• <strong>${escapeAttr(b.name)}</strong>: ${b.problems.map(p =>
+                `${p.field} ${p.obsolete ? '(remove — unused)' : p.missing ? '(missing)' : '(wrong type)'}`).join(', ')}`
         ).join('<br>');
 
         setStatus(`
@@ -1071,7 +1089,9 @@ window.applyUserDocRepairs = async function() {
     for (const entry of broken) {
         const patch = {};
         entry.problems.forEach(p => {
-            patch[p.field] = p.fix === 'serverTimestamp' ? serverTimestamp() : p.fix;
+            if (p.fix === 'serverTimestamp') patch[p.field] = serverTimestamp();
+            else if (p.fix === 'delete') patch[p.field] = deleteField();
+            else patch[p.field] = p.fix;
         });
 
         try {

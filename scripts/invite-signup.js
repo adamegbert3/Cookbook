@@ -124,10 +124,16 @@ passwordForm.addEventListener('submit', async (e) => {
         );
 
         // Keep this shape in sync with USER_DOC_SHAPE in scripts/dashboard.js
-        // (the "Fix User Documents" repair tool) and local-tools/add-user.
+        // (the "Check User Documents" repair tool) and local-tools/add-user.
         // Types matter: `favorites` must be a real array or arrayUnion()
         // can't append to it, and Firestore's console defaults hand-added
         // fields to strings, which is how empty-string versions creep in.
+        //
+        // NOTE: a person's private Chef's Notes are NOT a field here — they
+        // live one per recipe in the users/{uid}/private_notes/{recipeId}
+        // subcollection (see loadUserNote/saveNote in scripts/main.js). The
+        // Firebase console lists subcollections separately from fields,
+        // below them, which is why they can look missing at a glance.
         await setDoc(doc(db, "users", cred.user.uid), {
             Name: verified.name,
             email: verified.email,
@@ -135,7 +141,6 @@ passwordForm.addEventListener('submit', async (e) => {
             // Admin is always a separate step from the admin console.
             role: 'user',
             favorites: [],      // array, not ""
-            notes: "",          // free-text note about this person
             householdId: null,  // set when they join/create a household
             createdAt: serverTimestamp()
         });
