@@ -97,12 +97,14 @@
             <option value="Soups & Salads">Soups & Salads</option>
         </select>
 
-        <label>Ingredients <span class="hint">(one per line)</span></label>
+        <label>Ingredients <span class="hint">(one per line — start a line with <code>## Crust</code> to begin a new part)</span></label>
         <textarea id="r-ingredients" rows="8"></textarea>
+        <button type="button" class="btn-tool" onclick="addSection('r-ingredients')">➕ Add a Part (Crust, Filling…)</button>
 
-        <label>Instructions <span class="hint">(one step per line)</span></label>
+        <label>Instructions <span class="hint">(one step per line — <code>## Headings</code> restart numbering)</span></label>
         <textarea id="r-instructions" rows="8"></textarea>
         <button type="button" class="btn-tool" onclick="autoSplitInstructions()">✂️ Auto-split into steps</button>
+        <button type="button" class="btn-tool" onclick="addSection('r-instructions')">➕ Add a Part</button>
 
         <label>Chef's Notes <span class="hint">(optional)</span></label>
         <textarea id="r-notes" rows="3"></textarea>
@@ -112,6 +114,16 @@
 
         <label>Original Recipe URL <span class="hint">(optional)</span></label>
         <input type="url" id="r-source-url" placeholder="https://example.com/the-recipe-i-adapted-this-from">
+
+        <label>Family <span class="hint">("Both" shows for everyone)</span></label>
+        <select id="r-family">
+            <option value="Both">Both families</option>
+            <option value="Egbert">Egbert only</option>
+            <option value="Wheeler">Wheeler only</option>
+        </select>
+
+        <label>Dietary / Allergy Tags <span class="hint">(optional)</span></label>
+        <div id="r-dietary" class="dietary-checkboxes"></div>
 
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>

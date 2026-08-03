@@ -72,9 +72,39 @@ Each run:
 4. Skips recipes marked Hidden in the admin dashboard.
 
 Anyone with access to that Drive folder can browse all the recipes directly
-in Drive — no cookbook login needed. Run this again any time recipes
-change (there's no automatic schedule; this is a manual command by design,
-so nothing runs — or costs anything — in the background).
+in Drive — no cookbook login needed.
+
+## Running it automatically (recommended)
+
+If someone relies on the Drive folder — for example a family member who
+can't get online in their kitchen and reads the recipes from Drive instead —
+you don't want to remember to run this by hand. Schedule it once:
+
+```bash
+cd local-tools/sync-to-drive
+npm start                 # do this once first, to authorise Google Drive
+./install-schedule.sh     # then schedule it: daily at 2:00 AM
+```
+
+Other options:
+
+```bash
+./install-schedule.sh 6         # daily at 6:00 AM instead
+./install-schedule.sh --remove  # stop running automatically
+launchctl start com.cookbook.drivesync   # run right now, without waiting
+```
+
+Output from each run is written to `logs/sync.log` (and `logs/sync-error.log`),
+so you can check it worked without watching it happen.
+
+**Two things worth knowing:**
+
+- This runs on **your Mac**, not in the cloud — so it only syncs while the
+  computer is powered on and signed in. That's what keeps it free; a
+  cloud-scheduled version would need Firebase's paid plan.
+- It uses macOS's `launchd` rather than `cron` specifically because launchd
+  catches up on a run it missed while the Mac was asleep. With cron, a
+  laptop closed at 2 AM would simply never sync.
 
 ## Finding out how many recipes you have
 

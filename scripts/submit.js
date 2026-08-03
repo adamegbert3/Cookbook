@@ -1,6 +1,23 @@
 import { db, auth } from './firebase-config.js';
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { buildRecipeFields, DIETARY_TAGS } from './recipe-model.js';
+
+document.getElementById('dietary').innerHTML = DIETARY_TAGS.map(tag => `
+    <label class="dietary-check"><input type="checkbox" value="${tag}"> ${tag}</label>`).join('');
+
+// Inserts a "## Part Name" heading at the end of a textarea, so people can
+// discover multi-part recipes without knowing the syntax up front.
+window.addSection = function(fieldId) {
+    const box = document.getElementById(fieldId);
+    if (!box) return;
+    const name = prompt("Name this part (e.g. Crust, Filling, Topping):");
+    if (!name) return;
+    const prefix = box.value.trim() ? '\n' : '';
+    box.value = `${box.value.trimEnd()}${prefix}## ${name.trim()}\n`;
+    box.focus();
+    box.selectionStart = box.selectionEnd = box.value.length;
+};
 
 // Check Login
 onAuthStateChanged(auth, (user) => {
@@ -39,12 +56,11 @@ if (form) {
         const chef = document.getElementById('chef').value.trim();
         const category = document.getElementById('category').value;
         
-        // Convert text areas into Arrays (Split by new line)
-        const ingredientsRaw = document.getElementById('ingredients').value;
-        const ingredientsList = ingredientsRaw.split('\n').map(s => s.trim()).filter(s => s);
-
-        const instructionsRaw = document.getElementById('instructions').value;
-        const instructionsList = instructionsRaw.split('\n').map(s => s.trim()).filter(s => s);
+        // Parses "## Part" headings into sections AND writes the flat arrays,
+        // so multi-part recipes work everywhere without breaking anything
+        // that expects one plain list (shopping list, search index, offline).
+        const ingredientFields = buildRecipeFields(document.getElementById('ingredients').value, 'ingredients');
+        const instructionFields = buildRecipeFields(document.getElementById('instructions').value, 'instructions');
 
         const notes = document.getElementById('notes').value.trim();
         const driveUrl = document.getElementById('driveLink').value.trim();
@@ -65,11 +81,13 @@ if (form) {
                 submittedBy: user.email, // The real user account
                 uid: user.uid,
                 category: category,
-                ingredients: ingredientsList,
-                instructions: instructionsList,
+                ...ingredientFields,
+                ...instructionFields,
                 notes: notes,
                 driveUrl: driveUrl,
                 sourceUrl: sourceUrl,
+                family: document.getElementById('family').value,
+                dietary: Array.from(document.querySelectorAll('#dietary input:checked')).map(cb => cb.value),
                 timestamp: serverTimestamp(),
                 status: "pending"
             });

@@ -141,6 +141,16 @@
     
     <div class="dashboard-widgets" style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; margin: 0 auto;">
 
+        <!-- Live counts so nothing new can slip by unnoticed. Populated by
+             updateAttentionCounts() in scripts/dashboard.js. -->
+        <div id="attention-panel" class="pending-card widget-card" style="border-left: 5px solid #dc2626;">
+            <h3 style="margin-top:0; color:#b91c1c;">🔔 Needs Your Attention</h3>
+            <div id="attention-counts" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <span style="color:#9ca3af; font-size:13px;">Checking…</span>
+            </div>
+        </div>
+
+
         <div class="pending-card widget-card" style="border-left: 5px solid #7c3aed; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
             <div>
                 <h3 style="margin: 0 0 4px 0; color: #5b21b6;">📋 Recipe Review</h3>
@@ -158,20 +168,50 @@
             <div id="pending-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
         </div>
 
+        <div class="pending-card widget-card" style="border-left: 5px solid #7c3aed;">
+            <h3 style="margin-top:0; color: #5b21b6;">🔑 Password Reset Requests</h3>
+            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
+                Nothing is emailed until you approve. <strong>Check with the person directly first</strong> —
+                a text or a call — then approve, and Firebase sends the reset link to their own inbox.
+            </p>
+            <div id="reset-requests-list" style="margin-top: 10px;">
+                <p style="color:#9ca3af; font-size: 13px;">Loading…</p>
+            </div>
+        </div>
+
+        <div class="pending-card widget-card" style="border-left: 5px solid #f59e0b;">
+            <h3 style="margin-top:0; color: #b45309;">📬 Suggested Fixes</h3>
+            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
+                Corrections family members proposed from the recipe page. Applying one overwrites
+                the shared recipe (the previous version is kept in its history).
+            </p>
+            <div id="suggestions-list" style="margin-top: 10px;">
+                <p style="color:#9ca3af; font-size: 13px;">Loading…</p>
+            </div>
+        </div>
+
         <div class="pending-card widget-card" style="border-left: 5px solid #16a34a;">
             <h3 style="margin-top:0; color: #166534;">👪 Invite a Family Member</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Works from anywhere, including your phone — no computer or Ollama-style local setup needed.
-                Creates a private signup link; the person sets their own password when they open it (nothing with admin access ever touches this page).
-                Creates a regular account — use "Manage Admin Access" below afterward if they need Admin, too.
+                Works from anywhere, including your phone. You give them a temporary code; the first time
+                they sign in with it, they pick their own password. Their account is created at that moment,
+                so no password ever passes through you and nothing with admin access touches this page.
+                Always creates a regular account — use "Manage Admin Access" below if they need Admin too.
             </p>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                 <input type="text" id="invite-name" placeholder="Full name (e.g. Aunt Sally)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                 <input type="email" id="invite-email" placeholder="Email address" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
-            <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite Link</button>
-            <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
-                <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Send this link to them (text, email, whatever's easiest):</p>
+            <input type="text" id="invite-code" placeholder="Temporary code (leave blank and I'll make one up)" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; text-transform: uppercase;">
+            <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite</button>
+
+            <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 12px;">
+                <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Give them this code and their email address:</p>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                    <span id="invite-code-output" style="font-family: monospace; font-size: 1.5rem; font-weight: 800; letter-spacing: 3px; color:#166534;"></span>
+                    <button onclick="copyInviteCode()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy Code</button>
+                </div>
+                <p style="font-size: 11px; margin: 0 0 4px 0; color: #6b7280;">They enter it at the login page under "First time here?". Or send this direct link instead:</p>
                 <div style="display:flex; gap:6px;">
                     <input type="text" id="invite-link-output" readonly style="flex:1; padding: 6px; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 12px; font-family: monospace;">
                     <button onclick="copyInviteLink()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy</button>
@@ -187,6 +227,29 @@
                 The 3 built-in admins are set in code and can't be changed here.
             </p>
             <div id="admin-users-list" style="max-height: 320px; overflow-y: auto; margin-top: 10px;"></div>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f3f4f6;">
+                <button onclick="repairUserDocs()" style="background: #4f46e5; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;">🩺 Check User Documents</button>
+                <p style="font-size: 11px; color: #6b7280; margin: 6px 0 0 0;">
+                    Finds profiles with missing or wrong-typed fields — the usual cause is adding fields
+                    by hand in the Firebase console, which saves everything as text (so <code>favorites</code>
+                    ends up as <code>""</code> instead of a list).
+                </p>
+                <div id="user-repair-status" style="margin-top: 10px; font-size: 12px;"></div>
+            </div>
+        </div>
+
+        <div class="pending-card widget-card" style="border-left: 5px solid #0891b2;">
+            <h3 style="margin-top:0; color: #0e7490;">🏠 Households</h3>
+            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
+                People in a household share one weekly menu and shopping list. They can set this up
+                themselves in Settings with a join code — this is here for anyone who'd rather you just did it for them.
+            </p>
+            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+                <input type="text" id="new-household-name" placeholder="New household name (e.g. The Wheelers)" style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+                <button onclick="adminCreateHousehold()" style="background: #0891b2; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">Create</button>
+            </div>
+            <div id="admin-households-list" style="margin-top: 15px;"></div>
         </div>
 
         <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">

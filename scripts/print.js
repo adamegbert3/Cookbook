@@ -1,6 +1,7 @@
 import { db, auth } from './firebase-config.js';
 import { doc, getDoc, getDocs, collection, query, where, documentId } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { getSections, hasRealSections } from './recipe-model.js';
 
 let indexedRecipes = [];
 
@@ -93,7 +94,8 @@ function chunkArray(arr, size) {
     return out;
 }
 
-window.printSelected = async function() {
+window.printSelected = async function(options = {}) {
+    const asBook = options.asBook === true;
     const ids = Array.from(document.querySelectorAll('.print-pick-checkbox:checked')).map(cb => cb.value);
     if (ids.length === 0) return alert("Pick at least one recipe first.");
 
@@ -118,12 +120,14 @@ window.printSelected = async function() {
         // Keep the order the user picked them in — object key order from the
         // batched fetch above isn't guaranteed to match.
         const recipes = ids.map(id => recipesById[id]).filter(Boolean);
-        console.log(`✅ [PRINT] Fetched ${recipes.length} of ${ids.length} recipe(s). Building print layout...`);
+        console.log(`✅ [PRINT] Fetched ${recipes.length} of ${ids.length} recipe(s). Building ${asBook ? 'cookbook' : 'print'} layout...`);
 
-        output.innerHTML = recipes.map(recipeToPrintHtml).join('');
+        output.innerHTML = asBook
+            ? buildCookbookHtml(recipes)
+            : recipes.map(recipeToPrintHtml).join('');
 
         console.log("🖨️ [PRINT] Opening the print dialog now...");
-        setTimeout(() => window.print(), 300);
+        printOnly(output);
 
     } catch (e) {
         console.error("🔥 [PRINT] Print error:", e);
@@ -131,17 +135,128 @@ window.printSelected = async function() {
     }
 };
 
+// Detaches the recipe-picker UI from the document while printing.
+//
+// `.no-print { display: none }` hid it visually but left every node in the
+// tree — and the print stylesheet applies a very broad
+// `div, span, p, li { ... !important }` rule, so the browser still had to
+// recompute styles and lay out the ENTIRE cookbook picker (one row per
+// recipe) before it could render even a 3-recipe printout. That's the
+// "console says it's done, then it hangs" delay. Physically removing the
+// picker means the print document contains only what's being printed.
+function printOnly(output) {
+    const main = document.querySelector('main');
+    const placeholder = document.createComment('picker-hidden-while-printing');
+    const parent = main && main.parentNode;
+
+    if (parent) parent.replaceChild(placeholder, main);
+    output.style.display = 'block';
+
+    const restore = () => {
+        if (parent && placeholder.parentNode) parent.replaceChild(main, placeholder);
+        output.style.display = '';
+        window.removeEventListener('afterprint', restore);
+        console.log("🖨️ [PRINT] Print dialog closed, picker restored.");
+    };
+    window.addEventListener('afterprint', restore);
+
+    // Let the browser paint the detached layout once before opening the
+    // dialog, then hard-restore after a while in case afterprint never
+    // fires (Safari has historically been unreliable about it).
+    requestAnimationFrame(() => {
+        window.print();
+        setTimeout(restore, 60000);
+    });
+}
+
+// ==========================================
+// GIFT-ABLE COOKBOOK LAYOUT
+// Title page → table of contents → a divider before each category →
+// the recipes, grouped and alphabetised within each category.
+// ==========================================
+function recipeCategory(recipe) {
+    if (Array.isArray(recipe.tags) && recipe.tags.length > 0) return recipe.tags[0];
+    return recipe.category || "Miscellaneous";
+}
+
+function buildCookbookHtml(recipes) {
+    const title = (document.getElementById('book-title')?.value || "Our Family Cookbook").trim();
+    const subtitle = (document.getElementById('book-subtitle')?.value || "").trim();
+
+    // Group by category, alphabetise categories and recipes within them
+    const byCategory = {};
+    recipes.forEach(r => {
+        const cat = recipeCategory(r);
+        (byCategory[cat] = byCategory[cat] || []).push(r);
+    });
+    const categories = Object.keys(byCategory).sort();
+    categories.forEach(cat => byCategory[cat].sort((a, b) => (a.name || "").localeCompare(b.name || "")));
+
+    const printedOn = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    // 1. Cover
+    const cover = `
+        <div class="book-cover">
+            <img src="images/logo.jpg" alt="">
+            <h1>${title}</h1>
+            ${subtitle ? `<p class="book-subtitle">${subtitle}</p>` : ''}
+            <hr class="book-rule">
+            <p class="book-meta">${recipes.length} recipes · ${categories.length} sections</p>
+            <p class="book-meta">${printedOn}</p>
+        </div>`;
+
+    // 2. Table of contents
+    const toc = `
+        <div class="book-toc">
+            <h2>Contents</h2>
+            ${categories.map(cat => `
+                <div class="book-toc-category">${cat}</div>
+                ${byCategory[cat].map(r => `
+                    <div class="book-toc-item">
+                        <span>${r.name || "Untitled"}</span>
+                        <span class="toc-author">${r.author || "Family"}</span>
+                    </div>`).join('')}
+            `).join('')}
+        </div>`;
+
+    // 3. Divider + recipes per category
+    const body = categories.map(cat => {
+        const count = byCategory[cat].length;
+        return `
+            <div class="book-divider">
+                <h2>${cat}</h2>
+                <p class="divider-count">${count} recipe${count === 1 ? '' : 's'}</p>
+            </div>
+            ${byCategory[cat].map(recipeToPrintHtml).join('')}`;
+    }).join('');
+
+    console.log(`📖 [COOKBOOK] Built "${title}" — ${recipes.length} recipes across ${categories.length} sections.`);
+    return cover + toc + body;
+}
+
 function recipeToPrintHtml(recipe) {
     const rawIng = recipe.ingredients || recipe.recipeIngredient;
     const rawInst = recipe.instructions || recipe.recipeInstructions;
 
-    const ingHtml = Array.isArray(rawIng)
-        ? `<ul>${rawIng.map(i => `<li>${i}</li>`).join('')}</ul>`
-        : `<p>${rawIng || ''}</p>`;
+    // Multi-part recipes print with their group headings intact
+    const ingSections = getSections(recipe, 'ingredients');
+    const instSections = getSections(recipe, 'instructions');
 
-    const instHtml = Array.isArray(rawInst)
-        ? `<ol>${rawInst.map(s => `<li>${s}</li>`).join('')}</ol>`
-        : `<p>${rawInst || ''}</p>`;
+    const ingHtml = hasRealSections(ingSections)
+        ? ingSections.map(s => `
+            ${s.title ? `<h4 class="print-subsection">${s.title}</h4>` : ''}
+            <ul>${(s.items || []).map(i => `<li>${i}</li>`).join('')}</ul>`).join('')
+        : (Array.isArray(rawIng)
+            ? `<ul>${rawIng.map(i => `<li>${i}</li>`).join('')}</ul>`
+            : `<p>${rawIng || ''}</p>`);
+
+    const instHtml = hasRealSections(instSections)
+        ? instSections.map(s => `
+            ${s.title ? `<h4 class="print-subsection">${s.title}</h4>` : ''}
+            <ol>${(s.items || []).map(step => `<li>${step}</li>`).join('')}</ol>`).join('')
+        : (Array.isArray(rawInst)
+            ? `<ol>${rawInst.map(s => `<li>${s}</li>`).join('')}</ol>`
+            : `<p>${rawInst || ''}</p>`);
 
     const notesHtml = recipe.notes && String(recipe.notes).trim()
         ? `<h3 class="section-header">📝 Recipe Notes</h3><p style="white-space:pre-wrap;">${recipe.notes}</p>`

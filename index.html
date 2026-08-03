@@ -38,12 +38,27 @@
                 Sign In
             </button>
         </form>
+
+        <p style="margin: 15px 0 0 0;">
+            <button type="button" id="forgot-btn" style="background:none; border:none; padding:0; color:var(--accent-teal); font-weight:600; font-size:0.9rem; font-family:var(--font-main); cursor:pointer; text-decoration:underline;">
+                Forgot your password?
+            </button>
+        </p>
+        <p id="reset-message" style="font-size:13px; margin:10px 0 0 0; min-height:18px;"></p>
+
+        <hr style="border: 0; border-top: 1px solid var(--border); margin: 25px 0 15px 0;">
+
+        <p style="font-size: 13px; color: #64748b; margin: 0;">
+            First time here?
+            <a href="invite.html" class="auth-link">Set up your account with your invite code →</a>
+        </p>
     </div>
 
     <script type="module">
-        import { auth } from './scripts/firebase-config.js'; 
+        import { auth, db } from './scripts/firebase-config.js';
+        import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         // 🚨 NEW IMPORTS: We are bringing in the Persistence tools!
-        import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { signInWithEmailAndPassword, onAuthStateChanged, setPersistence, browserLocalPersistence, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
         const loginForm = document.getElementById('login-form');
         const loginBtn = document.getElementById('login-btn');
@@ -75,6 +90,58 @@
                 window.location.href = "homepage.html";
             }
         });
+
+        // 1b. FORGOT PASSWORD — admin-approved.
+        //
+        // This deliberately does NOT email a reset link straight away. It
+        // files a request that the Chef sees in the admin console; they
+        // confirm with the person directly ("did you just ask for this?")
+        // and only then approve, which is what actually triggers Firebase's
+        // reset email. So every reset is gated on a human who knows the
+        // family, while the link itself still only works from that person's
+        // own mailbox.
+        const forgotBtn = document.getElementById('forgot-btn');
+        const resetMsg = document.getElementById('reset-message');
+
+        if (forgotBtn) {
+            forgotBtn.addEventListener('click', async () => {
+                const email = emailInput.value.trim().toLowerCase();
+
+                if (!email) {
+                    resetMsg.style.color = '#b45309';
+                    resetMsg.innerText = "Type your email address above first, then tap this again.";
+                    emailInput.focus();
+                    return;
+                }
+                if (!email.includes('@')) {
+                    resetMsg.style.color = '#b45309';
+                    resetMsg.innerText = "That doesn't look like a valid email address.";
+                    return;
+                }
+
+                forgotBtn.disabled = true;
+                resetMsg.style.color = '#64748b';
+                resetMsg.innerText = "Sending your request...";
+
+                try {
+                    await withTimeout(addDoc(collection(db, "password_reset_requests"), {
+                        email,
+                        status: 'pending',
+                        requestedAt: serverTimestamp()
+                    }), 15000, "That's taking too long — try again.");
+
+                    console.log("🔑 [RESET] Request filed for:", email);
+                    resetMsg.style.color = '#0d9488';
+                    resetMsg.innerHTML = `✅ Request sent to the Chef.<br>They'll check it's really you, then you'll get an email with a reset link.`;
+                } catch (error) {
+                    console.error("🔥 [RESET] Could not file request:", error);
+                    resetMsg.style.color = '#ef4444';
+                    resetMsg.innerText = "Couldn't send that — check your connection and try again.";
+                }
+
+                forgotBtn.disabled = false;
+            });
+        }
 
         // 2. BULLETPROOF LOGIN (with a timeout so it can never hang forever)
         if (loginForm) {

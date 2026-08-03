@@ -7,6 +7,8 @@ import {
     serverTimestamp, arrayUnion, arrayRemove, query, orderBy, limit, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { DIETARY_TAGS, getDietaryTags, matchesFamilyFilter } from './recipe-model.js';
+import { getPlanPath } from './household.js';
 
 let allRecipes = [];
 let userFavorites = [];
@@ -39,6 +41,72 @@ async function checkIsAdmin(uid) {
 }
 
 console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
+
+// ==========================================
+// TEST MODE (Adam only)
+// Checking that a recipe renders correctly shouldn't inflate its view count
+// or the family leaderboard. While this is on, views and cooks are skipped.
+//
+// Deliberately restricted to ONE uid rather than all admins: it silently
+// stops recording activity, so it should only ever be reachable by the
+// person who maintains the cookbook. Lives here (main.js loads on every
+// page) so it can be switched off from the homepage — previously it only
+// existed on the recipe page, meaning you had to open a recipe just to
+// turn it back off.
+// ==========================================
+const TEST_MODE_UID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; // Adam
+
+export function isTestModeOn() {
+    return localStorage.getItem('adminTestMode') === 'true';
+}
+
+export function canUseTestMode(user) {
+    return Boolean(user) && user.uid === TEST_MODE_UID;
+}
+
+window.toggleTestMode = function() {
+    if (!canUseTestMode(auth.currentUser)) return;
+    const next = !isTestModeOn();
+    localStorage.setItem('adminTestMode', next);
+    console.log(`🧪 [TEST MODE] ${next ? 'ON — views and cooks will NOT be recorded.' : 'OFF — back to normal tracking.'}`);
+    updateTestModeUi();
+};
+
+export function updateTestModeUi() {
+    const on = isTestModeOn();
+    document.querySelectorAll('.js-test-mode-btn').forEach(b => {
+        b.innerText = `🧪 Test Mode: ${on ? 'ON' : 'OFF'}`;
+        b.classList.toggle('cook-mode-active', on);
+    });
+
+    let banner = document.getElementById('test-mode-banner');
+    if (on && !banner) {
+        banner = document.createElement('div');
+        banner.id = 'test-mode-banner';
+        banner.className = 'no-print';
+        banner.style.cssText = `background:#fef3c7; border-bottom:2px solid #f59e0b; color:#92400e;
+            padding:8px 14px; font-size:12px; font-weight:700; text-align:center;
+            position:sticky; top:0; z-index:200; cursor:pointer;`;
+        banner.title = "Tap to turn Test Mode off";
+        banner.innerHTML = "🧪 Test Mode is ON — views and cooks aren't being counted. <u>Tap to turn off</u>";
+        banner.onclick = () => window.toggleTestMode();
+        document.body.prepend(banner);
+    } else if (!on && banner) {
+        banner.remove();
+    }
+}
+
+// The banner is the always-available off switch: it shows on every page
+// whenever test mode is left on, so it can never get stuck.
+updateTestModeUi();
+
+// Reveals the homepage toggle, for Adam only.
+function setupTestModeToggle(user) {
+    const slot = document.getElementById('test-mode-slot');
+    if (!slot || !canUseTestMode(user)) return;
+    slot.classList.remove('hidden');
+    updateTestModeUi();
+}
 
 // ==========================================
 // OFFLINE RECIPE STORAGE (plain localStorage — no Firestore persistence
@@ -178,6 +246,7 @@ onAuthStateChanged(auth, async (user) => {
         loadUserSettings(user);
         loadHomepageMenu(user);
         syncPendingNotes(user);
+        setupTestModeToggle(user);
 
         // 4. Everything below is background work — none of it blocks the
         // recipe list appearing.
@@ -380,6 +449,8 @@ function renderFromOfflineStore(container) {
             c: data.category || data.c || "Misc",
             r: data.reviewed || data.r || false,
             h: data.isHidden === true || data.h === true,
+            fam: data.family || data.fam || 'Both',
+            d: Array.isArray(data.dietary || data.d) ? (data.dietary || data.d) : [],
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         };
     });
@@ -423,6 +494,8 @@ async function loadAllRecipesDirect(container) {
             c: data.category || "Misc",
             r: data.reviewed || false,
             h: data.isHidden === true,
+            fam: data.family || 'Both',
+            d: Array.isArray(data.dietary) ? data.dietary : [],
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         });
     });
@@ -479,6 +552,20 @@ function getCategoryClass(category) {
 
 let offlineChecklist = [];
 
+// Escapes text before it goes anywhere near HTML. A recipe literally named
+// `"Poop" Cookies` used to break its own card: the name was interpolated
+// into onclick="goToRecipe('id', 'name')", and the double quotes closed the
+// attribute early, truncating the JavaScript ("SyntaxError: Unexpected
+// EOF") so the card silently did nothing when tapped.
+export function escapeHtml(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function buildRecipeCardHtml(item) {
     const isHidden = item.h === true || item.isHidden === true;
 
@@ -520,20 +607,27 @@ function buildRecipeCardHtml(item) {
     const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
     const dimStyle = isHidden ? `opacity: 0.6; background-color: #f8fafc;` : "";
 
+    // Recipe id/name travel as data attributes read by a delegated click
+    // handler (see setupRecipeCardClicks) rather than being baked into an
+    // inline onclick — that's what made quotes in a recipe name fatal.
     return `
-        <div class="recipe-card ${colorClass}" style="${dimStyle}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
+        <div class="recipe-card ${colorClass}" style="${dimStyle}"
+             data-recipe-id="${escapeHtml(recId)}" data-recipe-name="${escapeHtml(recName)}">
             ${eyeIcon}
-            <button class="card-heart" onclick="toggleHeart(event, '${recId}')">${heartIcon}</button>
+            <button class="card-heart" data-heart-id="${escapeHtml(recId)}">${heartIcon}</button>
             <div class="card-content">
-                <h2>${recName}</h2>
-                <div class="recipe-author">From: ${recAuth}</div>
+                <h2>${escapeHtml(recName)}</h2>
+                <div class="recipe-author">From: ${escapeHtml(recAuth)}</div>
 
                 ${legacyBadges}
 
                 <div class="tag-container">
                     ${recTags
                         .filter(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite")
-                        .map(t => `<span class="tag-pill">${t}</span>`)
+                        .map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`)
+                        .join('')}
+                    ${getDietaryTags({ dietary: item.d || item.dietary })
+                        .map(t => `<span class="diet-pill">${escapeHtml(t)}</span>`)
                         .join('')}
                 </div>
             </div>
@@ -569,6 +663,8 @@ function renderLocalList(list) {
     }
 
     container.innerHTML = "";
+    setupRecipeCardClicks();
+    setupDietaryFilters(); // needs allRecipes populated to count tag usage
     renderNextRecipeBatch(container);
 }
 
@@ -601,12 +697,32 @@ window.goToRecipe = function(id, name) {
     window.location.href = `recipe.html?id=${id}`;
 };
 
-window.toggleHeart = async function(event, recipeId) {
-    event.stopPropagation(); 
+// One delegated listener for every recipe card, now and in the future.
+// Cards are re-rendered constantly (filters, lazy batches, offline mode), so
+// binding here — once, on the container — beats re-attaching per card, and
+// it means card markup carries plain data instead of executable strings.
+function setupRecipeCardClicks() {
+    const container = document.getElementById('recipes');
+    if (!container || container.dataset.clicksBound === 'true') return;
+    container.dataset.clicksBound = 'true';
+
+    container.addEventListener('click', (event) => {
+        const heart = event.target.closest('[data-heart-id]');
+        if (heart) {
+            event.stopPropagation();
+            toggleHeart(heart, heart.dataset.heartId);
+            return;
+        }
+
+        const card = event.target.closest('[data-recipe-id]');
+        if (card) goToRecipe(card.dataset.recipeId, card.dataset.recipeName);
+    });
+}
+
+window.toggleHeart = async function(btn, recipeId) {
     const user = auth.currentUser;
     if (!user) return alert("Log in to favorite!");
-    
-    const btn = event.currentTarget;
+
     const userRef = doc(db, "users", user.uid);
 
     try {
@@ -840,13 +956,21 @@ function resetProfileIcon() {
 // ==========================================
 let currentCategoryFilter = null;
 let currentFavFilter = null; // 🚀 NEW: Tracks favorites independently!
+let currentDietFilter = null; // Vegetarian / Gluten-Free / etc
 
 window.applyHomepageFilters = function() {
     const searchInput = document.getElementById('searchbar');
     const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
     const showReviewedOnly = document.getElementById('reviewed-toggle') ? document.getElementById('reviewed-toggle').checked : false;
-    
+
     let filtered = allRecipes;
+
+    // 0. Family separation (a Settings preference, not an on-page filter).
+    //    Recipes marked "Both" — which is the default, including everything
+    //    that predates the field — always show, so this can never empty the
+    //    cookbook out.
+    const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+    filtered = filtered.filter(r => matchesFamilyFilter(r, settings.familyFilter));
 
     // 1. Filter by Reviewed Status
     if (showReviewedOnly) {
@@ -867,6 +991,11 @@ window.applyHomepageFilters = function() {
             const tags = r.t || [];
             return tags.includes(currentFavFilter);
         });
+    }
+
+    // 3b. Filter by dietary/allergy tag (stacks with everything else)
+    if (currentDietFilter) {
+        filtered = filtered.filter(r => (r.d || r.dietary || []).includes(currentDietFilter));
     }
 
     // 4. Filter by Search Term (matches recipe name OR ingredients)
@@ -934,7 +1063,9 @@ function setupSearch() {
 }
 
 function setupCategoryFilters() {
-    const buttons = document.querySelectorAll('.folders button');
+    // Scoped to exclude #dietary-filters — those chips share the .folders
+    // styling but are a separate, independently-stacking filter.
+    const buttons = document.querySelectorAll('.folders:not(#dietary-filters) button');
     buttons.forEach(btn => {
         btn.onclick = () => {
             const tag = btn.innerText.trim();
@@ -976,6 +1107,63 @@ function setupCategoryFilters() {
     });
 }
 
+// Dietary/allergy chips are generated from the shared DIETARY_TAGS list so
+// adding a new one only means editing scripts/recipe-model.js.
+function setupDietaryFilters() {
+    const wrap = document.getElementById('dietary-filters');
+    if (!wrap) return;
+
+    // Only show a chip if at least one recipe actually carries that tag —
+    // otherwise you get a row of buttons that all lead to "No recipes
+    // found", which just reads as broken. They appear on their own as
+    // recipes get tagged, so nothing needs re-enabling later.
+    const tagCounts = {};
+    allRecipes.forEach(r => {
+        (r.d || r.dietary || []).forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + 1; });
+    });
+
+    const usedTags = DIETARY_TAGS.filter(tag => tagCounts[tag] > 0);
+
+    if (usedTags.length === 0) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+    }
+
+    wrap.style.display = '';
+    wrap.innerHTML = usedTags.map(tag =>
+        `<button class="cat-green diet-filter-btn" data-diet-tag="${escapeHtml(tag)}" style="font-size:0.78rem; padding:6px 14px;">${escapeHtml(tag)} <span style="opacity:0.75; font-weight:600;">(${tagCounts[tag]})</span></button>`
+    ).join('');
+
+    wrap.querySelectorAll('button').forEach(btn => {
+        // This runs on every re-render, so re-apply the current selection —
+        // otherwise clicking a chip would visually deselect itself as the
+        // list it just filtered re-renders underneath it.
+        if (btn.dataset.dietTag === currentDietFilter) btn.classList.add('active-filter');
+
+        btn.onclick = () => {
+            // Read the tag from the data attribute, not the label — the
+            // label carries a "(3)" count suffix.
+            const tag = btn.dataset.dietTag;
+            const wasActive = btn.classList.contains('active-filter');
+
+            wrap.querySelectorAll('button').forEach(b => b.classList.remove('active-filter'));
+
+            if (wasActive) {
+                currentDietFilter = null;
+            } else {
+                btn.classList.add('active-filter');
+                currentDietFilter = tag;
+            }
+            console.log("🥗 [FILTER] Dietary filter:", currentDietFilter || "off");
+            applyHomepageFilters();
+        };
+    });
+}
+
+// setupDietaryFilters is NOT called here — it counts how many recipes carry
+// each tag, so it has to wait until the recipes are actually loaded. It's
+// invoked from renderLocalList() instead.
 setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
 
 // ==========================================
@@ -983,7 +1171,8 @@ setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
 // ==========================================
 async function loadHomepageMenu(user) {
     try {
-        const querySnapshot = await getDocs(collection(db, "users", user.uid, "weekly_plan"));
+        const { segments } = await getPlanPath(user.uid);
+        const querySnapshot = await getDocs(collection(db, ...segments, "weekly_plan"));
         
         querySnapshot.forEach((doc) => {
             const dayFull = doc.id; 
@@ -1045,7 +1234,8 @@ window.deleteMealFromMenu = async function(dayFull, uniqueId, mealName) {
     if(box) box.style.opacity = "0.5";
 
     try {
-        const docRef = doc(db, "users", user.uid, "weekly_plan", dayFull);
+        const { segments } = await getPlanPath(user.uid);
+        const docRef = doc(db, ...segments, "weekly_plan", dayFull);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
@@ -1097,7 +1287,8 @@ window.confirmAddCustomMeal = async function() {
 
     try {
         const mealData = { id: null, name, ingredients: [], type: mealType, addedAt: Date.now() };
-        const docRef = doc(db, "users", user.uid, "weekly_plan", day);
+        const { segments } = await getPlanPath(user.uid);
+        const docRef = doc(db, ...segments, "weekly_plan", day);
         await setDoc(docRef, { meals: arrayUnion(mealData) }, { merge: true });
 
         console.log("✅ [CUSTOM MEAL] Saved.");

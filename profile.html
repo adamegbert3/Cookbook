@@ -22,17 +22,57 @@
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     <link rel="manifest" href="offline_features/manifest.json">
+    <style>
+        /* Header: wraps to a second row rather than overflowing, and stays
+           a normal-height block instead of the fixed 60px site header. */
+        .profile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 12px 16px;
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            box-shadow: var(--shadow-sm);
+        }
+        .profile-header-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            flex: 1;
+        }
+        .profile-header .pill-btn {
+            text-decoration: none;
+            padding: 7px 14px;
+            font-size: 0.85rem;
+            box-shadow: none;
+        }
+        .profile-logout { background: #ef4444; }
+
+        /* On phones, drop the labels down to icons only so all four fit on
+           one row instead of stacking into a tall, messy block. */
+        @media (max-width: 560px) {
+            .profile-header { padding: 10px 12px; }
+            .profile-header-actions .pill-btn span { display: none; }
+            .profile-header-actions .pill-btn { padding: 7px 12px; font-size: 1rem; }
+            .profile-logout { font-size: 0.8rem !important; }
+        }
+    </style>
 </head>
 <body>
 
-    <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid var(--border);">
-        <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">← Back</a>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end;">
-            <a href="leaderboard.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">🏆 Leaderboard</a>
-            <a href="print.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">🖨️ Print</a>
-            <a href="settings.html" class="pill-btn btn-slate" style="text-decoration: none; padding: 6px 12px; font-size: 14px;">⚙️ Settings</a>
-            <button onclick="logout()" style="background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-family: var(--font-main); font-weight: bold; font-size: 14px;">Log Out</button>
-        </div>
+    <!-- Fixed height + nowrap pills were overflowing the header on narrow
+         screens; this wraps onto a second row instead of running off. -->
+    <div class="profile-header">
+        <a href="homepage.html" class="pill-btn btn-slate profile-header-back">← Back</a>
+        <nav class="profile-header-actions">
+            <a href="leaderboard.html" class="pill-btn btn-slate">🏆 <span>Leaderboard</span></a>
+            <a href="print.html" class="pill-btn btn-slate">🖨️ <span>Print</span></a>
+            <a href="settings.html" class="pill-btn btn-slate">⚙️ <span>Settings</span></a>
+            <button onclick="logout()" class="pill-btn profile-logout">Log Out</button>
+        </nav>
     </div>
 
     <div style="max-width: 800px; margin: 30px auto; text-align: center; padding: 0 15px;">

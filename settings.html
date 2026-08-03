@@ -71,6 +71,20 @@
             </div>
 
             <div class="setting-row">
+                <label>
+                    👨‍👩‍👧 Show Recipes From
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Recipes marked "Both" always show, so nothing disappears.
+                    </div>
+                </label>
+                <select id="familyFilterSelect">
+                    <option value="all">Both families</option>
+                    <option value="Egbert">Egbert only</option>
+                    <option value="Wheeler">Wheeler only</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
                 <label>🔤 Font Style</label>
                 <select id="fontStyleSelect">
                     <option value="inter">Modern (Inter)</option>
@@ -86,8 +100,72 @@
             <button id="save-btn" class="btn-dark" style="width:100%; margin-top:20px; text-align:center;">
                 💾 Save Changes
             </button>
-            
+
             <p id="saveMsg" style="text-align:center; color:var(--accent-teal); margin-top:10px; opacity:0; transition:opacity 0.5s;"></p>
+        </div>
+
+        <!-- ============ ACCOUNT ============ -->
+        <div class="settings-container" style="margin-top:20px;">
+            <h3 style="margin-top:0; color:var(--accent-teal);">🔐 Account</h3>
+            <div class="setting-row">
+                <label>
+                    Change your password
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        We'll email you a secure link — no one, including the Chef, ever sees your password.
+                    </div>
+                </label>
+                <button onclick="sendMyPasswordReset()" class="pill-btn btn-slate">📧 Send Link</button>
+            </div>
+            <p id="passwordMsg" style="text-align:center; margin-top:10px; font-size:13px;"></p>
+        </div>
+
+        <!-- ============ HOUSEHOLD ============ -->
+        <div class="settings-container" style="margin-top:20px;">
+            <h3 style="margin-top:0; color:var(--accent-teal);">🏠 Household</h3>
+            <p style="font-size:13px; opacity:0.75; margin-top:-6px;">
+                Share your weekly menu and shopping list with your spouse or family.
+                Whatever one of you adds, everyone in the household sees.
+            </p>
+
+            <div id="household-loading" style="font-size:13px; opacity:0.6;">Checking…</div>
+
+            <!-- Shown when you're already in a household -->
+            <div id="household-current" style="display:none;">
+                <div style="background:var(--bg-body); border:1px solid var(--border); border-radius:8px; padding:14px; margin-top:10px;">
+                    <div style="font-weight:800; font-size:1.05rem;" id="household-name"></div>
+                    <div style="font-size:13px; opacity:0.75; margin-top:4px;">
+                        Join code: <strong id="household-code" style="font-family:monospace; letter-spacing:1px;"></strong>
+                        <button onclick="copyHouseholdCode()" class="pill-btn btn-slate" style="padding:3px 10px; font-size:11px; margin-left:6px;">Copy</button>
+                    </div>
+                    <div style="font-size:12px; opacity:0.6; margin-top:6px;" id="household-members"></div>
+                </div>
+                <button onclick="doLeaveHousehold()" class="pill-btn btn-slate" style="margin-top:12px;">🚪 Leave Household</button>
+                <p style="font-size:11px; opacity:0.6; margin-top:6px;">Leaving switches your menu and shopping list back to your own private ones.</p>
+            </div>
+
+            <!-- Shown when you're not in one yet -->
+            <div id="household-none" style="display:none;">
+                <div style="margin-top:14px;">
+                    <label style="font-weight:700; font-size:14px;">Create a new household</label>
+                    <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+                        <input type="text" id="household-new-name" placeholder="e.g. The Egberts" style="flex:1; min-width:160px;">
+                        <button onclick="doCreateHousehold()" class="pill-btn btn-teal">Create</button>
+                    </div>
+                </div>
+
+                <hr style="border:0; border-top:1px solid var(--border); margin:18px 0;">
+
+                <div>
+                    <label style="font-weight:700; font-size:14px;">Or join with a code</label>
+                    <div style="display:flex; gap:8px; margin-top:6px; flex-wrap:wrap;">
+                        <input type="text" id="household-join-code" placeholder="ABC123" style="flex:1; min-width:160px; text-transform:uppercase; font-family:monospace; letter-spacing:1px;">
+                        <button onclick="doJoinHousehold()" class="pill-btn btn-blue">Join</button>
+                    </div>
+                    <p style="font-size:11px; opacity:0.6; margin-top:6px;">Ask whoever set it up for the join code.</p>
+                </div>
+            </div>
+
+            <p id="householdMsg" style="text-align:center; margin-top:12px; font-size:13px;"></p>
         </div>
     </main>
 
@@ -134,6 +212,9 @@
 
                         if(document.getElementById('fontStyleSelect'))
                             document.getElementById('fontStyleSelect').value = settings.fontStyle || 'inter';
+
+                        if(document.getElementById('familyFilterSelect'))
+                            document.getElementById('familyFilterSelect').value = settings.familyFilter || 'all';
                     }
                 });
 
@@ -146,7 +227,8 @@
                         const newSettings = {
                             theme: document.getElementById('darkModeToggle').checked ? 'dark' : 'light',
                             fontSize: currentFontPx,
-                            fontStyle: document.getElementById('fontStyleSelect').value
+                            fontStyle: document.getElementById('fontStyleSelect').value,
+                            familyFilter: document.getElementById('familyFilterSelect').value
                         };
 
                         const msg = document.getElementById('saveMsg');
@@ -167,6 +249,136 @@
         }
 
         initSettings();
+
+        // ==========================================
+        // CHANGE PASSWORD
+        // Uses Firebase's emailed reset link rather than an in-page "new
+        // password" box on purpose: the link proves the person still
+        // controls the mailbox, so a walked-away-from unlocked phone can't
+        // be used to silently take over the account. Nothing here ever
+        // handles the password itself.
+        // ==========================================
+        window.sendMyPasswordReset = async function() {
+            const msg = document.getElementById('passwordMsg');
+            try {
+                const { auth } = await import('./scripts/firebase-config.js');
+                const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
+
+                const user = auth.currentUser;
+                if (!user || !user.email) {
+                    msg.style.color = '#ef4444';
+                    msg.innerText = "Please sign in again first.";
+                    return;
+                }
+
+                msg.style.color = '#64748b';
+                msg.innerText = "Sending...";
+                await sendPasswordResetEmail(auth, user.email);
+
+                console.log("📧 [RESET] Password reset email sent to:", user.email);
+                msg.style.color = 'var(--accent-teal)';
+                msg.innerText = `📧 Sent to ${user.email}. Check spam if it doesn't arrive.`;
+            } catch (e) {
+                console.error("🔥 [RESET] Failed:", e);
+                msg.style.color = '#ef4444';
+                msg.innerText = "Couldn't send that — check your connection and try again.";
+            }
+        };
+
+        // ==========================================
+        // HOUSEHOLD SECTION
+        // ==========================================
+        (async function initHousehold() {
+            const { auth } = await import('./scripts/firebase-config.js');
+            const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
+            const household = await import('./scripts/household.js');
+
+            const loadingEl = document.getElementById('household-loading');
+            const currentEl = document.getElementById('household-current');
+            const noneEl = document.getElementById('household-none');
+            const msgEl = document.getElementById('householdMsg');
+
+            let currentUid = null;
+            let currentHouseholdId = null;
+
+            const setMsg = (text, colour = 'var(--accent-teal)') => {
+                msgEl.style.color = colour;
+                msgEl.innerText = text;
+            };
+
+            async function refresh() {
+                loadingEl.style.display = 'block';
+                currentEl.style.display = 'none';
+                noneEl.style.display = 'none';
+
+                const id = await household.getUserHouseholdId(currentUid);
+                currentHouseholdId = id;
+                const data = id ? await household.getHousehold(id) : null;
+
+                loadingEl.style.display = 'none';
+
+                if (data) {
+                    document.getElementById('household-name').innerText = data.name || "Our Household";
+                    document.getElementById('household-code').innerText = data.code || "—";
+                    const count = (data.members || []).length;
+                    document.getElementById('household-members').innerText =
+                        `${count} member${count === 1 ? '' : 's'}`;
+                    currentEl.style.display = 'block';
+                } else {
+                    noneEl.style.display = 'block';
+                }
+            }
+
+            onAuthStateChanged(auth, (user) => {
+                if (!user) return;
+                currentUid = user.uid;
+                refresh();
+            });
+
+            window.doCreateHousehold = async function() {
+                const name = document.getElementById('household-new-name').value.trim();
+                if (!name) return setMsg("Give your household a name first.", '#b45309');
+                try {
+                    setMsg("Creating…");
+                    const created = await household.createHousehold(currentUid, name);
+                    setMsg(`Created! Share the join code ${created.code} with your family.`);
+                    await refresh();
+                } catch (e) {
+                    console.error(e);
+                    setMsg("Could not create: " + e.message, '#ef4444');
+                }
+            };
+
+            window.doJoinHousehold = async function() {
+                const code = document.getElementById('household-join-code').value.trim();
+                try {
+                    setMsg("Joining…");
+                    const joined = await household.joinHouseholdByCode(currentUid, code);
+                    setMsg(`Joined ${joined.name}! Your menu and shopping list are now shared.`);
+                    await refresh();
+                } catch (e) {
+                    console.error(e);
+                    setMsg(e.message, '#ef4444');
+                }
+            };
+
+            window.doLeaveHousehold = async function() {
+                if (!confirm("Leave this household? Your weekly menu and shopping list go back to being just yours — the shared ones stay with everyone else.")) return;
+                try {
+                    await household.leaveHousehold(currentUid, currentHouseholdId);
+                    setMsg("You've left the household.");
+                    await refresh();
+                } catch (e) {
+                    console.error(e);
+                    setMsg("Could not leave: " + e.message, '#ef4444');
+                }
+            };
+
+            window.copyHouseholdCode = function() {
+                const code = document.getElementById('household-code').innerText;
+                navigator.clipboard.writeText(code).then(() => setMsg("Join code copied!"));
+            };
+        })();
     </script>
 </body>
 </html>

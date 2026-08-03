@@ -11,3 +11,6 @@ local-tools/**/token.json
 # OS junk
 .DS_Store
 Thumbs.db
+
+# Drive sync scheduler logs (local only)
+local-tools/**/logs/

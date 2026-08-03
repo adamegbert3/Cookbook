@@ -50,12 +50,14 @@
             <option value="Soups & Salads">Soups & Salads</option>
         </select>
 
-        <label>Ingredients <span class="hint">(one per line)</span></label>
+        <label>Ingredients <span class="hint">(one per line — start a line with <code>## Crust</code> to begin a new part)</span></label>
         <textarea id="e-ingredients" rows="8"></textarea>
+        <button type="button" class="btn-tool" onclick="addSection('e-ingredients')">➕ Add a Part (Crust, Filling…)</button>
 
-        <label>Instructions <span class="hint">(one step per line)</span></label>
+        <label>Instructions <span class="hint">(one step per line — <code>## Headings</code> restart numbering)</span></label>
         <textarea id="e-instructions" rows="8"></textarea>
         <button type="button" class="btn-tool" onclick="autoSplitInstructions()">✂️ Auto-split into steps</button>
+        <button type="button" class="btn-tool" onclick="addSection('e-instructions')">➕ Add a Part</button>
 
         <label>Chef's Notes <span class="hint">(optional)</span></label>
         <textarea id="e-notes" rows="3"></textarea>
@@ -66,6 +68,16 @@
 
         <label>Original Recipe URL <span class="hint">(optional — different from the PDF/Drive link above)</span></label>
         <input type="url" id="e-source-url" placeholder="https://example.com/the-recipe-i-adapted-this-from">
+
+        <label>Family <span class="hint">(who does this recipe belong to? "Both" shows for everyone)</span></label>
+        <select id="e-family">
+            <option value="Both">Both families</option>
+            <option value="Egbert">Egbert only</option>
+            <option value="Wheeler">Wheeler only</option>
+        </select>
+
+        <label>Dietary / Allergy Tags <span class="hint">(optional — helps people filter)</span></label>
+        <div id="e-dietary" class="dietary-checkboxes"></div>
 
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-top: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
             <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
@@ -98,6 +110,34 @@
         import { db, auth } from './scripts/firebase-config.js';
         import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import { buildRecipeFields, getEditableText, DIETARY_TAGS, getDietaryTags, getRecipeFamily } from './scripts/recipe-model.js';
+
+        // Build the dietary checkbox row from the shared list
+        document.getElementById('e-dietary').innerHTML = DIETARY_TAGS.map(tag => `
+            <label class="dietary-check">
+                <input type="checkbox" value="${tag}"> ${tag}
+            </label>`).join('');
+
+        function setDietaryChecks(tags) {
+            const selected = tags || [];
+            document.querySelectorAll('#e-dietary input').forEach(cb => { cb.checked = selected.includes(cb.value); });
+        }
+        function readDietaryChecks() {
+            return Array.from(document.querySelectorAll('#e-dietary input:checked')).map(cb => cb.value);
+        }
+
+        // Inserts a "## Part Name" heading so multi-part recipes are
+        // discoverable without knowing the syntax.
+        window.addSection = function(fieldId) {
+            const box = document.getElementById(fieldId);
+            if (!box) return;
+            const name = prompt("Name this part (e.g. Crust, Filling, Topping):");
+            if (!name) return;
+            const prefix = box.value.trim() ? '\n' : '';
+            box.value = `${box.value.trimEnd()}${prefix}## ${name.trim()}\n`;
+            box.focus();
+            box.selectionStart = box.selectionEnd = box.value.length;
+        };
 
         // "Built-in" admins — keep in sync with firestore.rules and the
         // ADMIN_UIDS arrays in scripts/dashboard.js, scripts/main.js,
@@ -166,6 +206,8 @@
                     document.getElementById('e-notes').value = data.notes || "";
                     document.getElementById('e-drive-link').value = data.driveUrl || "";
                     document.getElementById('e-source-url').value = data.sourceUrl || "";
+                    document.getElementById('e-family').value = getRecipeFamily(data);
+                    setDietaryChecks(getDietaryTags(data));
 
                     // --- LOAD REVIEW STATUS ---
                     document.getElementById('e-reviewed').checked = data.reviewed === true;
@@ -175,18 +217,11 @@
                     document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
                     document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
 
-                    // --- HANDLE ARRAYS ---
-                    let ingText = "";
-                    const rawIng = data.ingredients || data.recipeIngredient;
-                    if (Array.isArray(rawIng)) ingText = rawIng.join('\n');
-                    else if (typeof rawIng === 'string') ingText = rawIng;
-                    document.getElementById('e-ingredients').value = ingText;
-
-                    let instText = "";
-                    const rawInst = data.instructions || data.recipeInstructions;
-                    if (Array.isArray(rawInst)) instText = rawInst.join('\n');
-                    else if (typeof rawInst === 'string') instText = rawInst;
-                    document.getElementById('e-instructions').value = instText;
+                    // --- HANDLE ARRAYS / MULTI-PART SECTIONS ---
+                    // Re-serializes any "## Part" structure back into the
+                    // textarea; plain recipes come back as a simple list.
+                    document.getElementById('e-ingredients').value = getEditableText(data, 'ingredients');
+                    document.getElementById('e-instructions').value = getEditableText(data, 'instructions');
 
                 } else {
                     alert("Recipe not found!");
@@ -238,6 +273,8 @@
             document.getElementById('e-notes').value = v.notes || "";
             document.getElementById('e-drive-link').value = v.driveUrl || "";
             document.getElementById('e-source-url').value = v.sourceUrl || "";
+            document.getElementById('e-family').value = getRecipeFamily(v);
+            setDietaryChecks(getDietaryTags(v));
             document.getElementById('e-reviewed').checked = v.reviewed === true;
 
             const tagsList = v.tags || [];
@@ -245,11 +282,8 @@
             document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
             document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
 
-            const rawIng = v.ingredients || v.recipeIngredient;
-            document.getElementById('e-ingredients').value = Array.isArray(rawIng) ? rawIng.join('\n') : (rawIng || "");
-
-            const rawInst = v.instructions || v.recipeInstructions;
-            document.getElementById('e-instructions').value = Array.isArray(rawInst) ? rawInst.join('\n') : (rawInst || "");
+            document.getElementById('e-ingredients').value = getEditableText(v, 'ingredients');
+            document.getElementById('e-instructions').value = getEditableText(v, 'instructions');
 
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
@@ -263,8 +297,8 @@
             btn.disabled = true;
             btn.innerText = "Saving...";
 
-            const ingArray = document.getElementById('e-ingredients').value.split('\n').map(l => l.trim()).filter(line => line !== '');
-            const instArray = document.getElementById('e-instructions').value.split('\n').map(l => l.trim()).filter(line => line !== '');
+            const ingredientFields = buildRecipeFields(document.getElementById('e-ingredients').value, 'ingredients');
+            const instructionFields = buildRecipeFields(document.getElementById('e-instructions').value, 'instructions');
             const notes = document.getElementById('e-notes').value.trim();
             const driveUrl = document.getElementById('e-drive-link').value.trim();
             const sourceUrl = document.getElementById('e-source-url').value.trim();
@@ -297,13 +331,13 @@
                     author: document.getElementById('e-author').value,
                     category: cat,
                     tags: updatedTags,
-                    ingredients: ingArray,
-                    recipeIngredient: ingArray,
-                    instructions: instArray,
-                    recipeInstructions: instArray,
+                    ...ingredientFields,
+                    ...instructionFields,
                     notes: notes,
                     driveUrl: driveUrl,
                     sourceUrl: sourceUrl,
+                    family: document.getElementById('e-family').value,
+                    dietary: readDietaryChecks(),
 
                     // SAVE VERIFICATION STATUS
                     reviewed: isReviewed,

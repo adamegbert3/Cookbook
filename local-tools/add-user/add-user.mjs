@@ -55,11 +55,16 @@ async function main() {
             displayName: name
         });
 
+        // Keep this shape in sync with scripts/invite-signup.js and the
+        // "Check User Documents" repair tool in scripts/dashboard.js.
+        // Personal recipe notes are NOT a field here — they live one per
+        // recipe under users/{uid}/private_notes/{recipeId}.
         await db.collection('users').doc(userRecord.uid).set({
             Name: name,
             email,
             role: makeAdmin ? 'admin' : 'user',
-            favorites: [],
+            favorites: [],      // array, not ""
+            householdId: null,  // set when they join/create a household
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 

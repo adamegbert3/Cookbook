@@ -92,6 +92,9 @@
             <button class="cat-teal" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 800;">Wheeler Favorite</button>
         </div>
 
+        <!-- Dietary / allergy filter chips (built from DIETARY_TAGS in scripts/recipe-model.js) -->
+        <div class="folders" id="dietary-filters" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);"></div>
+
         <div style="text-align: center; margin: 15px 0 25px 0; display: flex; justify-content: center;">
             <label class="toggle-wrapper">
                 <div class="switch">
@@ -104,6 +107,12 @@
 
         <div style="text-align: center; margin-bottom: 15px;">
             <a href="submit.html" class="btn-dark">+ Add Your Own Recipe</a>
+        </div>
+
+        <!-- Adam-only; revealed by setupTestModeToggle() in scripts/main.js -->
+        <div id="test-mode-slot" class="hidden" style="text-align: center; margin-bottom: 15px;">
+            <button onclick="toggleTestMode()" class="pill-btn btn-slate js-test-mode-btn" style="font-size:0.8rem;">🧪 Test Mode: OFF</button>
+            <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">While on, opening or cooking recipes won't count toward views or the leaderboard.</p>
         </div>
 
         <div style="text-align: center; margin-bottom: 30px;">

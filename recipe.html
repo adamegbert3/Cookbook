@@ -55,6 +55,13 @@
             <div id="kt-scale-slot" style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:15px;"></div>
             <div id="kt-altitude-slot" style="display:flex; justify-content:center; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px;"></div>
 
+            <!-- Admin-only: revealed by scripts/recipePage.js for admins -->
+            <div id="admin-tools-slot" class="hidden" style="margin-top:15px;">
+                <p class="kt-section-label">🛠️ Admin</p>
+                <button onclick="toggleTestMode()" class="pill-btn btn-slate js-test-mode-btn" style="font-size:0.8rem;">🧪 Test Mode: OFF</button>
+                <p style="font-size:11px; color:#94a3b8; margin:6px 0 0 0;">While on, opening or cooking recipes won't count toward views or the leaderboard.</p>
+            </div>
+
             <div style="margin-top:15px;">
                 <button onclick="openReportModal()" class="pill-btn btn-red-outline" style="font-size:0.8rem;">🚩 Report Issue</button>
             </div>
@@ -120,6 +127,44 @@
         </div>
     </div>
 </div>
+
+    <div id="save-choice-modal" class="modal hidden">
+        <div class="modal-content" style="text-align:left;">
+            <h3 style="margin-top:0; text-align:center;">Save your changes</h3>
+            <p style="font-size:13px; color:#94a3b8; text-align:center; margin-top:-6px;">Is this a tweak just for you, or a fix everyone should get?</p>
+
+            <button onclick="saveAsPersonal()" class="pill-btn btn-teal" style="width:100%; justify-content:center; margin-top:14px;">
+                🙋 Just for me
+            </button>
+            <p style="font-size:11px; color:#94a3b8; margin:6px 0 16px 0; text-align:center;">Only you see it. The shared recipe stays as it is.</p>
+
+            <hr style="border:0; border-top:1px solid var(--border); margin:0 0 16px 0;">
+
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:5px;">What's wrong with the original? (optional)</label>
+            <textarea id="suggestion-reason" class="form-input" rows="2" placeholder="e.g. It should be 2 cups of flour, not 3"></textarea>
+
+            <button onclick="saveAsSuggestion()" class="pill-btn btn-orange" style="width:100%; justify-content:center; margin-top:10px;">
+                📬 Suggest this fix for everyone
+            </button>
+            <p style="font-size:11px; color:#94a3b8; margin:6px 0 0 0; text-align:center;">Sends it to the Chef to approve. Saved for you either way.</p>
+
+            <button onclick="closeSaveChoiceModal()" class="pill-btn btn-slate" style="width:100%; justify-content:center; margin-top:16px;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="unreviewed-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3 style="margin-top:0;">⚠️ This recipe hasn't been checked yet</h3>
+            <p style="font-size:14px; color:#94a3b8; margin-top:-6px;">
+                Nobody has verified this one against the original yet, so measurements or
+                steps could still be wrong. Worth double-checking as you go.
+            </p>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-top:16px;">
+                <button onclick="dismissUnreviewedWarning()" class="pill-btn btn-teal" style="justify-content:center;">👍 Got it, show me the recipe</button>
+                <button onclick="requestRecipeReview()" class="pill-btn btn-orange js-request-review-btn" style="justify-content:center;">🙋 Ask the Chef to review this</button>
+            </div>
+        </div>
+    </div>
 
     <div id="cook-prompt-modal" class="modal hidden">
         <div class="modal-content">

@@ -3,7 +3,10 @@ import {
     doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe } from './main.js';
+import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe,
+         isTestModeOn, canUseTestMode, updateTestModeUi } from './main.js';
+import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags } from './recipe-model.js';
+import { getPlanPath } from './household.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -242,12 +245,28 @@ async function loadRecipe() {
             loadCookStats();
             logViewToDatabase(fullData);
             applyPersonalizationIfAny(fullData);
-            maybeShowCookPrompt();
+            afterRecipeShown(fullData);
         } else if (!renderCachedRecipe(localData, recipeContainer)) {
             recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
         }
     } catch (error) {
         console.error("Recipe load failed:", error);
+
+        // Recipes now require a signed-in read. The auth gate below waits
+        // for Firebase to restore the session, but it gives up after a few
+        // seconds so a stalled SDK can't hang the page forever — which means
+        // on a very slow connection we can arrive here unauthenticated and
+        // get permission-denied. Wait properly for auth, then try once more
+        // before falling back to the cached copy.
+        if (error.code === 'permission-denied' && !auth.currentUser && navigator.onLine && !loadRecipe.retried) {
+            loadRecipe.retried = true;
+            console.warn("🔐 [RECIPE] Read denied before sign-in finished — waiting for auth and retrying.");
+            const signedIn = await new Promise((resolve) => {
+                const unsub = onAuthStateChanged(auth, (u) => { if (u) { unsub(); resolve(true); } });
+                setTimeout(() => { unsub(); resolve(false); }, 8000);
+            });
+            if (signedIn) return loadRecipe();
+        }
 
         // Fall back to a locally cached copy if we have one (offline / rules trouble)
         if (renderCachedRecipe(localData, recipeContainer)) return;
@@ -298,12 +317,20 @@ function renderCachedRecipe(localData, recipeContainer) {
     return false;
 }
 
+// Runs once the recipe is on screen, however it got there. Warns first if
+// the recipe is unverified, and only asks "viewing or cooking?" afterwards —
+// stacking both modals at once would be a mess.
+function afterRecipeShown(recipe) {
+    if (maybeShowUnreviewedWarning(recipe)) return; // it chains into the cook prompt on dismiss
+    maybeShowCookPrompt();
+}
+
 // Shared tail-end for every offline/cached render path. The cook counter
 // reads from localStorage so it still works with no signal, but comments
 // need Firestore — without this they both sat on "Loading..." forever.
 function markOfflineRecipeView() {
     loadCookStats();
-    maybeShowCookPrompt();
+    afterRecipeShown(lastRenderedRecipe || originalRecipeData || {});
 
     const commentsList = document.getElementById('commentsList');
     if (commentsList && commentsList.innerText.includes('Loading')) {
@@ -357,66 +384,163 @@ window.toggleEditMode = function() {
     }
 };
 
+// ==========================================
+// EDIT MODE — a per-line, per-part editor that mirrors the published layout.
+//
+// This replaced a pair of raw textareas holding the whole recipe. Those were
+// confusing (you edited a wall of text that looked nothing like the recipe)
+// and made multi-part recipes effectively uneditable, since parts were just
+// "## Crust" lines buried in the middle of the text.
+//
+// Now each ingredient and step is its own input, grouped under its part, so
+// editing looks like the recipe you're reading. `editDraft` is the working
+// copy; nothing is written until Save.
+// ==========================================
+let editDraft = null;
+
 function enterEditMode() {
     editModeActive = true;
     const current = lastRenderedRecipe || originalRecipeData;
 
-    const rawIng = current.ingredients || current.recipeIngredient || [];
-    const rawInst = current.instructions || current.recipeInstructions || [];
-    const ingArr = Array.isArray(rawIng) ? rawIng : String(rawIng || '').split('\n').filter(Boolean);
-    const instArr = Array.isArray(rawInst) ? rawInst : String(rawInst || '').split('\n').filter(Boolean);
+    // Deep-copy into a draft so Cancel is a genuine discard
+    editDraft = {
+        ingredientSections: getSections(current, 'ingredients').map(s => ({ title: s.title, items: [...(s.items || [])] })),
+        instructionSections: getSections(current, 'instructions').map(s => ({ title: s.title, items: [...(s.items || [])] })),
+        notes: current.notes || ''
+    };
+    if (editDraft.ingredientSections.length === 0) editDraft.ingredientSections = [{ title: '', items: [''] }];
+    if (editDraft.instructionSections.length === 0) editDraft.instructionSections = [{ title: '', items: [''] }];
 
-    // Ingredients: swap the rendered <li>s for one editable textarea in place
+    renderEditor();
+    showEditModeBar(current.isPersonalized);
+    document.getElementById('ingredient-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Rebuilds both editors from editDraft. Called after every structural change
+// (add/remove a line or a part) so the DOM always matches the draft.
+function renderEditor() {
     const ingList = document.getElementById('ingredient-list');
     if (ingList) {
-        ingList.innerHTML = '';
-        const li = document.createElement('li');
-        li.className = 'inline-edit-li';
-        const ta = document.createElement('textarea');
-        ta.id = 'edit-ingredients-inline';
-        ta.className = 'form-input';
-        ta.rows = Math.max(6, ingArr.length);
-        ta.value = ingArr.join('\n');
-        li.appendChild(ta);
-        ingList.appendChild(li);
+        ingList.className = ''; // drop the substitution-hiding class while editing
+        ingList.innerHTML = editDraft.ingredientSections.map((section, si) => `
+            <li class="edit-section-block">
+                ${editDraft.ingredientSections.length > 1 || section.title ? `
+                    <div class="edit-section-head">
+                        <input class="edit-part-name" type="text" placeholder="Part name (e.g. Crust)"
+                               value="${escapeAttrJs(section.title)}"
+                               oninput="updateDraft('ingredients', ${si}, null, this.value)">
+                        <button class="edit-mini-btn edit-mini-danger" title="Remove this part"
+                                onclick="removePart('ingredients', ${si})">✕</button>
+                    </div>` : ''}
+
+                ${section.items.map((item, ii) => `
+                    <div class="edit-row">
+                        <input type="text" value="${escapeAttrJs(item)}" placeholder="e.g. 2 cups flour"
+                               oninput="updateDraft('ingredients', ${si}, ${ii}, this.value)">
+                        <button class="edit-mini-btn edit-mini-danger" title="Delete"
+                                onclick="removeLine('ingredients', ${si}, ${ii})">✕</button>
+                    </div>`).join('')}
+
+                <div class="edit-row-actions">
+                    <button class="edit-mini-btn" onclick="addLine('ingredients', ${si})">＋ Ingredient</button>
+                </div>
+            </li>`).join('') + `
+            <li class="edit-section-block edit-add-part">
+                <button class="edit-mini-btn" onclick="addPart('ingredients')">＋ Add a part (Crust, Filling…)</button>
+            </li>`;
     }
 
-    // Instructions: swap the rendered <ol> for one editable textarea
     const instContainer = document.getElementById('instructions-container');
     if (instContainer) {
-        instContainer.innerHTML = '';
-        const ta = document.createElement('textarea');
-        ta.id = 'edit-instructions-inline';
-        ta.className = 'form-input';
-        ta.rows = Math.max(6, instArr.length);
-        ta.value = instArr.join('\n');
-        instContainer.appendChild(ta);
+        instContainer.className = '';
+        instContainer.innerHTML = editDraft.instructionSections.map((section, si) => `
+            <div class="edit-section-block">
+                ${editDraft.instructionSections.length > 1 || section.title ? `
+                    <div class="edit-section-head">
+                        <input class="edit-part-name" type="text" placeholder="Part name (e.g. Filling)"
+                               value="${escapeAttrJs(section.title)}"
+                               oninput="updateDraft('instructions', ${si}, null, this.value)">
+                        <button class="edit-mini-btn edit-mini-danger" title="Remove this part"
+                                onclick="removePart('instructions', ${si})">✕</button>
+                    </div>` : ''}
 
-        // Notes go right under the instructions edit box
-        const notesLabel = document.createElement('label');
-        notesLabel.style.cssText = 'display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;';
-        notesLabel.innerText = 'Notes';
-        const notesTa = document.createElement('textarea');
-        notesTa.id = 'edit-notes-inline';
-        notesTa.className = 'form-input';
-        notesTa.rows = 2;
-        notesTa.value = current.notes || '';
-        instContainer.appendChild(notesLabel);
-        instContainer.appendChild(notesTa);
+                ${section.items.map((item, ii) => `
+                    <div class="edit-row edit-row-step">
+                        <span class="edit-step-num">${ii + 1}</span>
+                        <textarea rows="2" placeholder="Describe this step…"
+                                  oninput="updateDraft('instructions', ${si}, ${ii}, this.value)">${escapeAttrJs(item)}</textarea>
+                        <button class="edit-mini-btn edit-mini-danger" title="Delete"
+                                onclick="removeLine('instructions', ${si}, ${ii})">✕</button>
+                    </div>`).join('')}
+
+                <div class="edit-row-actions">
+                    <button class="edit-mini-btn" onclick="addLine('instructions', ${si})">＋ Step</button>
+                </div>
+            </div>`).join('') + `
+            <div class="edit-section-block edit-add-part">
+                <button class="edit-mini-btn" onclick="addPart('instructions')">＋ Add a part</button>
+            </div>
+
+            <label style="display:block; font-weight:bold; margin-top:20px; margin-bottom:5px;">Notes</label>
+            <textarea id="edit-notes-inline" class="form-input" rows="2"
+                      oninput="updateDraftNotes(this.value)">${escapeAttrJs(editDraft.notes)}</textarea>`;
     }
-
-    const revertBtnHtml = current.isPersonalized
-        ? `<button onclick="revertPersonalization()" class="pill-btn btn-slate">↩️ Revert to Original</button>`
-        : '';
-    setPersonalizeSlotHtml(`
-        <button onclick="saveInlinePersonalization()" class="pill-btn btn-teal">💾 Save My Version</button>
-        <button onclick="toggleEditMode()" class="pill-btn btn-slate">✖️ Cancel</button>
-        ${revertBtnHtml}
-    `);
-
-    showEditModeBar(current.isPersonalized);
-    document.getElementById('edit-ingredients-inline')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// Escapes a value for use inside an HTML attribute or textarea body.
+function escapeAttrJs(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+const draftKey = (kind) => kind === 'instructions' ? 'instructionSections' : 'ingredientSections';
+
+// itemIndex === null means we're editing the part's title.
+// Note this deliberately does NOT re-render — that would blur the input and
+// lose the caret on every keystroke.
+window.updateDraft = function(kind, sectionIndex, itemIndex, value) {
+    const section = editDraft[draftKey(kind)][sectionIndex];
+    if (!section) return;
+    if (itemIndex === null) section.title = value;
+    else section.items[itemIndex] = value;
+};
+
+window.updateDraftNotes = function(value) { editDraft.notes = value; };
+
+window.addLine = function(kind, sectionIndex) {
+    editDraft[draftKey(kind)][sectionIndex].items.push('');
+    renderEditor();
+    // Focus the newly added field
+    const blocks = document.querySelectorAll(`#${kind === 'instructions' ? 'instructions-container' : 'ingredient-list'} .edit-section-block`);
+    const inputs = blocks[sectionIndex]?.querySelectorAll('input[type="text"], textarea');
+    inputs?.[inputs.length - 1]?.focus();
+};
+
+window.removeLine = function(kind, sectionIndex, itemIndex) {
+    const sections = editDraft[draftKey(kind)];
+    sections[sectionIndex].items.splice(itemIndex, 1);
+    // Never leave a part with nothing in it at all
+    if (sections[sectionIndex].items.length === 0 && sections.length > 1) sections.splice(sectionIndex, 1);
+    else if (sections[sectionIndex].items.length === 0) sections[sectionIndex].items.push('');
+    renderEditor();
+};
+
+window.addPart = function(kind) {
+    editDraft[draftKey(kind)].push({ title: '', items: [''] });
+    renderEditor();
+};
+
+window.removePart = function(kind, sectionIndex) {
+    const sections = editDraft[draftKey(kind)];
+    if (sections.length <= 1) {
+        // Last part: keep the lines, just drop the heading
+        sections[0].title = '';
+    } else {
+        if (!confirm("Remove this whole part and everything in it?")) return;
+        sections.splice(sectionIndex, 1);
+    }
+    renderEditor();
+};
 
 // Sticky bottom action bar. The Kitchen Tools buttons live far below the
 // ingredient/instruction boxes, so on a phone "Save" was a scroll hunt once
@@ -474,19 +598,55 @@ function exitEditMode() {
     renderRecipeHTML(lastRenderedRecipe || originalRecipeData);
 }
 
-window.saveInlinePersonalization = async function() {
+// Turns the working draft into the fields Firestore stores, dropping blank
+// lines and untitled empty parts left behind while editing.
+function draftToRecipeFields() {
+    const clean = (sections) => sections
+        .map(s => ({ title: (s.title || '').trim(), items: s.items.map(i => i.trim()).filter(Boolean) }))
+        .filter(s => s.items.length > 0);
+
+    const ingSections = clean(editDraft.ingredientSections);
+    const instSections = clean(editDraft.instructionSections);
+
+    const flatten = (sections) => sections.reduce((all, s) => all.concat(s.items), []);
+    // Only persist section structure when it's real — a single untitled
+    // group is just an ordinary recipe.
+    const structured = (sections) => (sections.length > 1 || sections[0]?.title) ? sections : [];
+
+    return {
+        ingredients: flatten(ingSections),
+        recipeIngredient: flatten(ingSections),
+        ingredientSections: structured(ingSections),
+        instructions: flatten(instSections),
+        recipeInstructions: flatten(instSections),
+        instructionSections: structured(instSections),
+        notes: (editDraft.notes || '').trim()
+    };
+}
+
+// Asks what the edit is FOR: just for them, or a fix everyone should get.
+window.saveInlinePersonalization = function() {
+    if (!auth.currentUser) return alert("Please log in.");
+    const modal = document.getElementById('save-choice-modal');
+    if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+};
+
+window.closeSaveChoiceModal = function() {
+    const modal = document.getElementById('save-choice-modal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+};
+
+// "Just for me" — the original private override behaviour.
+window.saveAsPersonal = async function() {
     const user = auth.currentUser;
     if (!user) return alert("Please log in.");
+    closeSaveChoiceModal();
 
-    const ingArray = document.getElementById('edit-ingredients-inline').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const instArray = document.getElementById('edit-instructions-inline').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const notes = document.getElementById('edit-notes-inline').value.trim();
+    const fields = draftToRecipeFields();
 
     try {
         await setDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId), {
-            ingredients: ingArray,
-            instructions: instArray,
-            notes,
+            ...fields,
             updatedAt: serverTimestamp()
         });
 
@@ -494,10 +654,57 @@ window.saveInlinePersonalization = async function() {
         editModeActive = false;
         hideEditModeBar();
         setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
-        renderRecipeHTML({ ...originalRecipeData, ingredients: ingArray, instructions: instArray, notes, isPersonalized: true });
+        renderRecipeHTML({ ...originalRecipeData, ...fields, isPersonalized: true });
     } catch (e) {
         console.error("🔥 [PERSONALIZE] Save failed:", e);
         alert("Could not save your changes: " + e.message);
+    }
+};
+
+// "Suggest for everyone" — files the proposed version for admin approval.
+// It also saves privately, so the person immediately sees their own version
+// while the suggestion is pending rather than watching their edit vanish.
+window.saveAsSuggestion = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in.");
+
+    const reason = document.getElementById('suggestion-reason')?.value.trim() || "";
+    closeSaveChoiceModal();
+
+    const fields = draftToRecipeFields();
+
+    try {
+        let suggesterName = user.email ? user.email.split('@')[0] : "Family Member";
+        try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists() && userDoc.data().Name) suggesterName = userDoc.data().Name;
+        } catch (e) { /* fall back to the email-derived name */ }
+
+        await addDoc(collection(db, "recipe_suggestions"), {
+            recipeId,
+            recipeName: (originalRecipeData && (originalRecipeData.name || originalRecipeData.n)) || "Unknown",
+            proposed: fields,
+            reason,
+            suggestedBy: suggesterName,
+            uid: user.uid,
+            status: "pending",
+            createdAt: serverTimestamp()
+        });
+
+        // Keep it applied for them in the meantime
+        await setDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId), {
+            ...fields, updatedAt: serverTimestamp()
+        });
+
+        console.log("📬 [SUGGESTION] Sent for admin review:", recipeId);
+        editModeActive = false;
+        hideEditModeBar();
+        setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
+        renderRecipeHTML({ ...originalRecipeData, ...fields, isPersonalized: true });
+        alert("Thanks! Your suggested fix was sent to the Chef.\n\nIn the meantime it's saved as your own version, so you'll keep seeing it.");
+    } catch (e) {
+        console.error("🔥 [SUGGESTION] Failed:", e);
+        alert("Could not send that suggestion: " + e.message);
     }
 };
 
@@ -520,8 +727,13 @@ window.revertPersonalization = async function() {
 };
 
 async function logViewToDatabase(recipeData) {
+    if (isTestModeOn()) {
+        console.log("🧪 [TEST MODE] Skipped logging this view.");
+        return;
+    }
+
     const sessionKey = `viewed-${recipeData.id}`;
-    if (sessionStorage.getItem(sessionKey)) return; 
+    if (sessionStorage.getItem(sessionKey)) return;
 
     try {
         const user = auth.currentUser;
@@ -608,6 +820,15 @@ function renderRecipeHTML(recipe) {
         statusBarHtml += `<span style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #4ade80;">⭐ Wheeler Family Favorite</span>`;
     }
 
+    const family = getRecipeFamily(recipe);
+    if (family !== 'Both') {
+        statusBarHtml += `<span style="background: #f5f3ff; color: #5b21b6; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #c4b5fd;">👨‍👩‍👧 ${family} Family Recipe</span>`;
+    }
+
+    getDietaryTags(recipe).forEach(tag => {
+        statusBarHtml += `<span class="diet-pill" style="padding: 4px 12px; border-radius: 16px; font-size: 0.85rem;">${tag}</span>`;
+    });
+
     statusBarHtml += `</div>`;
 
     const driveUrl = recipe.driveUrl || recipe.autoDriveUrl;
@@ -630,13 +851,29 @@ function renderRecipeHTML(recipe) {
         ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
         : rawIng;
 
+    // Renders one ingredient line (scaling/altitude already applied upstream)
+    const ingredientLineHtml = (line) => {
+        const sub = findSubstitution(line);
+        const subHtml = sub ? `<div class="sub-hint no-print">🔄 No ${sub.key}? Try: ${sub.sub}</div>` : '';
+        return `<li>${line}${subHtml}</li>`;
+    };
+
+    // Multi-part recipes (crust / filling / topping) render each group under
+    // its own heading. Everything else falls back to a single flat list.
+    const ingSections = getSections(recipe, 'ingredients').map(s => ({
+        title: s.title,
+        items: (s.items || []).map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
+    }));
+    const ingredientsAreSectioned = hasRealSections(ingSections);
+
     let ingHtml = "";
-    if (Array.isArray(scaledIng)) {
-        ingHtml = scaledIng.map(i => {
-            const sub = findSubstitution(i);
-            const subHtml = sub ? `<div class="sub-hint no-print">🔄 No ${sub.key}? Try: ${sub.sub}</div>` : '';
-            return `<li>${i}${subHtml}</li>`;
-        }).join("");
+    if (ingredientsAreSectioned) {
+        ingHtml = ingSections.map(s => `
+            ${s.title ? `<li class="recipe-subsection">${s.title}</li>` : ''}
+            ${s.items.map(ingredientLineHtml).join('')}
+        `).join('');
+    } else if (Array.isArray(scaledIng)) {
+        ingHtml = scaledIng.map(ingredientLineHtml).join("");
     } else if (typeof scaledIng === 'string') {
         ingHtml = `<pre>${scaledIng}</pre>`;
     }
@@ -669,12 +906,21 @@ function renderRecipeHTML(recipe) {
     const showStepIngredients = localStorage.getItem('showStepIngredients') === 'true';
     const showSubstitutions = localStorage.getItem('showSubstitutions') === 'true';
 
+    const stepHtml = (s) => {
+        const matched = matchIngredientsForStep(s, ingredientsArr);
+        return `<li class="instruction-step">${s}${stepIngredientsHtml(matched)}</li>`;
+    };
+
+    const instSections = getSections(recipe, 'instructions');
     let instHtml = "";
-    if (Array.isArray(rawInst)) {
-        instHtml = `<ol id="normal-instructions">${rawInst.map(s => {
-            const matched = matchIngredientsForStep(s, ingredientsArr);
-            return `<li class="instruction-step">${s}${stepIngredientsHtml(matched)}</li>`;
-        }).join("")}</ol>`;
+    if (hasRealSections(instSections)) {
+        // A separate <ol> per group so each part's steps number from 1 again
+        instHtml = instSections.map(s => `
+            ${s.title ? `<h4 class="recipe-subsection-header">${s.title}</h4>` : ''}
+            <ol>${(s.items || []).map(stepHtml).join('')}</ol>
+        `).join('');
+    } else if (Array.isArray(rawInst)) {
+        instHtml = `<ol id="normal-instructions">${rawInst.map(stepHtml).join("")}</ol>`;
     } else if (typeof rawInst === 'string') {
         instHtml = `<p style="white-space: pre-wrap;">${rawInst}</p>`;
     }
@@ -798,6 +1044,7 @@ window.toggleSubstitutions = function(forceState) {
 // FULLSCREEN SWIPEABLE COOK MODE
 // ==========================================
 let cookModeSteps = [];
+let cookModeStepSections = []; // which part ("Crust") each step belongs to, index-aligned
 let cookModeIngredients = [];
 let cookModeIndex = 0;
 let cookModeWakeLock = null;
@@ -806,12 +1053,27 @@ window.startCookMode = function() {
     const current = JSON.parse(localStorage.getItem("currentRecipeData")) || {};
 
     const rawInst = current.instructions || current.recipeInstructions;
-    const rawIng = current.ingredients || current.recipeIngredient;
 
-    cookModeSteps = Array.isArray(rawInst) ? rawInst : (typeof rawInst === 'string' ? rawInst.split('\n').filter(Boolean) : []);
-    cookModeIngredients = Array.isArray(rawIng)
-        ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
-        : [];
+    // Flatten a multi-part recipe into one continuous run of steps, but
+    // remember which part each step came from so cook mode can show
+    // "Crust · Step 2 of 4" rather than losing that context entirely.
+    const instSections = getSections(current, 'instructions');
+    if (hasRealSections(instSections)) {
+        cookModeSteps = [];
+        cookModeStepSections = [];
+        instSections.forEach(section => {
+            (section.items || []).forEach(step => {
+                cookModeSteps.push(step);
+                cookModeStepSections.push(section.title || '');
+            });
+        });
+    } else {
+        cookModeSteps = Array.isArray(rawInst) ? rawInst : (typeof rawInst === 'string' ? rawInst.split('\n').filter(Boolean) : []);
+        cookModeStepSections = cookModeSteps.map(() => '');
+    }
+
+    cookModeIngredients = flattenSections(getSections(current, 'ingredients'))
+        .map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand));
 
     if (cookModeSteps.length === 0) return alert("No instructions found for this recipe yet.");
 
@@ -915,7 +1177,10 @@ function buildCookModeOverlay(title) {
 function renderCookModeStep() {
     const stepText = cookModeSteps[cookModeIndex];
 
-    document.getElementById('cook-mode-step-count').innerText = `Step ${cookModeIndex + 1} of ${cookModeSteps.length}`;
+    // Prefix the part name on multi-part recipes ("Crust · Step 2 of 7")
+    const sectionTitle = cookModeStepSections[cookModeIndex];
+    document.getElementById('cook-mode-step-count').innerText =
+        `${sectionTitle ? sectionTitle + ' · ' : ''}Step ${cookModeIndex + 1} of ${cookModeSteps.length}`;
     document.getElementById('cook-mode-step-text').innerText = stepText;
     document.getElementById('cook-mode-progress-bar').style.width = `${((cookModeIndex + 1) / cookModeSteps.length) * 100}%`;
 
@@ -994,11 +1259,14 @@ window.confirmAddToPlan = async function() {
             addedAt: Date.now() 
         };
 
-        const docRef = doc(db, "users", user.uid, "weekly_plan", day);
+        // Goes to the shared household plan when you're in one, otherwise
+        // your own — getPlanPath() is the single place that decides.
+        const { segments, householdId } = await getPlanPath(user.uid);
+        const docRef = doc(db, ...segments, "weekly_plan", day);
         await setDoc(docRef, { meals: arrayUnion(mealData) }, { merge: true });
 
-        console.log(`✅ [MENU] Added "${mealData.name}" to ${day} (${mealType}).`);
-        alert(`Success! Added to ${day} for ${mealType}.`);
+        console.log(`✅ [MENU] Added "${mealData.name}" to ${day} (${mealType})${householdId ? ' — shared with your household' : ''}.`);
+        alert(`Success! Added to ${day} for ${mealType}.${householdId ? "\nEveryone in your household will see it." : ""}`);
         closePlannerModal();
 
     } catch (e) {
@@ -1008,6 +1276,81 @@ window.confirmAddToPlan = async function() {
         if(btn) btn.innerText = "Save";
     }
 }
+
+// --- UNREVIEWED RECIPE WARNING ---
+// Shown once per recipe per session, before the cooking prompt, so nobody
+// starts following an unverified recipe without knowing. Also the easiest
+// place to let someone flag that it's worth reviewing.
+let unreviewedWarningShown = false;
+
+function maybeShowUnreviewedWarning(recipe) {
+    const isReviewed = recipe.r === true || recipe.reviewed === true;
+    if (isReviewed || unreviewedWarningShown) return false;
+
+    const dismissKey = `unreviewed-ack-${recipeId}`;
+    if (sessionStorage.getItem(dismissKey)) return false;
+
+    const modal = document.getElementById('unreviewed-modal');
+    if (!modal) return false;
+
+    unreviewedWarningShown = true;
+    console.log("⚠️ [UNREVIEWED] Warning shown for an unverified recipe.");
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    return true;
+}
+
+window.dismissUnreviewedWarning = function() {
+    const modal = document.getElementById('unreviewed-modal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+    sessionStorage.setItem(`unreviewed-ack-${recipeId}`, 'true');
+    // Chain into the usual "viewing or cooking?" question
+    maybeShowCookPrompt();
+};
+
+// Files the same kind of record the Report Issue button does, so it lands in
+// the admin dashboard's Reported Issues list alongside everything else.
+window.requestRecipeReview = async function() {
+    const btn = document.querySelector('.js-request-review-btn');
+    if (btn) { btn.disabled = true; btn.innerText = "Sending..."; }
+
+    const current = lastRenderedRecipe || originalRecipeData || {};
+
+    try {
+        const user = auth.currentUser;
+        let requesterName = "Guest";
+        let requesterEmail = "No Email";
+
+        if (user) {
+            requesterEmail = user.email || "No Email";
+            requesterName = requesterEmail.split('@')[0];
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists() && userDoc.data().Name) requesterName = userDoc.data().Name;
+            } catch (e) { /* fall back to the email-derived name */ }
+        }
+
+        await addDoc(collection(db, "recipe_reports"), {
+            recipeId: recipeId,
+            recipeName: current.name || current.n || "Unknown",
+            issue: "🙋 Review requested — someone wants this recipe verified.",
+            type: "review_request",
+            userName: requesterName,
+            userEmail: requesterEmail,
+            uid: user ? user.uid : "anonymous",
+            createdAt: serverTimestamp()
+        });
+
+        console.log("🙋 [REVIEW REQUEST] Sent for recipe:", recipeId);
+        alert("Thanks! The Chef has been asked to review this recipe.");
+    } catch (e) {
+        console.error("🔥 [REVIEW REQUEST] Failed:", e);
+        alert("Couldn't send that request — check your connection.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "🙋 Ask the Chef to review this"; }
+        dismissUnreviewedWarning();
+    }
+};
 
 // --- VIEWING OR COOKING? PROMPT ---
 // Asked once per page load — if the answer is "cooking it now", automatically
@@ -1041,18 +1384,29 @@ window.answerCookPrompt = function(isCooking) {
 
 // --- COOK COUNTER ---
 function loadCookStats() {
-    const count = localStorage.getItem(`cook-${recipeId}`) || 0;
+    const count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     const el = document.getElementById('cook-counter');
-    if(el) el.innerHTML = count > 0 ? `You've cooked this <b>${count}</b> times!` : "You haven't cooked this yet.";
+    if (!el) return;
+
+    el.innerHTML = count > 0
+        ? `You've cooked this <b>${count}</b> time${count === 1 ? '' : 's'}!
+           <button onclick="undoCook()" class="no-print" style="background:none; border:none; color:#94a3b8; text-decoration:underline; cursor:pointer; font-size:0.8rem; margin-left:6px;">Undo</button>`
+        : "You haven't cooked this yet.";
 }
 
 window.recordCook = async function() {
+    if (isTestModeOn()) {
+        console.log("🧪 [TEST MODE] Skipped recording this cook.");
+        alert("Test Mode is on — this cook wasn't counted.");
+        return;
+    }
+
     let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
     count++;
     localStorage.setItem(`cook-${recipeId}`, count);
     console.log(`🎉 [COOK] Recording cook #${count} for recipe:`, recipeId);
     loadCookStats();
-    
+
     const btn = document.querySelector('.celebration-area button');
     if(btn) btn.innerText = "🎉 Yay!";
 
@@ -1072,14 +1426,46 @@ window.recordCook = async function() {
             } catch (err) { console.log("Could not fetch profile name for cook record"); }
         }
 
-        await addDoc(collection(db, "global_cooks"), {
+        const cookRef = await addDoc(collection(db, "global_cooks"), {
             recipeId: recipeId,
             timestamp: serverTimestamp(),
             uid: uid,
             chef: chefName
         });
+        // Remember the last one so "Undo" can remove it from the leaderboard
+        // too, not just the local counter.
+        localStorage.setItem(`lastCookDoc-${recipeId}`, cookRef.id);
     } catch (e) { console.error("Could not record cook to DB:", e); }
 }
+
+// Mis-taps happen — this rolls back the most recent "I Made This" for this
+// recipe, both the local counter and the leaderboard record behind it.
+window.undoCook = async function() {
+    let count = parseInt(localStorage.getItem(`cook-${recipeId}`) || 0);
+    if (count <= 0) return;
+    if (!confirm("Undo your most recent \"I Made This\" for this recipe?")) return;
+
+    count--;
+    if (count > 0) localStorage.setItem(`cook-${recipeId}`, count);
+    else localStorage.removeItem(`cook-${recipeId}`);
+
+    const lastDocId = localStorage.getItem(`lastCookDoc-${recipeId}`);
+    if (lastDocId) {
+        try {
+            await deleteDoc(doc(db, "global_cooks", lastDocId));
+            localStorage.removeItem(`lastCookDoc-${recipeId}`);
+            console.log("↩️ [COOK] Removed the last cook record.");
+        } catch (e) {
+            console.warn("⚠️ [COOK] Local count undone, but the leaderboard record couldn't be removed:", e.message);
+        }
+    } else {
+        console.log("↩️ [COOK] Local count undone (no leaderboard record saved for this one).");
+    }
+
+    loadCookStats();
+    const btn = document.querySelector('.celebration-area button');
+    if (btn) btn.innerText = "🎉 I Made This!";
+};
 
 // ==========================================
 // 3. REPORTING LOGIC
@@ -1352,6 +1738,7 @@ const MOBILE_TOOL_GROUPS = [
     { label: '⚖️ Scale Recipe', match: text => /^\d+(\.\d+)?x$/.test(text.trim()) },
     { label: '🏔️ High Altitude', match: text => text.trim() === 'Off' || /ft$/.test(text.trim()) },
     { label: '🚩 Report an Issue', match: text => text.includes('Report') },
+    { label: '🛠️ Admin', match: text => text.includes('Test Mode') },
     { label: '🖥️ Display', match: text => /Text \+|Text -|Day Mode|Night Mode|Ingredients in Steps|Substitution Hints/.test(text) },
     { label: '🎬 Actions', match: () => true } // fallback: Share/Print, Stay Awake, Cook Mode, Menu, Personalize
 ];
@@ -1368,7 +1755,11 @@ window.openMobileToolsModal = function() {
 
     if (modal && inlineTools) {
         const allToolButtons = Array.from(inlineTools.querySelectorAll('button'))
-            .filter(btn => btn.id !== 'mobile-tool-fab');
+            .filter(btn => btn.id !== 'mobile-tool-fab')
+            // Skip buttons inside a hidden container — otherwise the
+            // admin-only Test Mode button would get cloned into the sheet
+            // for everyone, since querySelectorAll still finds hidden nodes.
+            .filter(btn => !btn.closest('.hidden'));
         modalBody.innerHTML = '';
 
         // Group first (Actions, Display, Scale, Altitude, Report), preserving
@@ -1419,6 +1810,16 @@ window.closeMobileToolsModal = function() {
 // attached, so under login-required security rules it got denied even for
 // a signed-in user (the "works on the second refresh" symptom). Waiting on
 // the first onAuthStateChanged tick closes that race for good.
+// Test Mode is restricted to Adam alone (see canUseTestMode in main.js) —
+// it silently suppresses activity tracking, so it shouldn't be reachable by
+// every admin. The homepage carries the main toggle; this is the
+// convenience copy while you're actually looking at a recipe.
+onAuthStateChanged(auth, (user) => {
+    if (!canUseTestMode(user)) return;
+    document.getElementById('admin-tools-slot')?.classList.remove('hidden');
+    updateTestModeUi();
+});
+
 const authReady = new Promise((resolve) => {
     // Offline there's nothing to wait for — Auth can't reach
     // apis.google.com, so onAuthStateChanged never fires at all. Don't make

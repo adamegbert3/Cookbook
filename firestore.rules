@@ -36,19 +36,26 @@ service cloud.firestore {
     // =========================================================
     // COLLECTION RULES
     //
-    // Reads on `recipes`, `global_cooks`, `announcements`, and
-    // `static_assets` are public (not gated on isLoggedIn()) on purpose:
-    // pages fire their first Firestore read as soon as they load, often
-    // before Firebase Auth has finished restoring the signed-in session
-    // from storage. Requiring isLoggedIn() on those reads loses that race
-    // and the page fails to load even for a logged-in user. The site's
-    // own pages already redirect signed-out visitors away, so this isn't
-    // opening anything the app doesn't already show to anyone with a link.
+    // Reads used to be public on `recipes`, `global_cooks`, `announcements`
+    // and `static_assets`. That was a workaround: pages fired their first
+    // Firestore read before Firebase Auth had finished restoring the
+    // session, so requiring a login lost that race and the page failed to
+    // load even for a signed-in user.
+    //
+    // That race is fixed — every read now happens after auth resolves
+    // (loadAllRecipes runs inside onAuthStateChanged; recipePage.js awaits
+    // its authReady promise and retries once on permission-denied;
+    // print.js, leaderboard.js, profile.js and shopping-list.html all gate
+    // on onAuthStateChanged). So these are now properly login-gated.
+    //
+    // ROLLBACK: if anything fails to load with "Missing or insufficient
+    // permissions", set the four `read` rules below back to `if true` and
+    // redeploy — that restores the previous, working-but-public behaviour.
     // =========================================================
 
     // --- RECIPES (the shared, canonical copy everyone sees) ---
     match /recipes/{recipeId} {
-      allow read: if true;
+      allow read: if isLoggedIn();
       allow create, update, delete: if isAdmin();
 
       match /comments/{commentId} {
@@ -74,9 +81,21 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // --- SUGGESTED RECIPE FIXES ---
+    // Anyone signed in can propose a corrected version of a recipe from the
+    // recipe page; only an admin can read the queue or act on it. Writers
+    // can't read others' suggestions back, same as recipe_reports.
+    match /recipe_suggestions/{suggestionId} {
+      allow create: if isLoggedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
     // --- ANALYTICS: per-recipe views (admin dashboard only) ---
+    // Signed-in only, so a stranger can't flood the Activity feed and the
+    // view counts with fabricated entries. recipe.html already redirects
+    // signed-out visitors, so nothing legitimate is affected.
     match /recipe_views/{viewId} {
-      allow create: if true;
+      allow create: if isLoggedIn();
       allow read: if isAdmin();
     }
 
@@ -94,20 +113,45 @@ service cloud.firestore {
     }
 
     // --- LEADERBOARD / TOTAL MEALS COOKED ---
+    // Was `read, write: if true`, meaning anyone on the internet — signed in
+    // or not — could read, forge, overwrite or DELETE every cook record.
+    // The leaderboard could have been wiped or stuffed by a stranger.
+    // Now: you may only record a cook as yourself, and only delete your own
+    // (which is what the "Undo" on I Made This does).
     match /global_cooks/{docId} {
-      allow read, write: if true;
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isLoggedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+      allow update: if isAdmin();
     }
 
     // --- ANNOUNCEMENTS ---
     match /announcements/{docId} {
-      allow read: if true;
+      allow read: if isLoggedIn();
       allow write: if isAdmin();
     }
 
     // --- HOMEPAGE INDEX / STATIC ASSETS ---
+    // This one doc holds every recipe name plus all their ingredients, so
+    // leaving it public exposed the whole cookbook regardless of the
+    // /recipes rule above.
     match /static_assets/{docId} {
-      allow read: if true;
+      allow read: if isLoggedIn();
       allow write: if isAdmin();
+    }
+
+    // --- PASSWORD RESET REQUESTS ---
+    // Someone who's forgotten their password is, by definition, signed out,
+    // so `create` has to be open. Nothing sensitive is stored (an email
+    // address they typed themselves) and no reset is actually sent until an
+    // admin approves it, so the worst a stranger can do is put a junk row in
+    // the admin's queue to dismiss.
+    match /password_reset_requests/{requestId} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'status', 'requestedAt'])
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() < 200;
+      allow read, update, delete: if isAdmin();
     }
 
     // --- FAMILY MEMBER INVITES ---
@@ -116,14 +160,54 @@ service cloud.firestore {
     // createUserWithEmailAndPassword call, never with admin credentials).
     // The invited person reads their own invite by its doc id (a link only
     // they were given) to self-serve their signup, then marks it used.
-    match /invites/{inviteId} {
+    // The document ID **is** the invite code, which makes the code itself
+    // the secret and lets us split these two cases:
+    //
+    //   get  — anyone may read ONE invite, but only if they already know
+    //          the code (you can't guess a random 8-character code).
+    //   list — admins only. Previously this was `read: if true`, which
+    //          also permits querying the whole collection, so anyone could
+    //          enumerate every pending invite (names + emails) and claim
+    //          one. Splitting get/list closes that.
+    match /invites/{inviteCode} {
       allow create, delete: if isAdmin();
-      allow read: if true;
-      // Only the person the invite was actually addressed to (matched by
-      // their newly-created account's email) can mark it consumed.
+      allow get: if true;
+      allow list: if isAdmin();
+      // Only the person the invite was addressed to (matched by their
+      // newly-created account's email) can mark it consumed.
       allow update: if request.auth != null
                     && request.auth.token.email == resource.data.email
                     && resource.data.used == false;
+    }
+
+    // --- HOUSEHOLDS (shared weekly menu + shopping list) ---
+    // A household is a couple or family who plan meals together. Members
+    // share the weekly_plan and shopping list stored underneath it.
+    //
+    // Read is open to any signed-in user on purpose: joining by code
+    // requires querying households by their `code` field, which can't work
+    // if you must already be a member to read. The documents hold nothing
+    // sensitive (a name, a join code, and a list of uids), and knowing a
+    // code is what grants entry — same as the invite links above.
+    match /households/{householdId} {
+      allow read: if isLoggedIn();
+      allow create: if isLoggedIn() && request.auth.uid in request.resource.data.members;
+      // Members can update their own household; anyone signed in may add
+      // THEMSELVES (that's joining by code) but not rewrite the rest.
+      allow update: if isLoggedIn() && (
+        request.auth.uid in resource.data.members
+        || request.resource.data.members.hasOnly(resource.data.members.concat([request.auth.uid]))
+        || isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      // Shared meal plan + shopping state — members only.
+      match /{document=**} {
+        allow read, write: if isLoggedIn() && (
+          request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members
+          || isAdmin()
+        );
+      }
     }
 
     // --- USERS (profile, favorites, settings, weekly plan, private
