@@ -123,13 +123,20 @@ passwordForm.addEventListener('submit', async (e) => {
             15000, "That's taking too long — check your connection and try again."
         );
 
+        // Keep this shape in sync with USER_DOC_SHAPE in scripts/dashboard.js
+        // (the "Fix User Documents" repair tool) and local-tools/add-user.
+        // Types matter: `favorites` must be a real array or arrayUnion()
+        // can't append to it, and Firestore's console defaults hand-added
+        // fields to strings, which is how empty-string versions creep in.
         await setDoc(doc(db, "users", cred.user.uid), {
             Name: verified.name,
             email: verified.email,
             // Never 'admin' at signup — firestore.rules enforces this too.
             // Admin is always a separate step from the admin console.
             role: 'user',
-            favorites: [],
+            favorites: [],      // array, not ""
+            notes: "",          // free-text note about this person
+            householdId: null,  // set when they join/create a household
             createdAt: serverTimestamp()
         });
 

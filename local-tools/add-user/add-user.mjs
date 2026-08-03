@@ -55,11 +55,15 @@ async function main() {
             displayName: name
         });
 
+        // Keep this shape in sync with scripts/invite-signup.js and the
+        // "Fix User Documents" repair tool in scripts/dashboard.js.
         await db.collection('users').doc(userRecord.uid).set({
             Name: name,
             email,
             role: makeAdmin ? 'admin' : 'user',
-            favorites: [],
+            favorites: [],      // array, not ""
+            notes: "",          // free-text note about this person
+            householdId: null,  // set when they join/create a household
             createdAt: admin.firestore.FieldValue.serverTimestamp()
         });
 

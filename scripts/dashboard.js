@@ -970,6 +970,127 @@ window.demoteToUser = async function(uid, label) {
 };
 
 // ==========================================
+// USER DOCUMENT SHAPE + REPAIR
+//
+// Firestore's console defaults every hand-added field to a *string*, so a
+// user document created by clicking "Add field" ends up with favorites: ""
+// and role: "" instead of an array and a proper role. That mostly limps
+// along (an empty string is falsy, so `favorites || []` saves us), but it's
+// fragile — `.includes()` on a string does substring matching, and a
+// non-array `favorites` is a real bug waiting to happen.
+//
+// Keep in sync with scripts/invite-signup.js and local-tools/add-user.
+// ==========================================
+const USER_DOC_SHAPE = {
+    Name:        { type: 'string', fallback: (d, uid) => d.Name || (d.email || '').split('@')[0] || 'Family Member' },
+    email:       { type: 'string', fallback: (d) => d.email || '' },
+    role:        { type: 'string', fallback: (d) => (d.role === 'admin' ? 'admin' : 'user') },
+    favorites:   { type: 'array',  fallback: () => [] },
+    notes:       { type: 'string', fallback: (d) => typeof d.notes === 'string' ? d.notes : '' },
+    householdId: { type: 'nullable-string', fallback: (d) => d.householdId || null }
+};
+
+// Returns the fields on this doc that are missing or the wrong type.
+function findUserDocProblems(data, uid) {
+    const problems = [];
+
+    Object.entries(USER_DOC_SHAPE).forEach(([field, spec]) => {
+        const value = data[field];
+        const missing = value === undefined;
+
+        let wrongType = false;
+        if (!missing) {
+            if (spec.type === 'array') wrongType = !Array.isArray(value);
+            else if (spec.type === 'string') wrongType = typeof value !== 'string' || (field === 'role' && value === '');
+            else if (spec.type === 'nullable-string') wrongType = value !== null && typeof value !== 'string';
+        }
+
+        if (missing || wrongType) {
+            problems.push({ field, missing, was: value, fix: spec.fallback(data, uid) });
+        }
+    });
+
+    // createdAt should be a real Timestamp, not a string or absent
+    if (!data.createdAt || typeof data.createdAt.toDate !== 'function') {
+        problems.push({ field: 'createdAt', missing: !data.createdAt, was: data.createdAt, fix: 'serverTimestamp' });
+    }
+
+    return problems;
+}
+
+window.repairUserDocs = async function() {
+    const statusEl = document.getElementById('user-repair-status');
+    const setStatus = (html) => { if (statusEl) statusEl.innerHTML = html; };
+
+    setStatus("<span style='color:#6b7280;'>Checking every user document…</span>");
+
+    try {
+        const snap = await getDocs(collection(db, "users"));
+        const broken = [];
+
+        snap.forEach(d => {
+            const problems = findUserDocProblems(d.data(), d.id);
+            if (problems.length > 0) broken.push({ uid: d.id, name: d.data().Name || d.id, problems });
+        });
+
+        console.log(`🩺 [USER REPAIR] ${broken.length} of ${snap.size} document(s) need fixing.`);
+
+        if (broken.length === 0) {
+            setStatus(`<span style="color:#15803d; font-weight:700;">✅ All ${snap.size} user documents look correct.</span>`);
+            return;
+        }
+
+        const summary = broken.map(b =>
+            `• <strong>${escapeAttr(b.name)}</strong>: ${b.problems.map(p => `${p.field} ${p.missing ? '(missing)' : '(wrong type)'}`).join(', ')}`
+        ).join('<br>');
+
+        setStatus(`
+            <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:6px; padding:10px; font-size:12px; color:#92400e;">
+                <strong>${broken.length} document(s) need fixing:</strong><br>${summary}
+                <button onclick="applyUserDocRepairs()" style="background:#f59e0b; color:white; border:none; padding:7px 14px; border-radius:6px; cursor:pointer; font-weight:bold; margin-top:10px;">
+                    🩹 Fix them
+                </button>
+            </div>`);
+
+        // Stash for the apply step so we don't re-scan
+        window.__pendingUserRepairs = broken;
+    } catch (e) {
+        console.error("🔥 [USER REPAIR] Scan failed:", e);
+        setStatus(`<span style="color:red;">Could not check: ${e.message}</span>`);
+    }
+};
+
+window.applyUserDocRepairs = async function() {
+    const broken = window.__pendingUserRepairs || [];
+    const statusEl = document.getElementById('user-repair-status');
+    if (broken.length === 0) return;
+
+    statusEl.innerHTML = "<span style='color:#6b7280;'>Fixing…</span>";
+
+    let fixed = 0;
+    for (const entry of broken) {
+        const patch = {};
+        entry.problems.forEach(p => {
+            patch[p.field] = p.fix === 'serverTimestamp' ? serverTimestamp() : p.fix;
+        });
+
+        try {
+            // merge:true so we only touch the broken fields and leave
+            // everything else (including favourites people have set) alone
+            await setDoc(doc(db, "users", entry.uid), patch, { merge: true });
+            fixed++;
+            console.log(`🩹 [USER REPAIR] Fixed ${entry.name}:`, Object.keys(patch).join(', '));
+        } catch (e) {
+            console.error(`🔥 [USER REPAIR] Could not fix ${entry.name}:`, e);
+        }
+    }
+
+    window.__pendingUserRepairs = [];
+    statusEl.innerHTML = `<span style="color:#15803d; font-weight:700;">✅ Fixed ${fixed} of ${broken.length} document(s).</span>`;
+    loadAdminUsersList();
+};
+
+// ==========================================
 // HOUSEHOLDS (admin side)
 // People can create/join their own household with a code in Settings; this
 // is the "just set it up for me" path for anyone who'd rather not.

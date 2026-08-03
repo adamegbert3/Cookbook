@@ -216,6 +216,16 @@
                 The 3 built-in admins are set in code and can't be changed here.
             </p>
             <div id="admin-users-list" style="max-height: 320px; overflow-y: auto; margin-top: 10px;"></div>
+
+            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f3f4f6;">
+                <button onclick="repairUserDocs()" style="background: #4f46e5; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;">🩺 Check User Documents</button>
+                <p style="font-size: 11px; color: #6b7280; margin: 6px 0 0 0;">
+                    Finds profiles with missing or wrong-typed fields — the usual cause is adding fields
+                    by hand in the Firebase console, which saves everything as text (so <code>favorites</code>
+                    ends up as <code>""</code> instead of a list).
+                </p>
+                <div id="user-repair-status" style="margin-top: 10px; font-size: 12px;"></div>
+            </div>
         </div>
 
         <div class="pending-card widget-card" style="border-left: 5px solid #0891b2;">
