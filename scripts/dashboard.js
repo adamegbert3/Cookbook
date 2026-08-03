@@ -483,7 +483,12 @@ window.loadPendingRecipes = async function loadPendingRecipes() {
     if(!listContainer) return;
     try {
         const querySnapshot = await getDocs(collection(db, "pending_recipes"));
-        if (querySnapshot.empty) { if(loadingDiv) loadingDiv.innerText = "No pending recipes!"; return; }
+        if (querySnapshot.empty) {
+            if(loadingDiv) loadingDiv.innerText = "No pending recipes!";
+            updateAttentionCounts({ pending: 0 });
+            return;
+        }
+        updateAttentionCounts({ pending: querySnapshot.size });
         if(loadingDiv) loadingDiv.style.display = 'none';
         let html = '';
         querySnapshot.forEach((doc) => {
@@ -536,6 +541,57 @@ window.loadPendingRecipes = async function loadPendingRecipes() {
 };
 
 // ==========================================
+// "NEEDS YOUR ATTENTION" SUMMARY
+// Each loader reports its own count here as it finishes, so the panel fills
+// in progressively instead of waiting on the slowest query. This is the
+// closest thing to a notification the free Firebase tier allows — real
+// email/push would need a paid plan or an external service.
+// ==========================================
+const attentionCounts = { pending: null, suggestions: null, reports: null, reviewRequests: null };
+
+function updateAttentionCounts(partial) {
+    Object.assign(attentionCounts, partial);
+
+    const el = document.getElementById('attention-counts');
+    if (!el) return;
+
+    const chip = (emoji, label, count, href, colour) => {
+        if (count === null) return '';
+        const muted = count === 0;
+        return `<a href="${href}" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;
+                    background:${muted ? '#f3f4f6' : colour.bg}; color:${muted ? '#9ca3af' : colour.fg};
+                    border:1px solid ${muted ? '#e5e7eb' : colour.border};
+                    padding:8px 14px; border-radius:20px; font-size:13px; font-weight:700;">
+                    ${emoji} ${label}: ${count}
+                </a>`;
+    };
+
+    const parts = [
+        chip('🛡️', 'Awaiting approval', attentionCounts.pending, '#pending-list',
+             { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
+        chip('📬', 'Suggested fixes', attentionCounts.suggestions, '#suggestions-list',
+             { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d' }),
+        chip('🙋', 'Review requests', attentionCounts.reviewRequests, '#reports-table-body',
+             { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74' }),
+        chip('🚩', 'Reported issues', attentionCounts.reports, '#reports-table-body',
+             { bg: '#fee2e2', fg: '#b91c1c', border: '#fca5a5' })
+    ].filter(Boolean);
+
+    el.innerHTML = parts.length
+        ? parts.join('')
+        : `<span style="color:#9ca3af; font-size:13px;">Checking…</span>`;
+
+    // Turn the whole panel green when there's genuinely nothing to do
+    const total = ['pending', 'suggestions', 'reports'].reduce((sum, k) => sum + (attentionCounts[k] || 0), 0);
+    const panel = document.getElementById('attention-panel');
+    if (panel && total === 0 && attentionCounts.reports !== null) {
+        panel.style.borderLeftColor = '#16a34a';
+        panel.querySelector('h3').innerHTML = '✅ All Caught Up';
+        panel.querySelector('h3').style.color = '#15803d';
+    }
+}
+
+// ==========================================
 // SUGGESTED FIXES FROM FAMILY MEMBERS
 // ==========================================
 window.loadSuggestions = async function() {
@@ -548,6 +604,7 @@ window.loadSuggestions = async function() {
         snap.forEach(d => { const data = d.data(); if (data.status !== 'resolved') pending.push({ id: d.id, ...data }); });
 
         console.log(`📬 [SUGGESTIONS] ${pending.length} pending.`);
+        updateAttentionCounts({ suggestions: pending.length });
 
         if (pending.length === 0) {
             listEl.innerHTML = `<p style="color:#9ca3af; font-size:13px;">No suggested fixes right now. 🎉</p>`;
@@ -1252,17 +1309,33 @@ window.loadReportedIssues = async function() {
     if (!tbody) return;
     
     try {
-        const snap = await getDocs(collection(db, "recipe_reports")); 
-        
+        const snap = await getDocs(collection(db, "recipe_reports"));
+
         if (snap.empty) {
             tbody.innerHTML = `<tr class="reports-empty-row"><td colspan="5" style="text-align:center; padding: 15px; color: var(--primary);">No reported issues! 🎉</td></tr>`;
+            updateAttentionCounts({ reports: 0, reviewRequests: 0 });
             return;
         }
-        
+
+        // Newest first. Without this the list came back in document-ID
+        // order, so a report filed thirty seconds ago could sit anywhere in
+        // the table — which is exactly why a new "review requested" looked
+        // like nothing had happened at all.
+        const rows = [];
+        snap.forEach(d => rows.push({ id: d.id, ...d.data() }));
+        const millis = (ts) => (ts && typeof ts.toDate === 'function') ? ts.toDate().getTime()
+                             : (ts && ts.seconds ? ts.seconds * 1000 : 0);
+        rows.sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+
+        updateAttentionCounts({
+            reports: rows.filter(r => r.type !== 'review_request').length,
+            reviewRequests: rows.filter(r => r.type === 'review_request').length
+        });
+
         let html = "";
-        snap.forEach(d => {
-            const data = d.data();
-            
+        rows.forEach(data => {
+            const d = { id: data.id };
+
             // 1. Robust Date Parsing (Fixes the "Unknown" bug)
             let dateStr = "Unknown";
             if (data.createdAt) {
@@ -1282,18 +1355,28 @@ window.loadReportedIssues = async function() {
             const recipeId = data.recipeId || "";
             const recipeName = data.recipeName || "View Recipe";
             const issue = data.issue || data.message || data.reason || "No details provided";
-            
+
+            // A "please verify this" request is a different job from "this
+            // recipe is wrong", so it gets its own colour and a direct link
+            // into the review page rather than looking like another report.
+            const isReviewRequest = data.type === 'review_request';
+            const rowStyle = isReviewRequest
+                ? 'background:#fffbeb; border-left:4px solid #f59e0b;'
+                : '';
+            const actionHtml = isReviewRequest
+                ? `<a href="review.html" class="btn-action" style="background:#f59e0b; color:white; font-weight:bold; text-decoration:none; margin-right:6px;">📋 Review</a>
+                   <button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Done</button>`
+                : `<button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Resolve</button>`;
+
             html += `
-                <tr id="report-${d.id}" style="border-bottom: 1px solid var(--border);">
+                <tr id="report-${d.id}" style="border-bottom: 1px solid var(--border); ${rowStyle}">
                     <td style="padding: 10px; color: var(--primary);">${dateStr}</td>
                     <td style="padding: 10px; font-weight: bold; color: var(--accent-teal);">${reporter}</td>
                     <td style="padding: 10px;">
                         <a href="recipe.html?id=${recipeId}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">${recipeName}</a>
                     </td>
                     <td style="padding: 10px; color: var(--primary);">${issue}</td>
-                    <td style="padding: 10px;">
-                        <button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Resolve</button>
-                    </td>
+                    <td style="padding: 10px; white-space: nowrap;">${actionHtml}</td>
                 </tr>
             `;
         });

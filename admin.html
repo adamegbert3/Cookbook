@@ -141,6 +141,16 @@
     
     <div class="dashboard-widgets" style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; margin: 0 auto;">
 
+        <!-- Live counts so nothing new can slip by unnoticed. Populated by
+             updateAttentionCounts() in scripts/dashboard.js. -->
+        <div id="attention-panel" class="pending-card widget-card" style="border-left: 5px solid #dc2626;">
+            <h3 style="margin-top:0; color:#b91c1c;">🔔 Needs Your Attention</h3>
+            <div id="attention-counts" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                <span style="color:#9ca3af; font-size:13px;">Checking…</span>
+            </div>
+        </div>
+
+
         <div class="pending-card widget-card" style="border-left: 5px solid #7c3aed; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
             <div>
                 <h3 style="margin: 0 0 4px 0; color: #5b21b6;">📋 Recipe Review</h3>
