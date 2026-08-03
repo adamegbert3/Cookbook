@@ -140,6 +140,20 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // --- PASSWORD RESET REQUESTS ---
+    // Someone who's forgotten their password is, by definition, signed out,
+    // so `create` has to be open. Nothing sensitive is stored (an email
+    // address they typed themselves) and no reset is actually sent until an
+    // admin approves it, so the worst a stranger can do is put a junk row in
+    // the admin's queue to dismiss.
+    match /password_reset_requests/{requestId} {
+      allow create: if request.resource.data.keys().hasOnly(['email', 'status', 'requestedAt'])
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() < 200;
+      allow read, update, delete: if isAdmin();
+    }
+
     // --- FAMILY MEMBER INVITES ---
     // Admin creates an invite doc (name/email/role, no password — accounts
     // are still created client-side via the normal, unprivileged

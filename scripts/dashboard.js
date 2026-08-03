@@ -74,6 +74,7 @@ async function loadAdminDashboard() {
     loadAdminUsersList();
     loadAdminHouseholds();
     loadSuggestions();
+    loadResetRequests();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -547,7 +548,7 @@ window.loadPendingRecipes = async function loadPendingRecipes() {
 // closest thing to a notification the free Firebase tier allows — real
 // email/push would need a paid plan or an external service.
 // ==========================================
-const attentionCounts = { pending: null, suggestions: null, reports: null, reviewRequests: null };
+const attentionCounts = { pending: null, suggestions: null, reports: null, reviewRequests: null, resetRequests: null };
 
 function updateAttentionCounts(partial) {
     Object.assign(attentionCounts, partial);
@@ -571,6 +572,8 @@ function updateAttentionCounts(partial) {
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
         chip('📬', 'Suggested fixes', attentionCounts.suggestions, '#suggestions-list',
              { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d' }),
+        chip('🔑', 'Password resets', attentionCounts.resetRequests, '#reset-requests-list',
+             { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
         chip('🙋', 'Review requests', attentionCounts.reviewRequests, '#reports-table-body',
              { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74' }),
         chip('🚩', 'Reported issues', attentionCounts.reports, '#reports-table-body',
@@ -582,7 +585,7 @@ function updateAttentionCounts(partial) {
         : `<span style="color:#9ca3af; font-size:13px;">Checking…</span>`;
 
     // Turn the whole panel green when there's genuinely nothing to do
-    const total = ['pending', 'suggestions', 'reports'].reduce((sum, k) => sum + (attentionCounts[k] || 0), 0);
+    const total = ['pending', 'suggestions', 'reports', 'resetRequests'].reduce((sum, k) => sum + (attentionCounts[k] || 0), 0);
     const panel = document.getElementById('attention-panel');
     if (panel && total === 0 && attentionCounts.reports !== null) {
         panel.style.borderLeftColor = '#16a34a';
@@ -590,6 +593,105 @@ function updateAttentionCounts(partial) {
         panel.querySelector('h3').style.color = '#15803d';
     }
 }
+
+// ==========================================
+// PASSWORD RESET REQUESTS
+// A browser can't set someone else's password from a code we invent —
+// Firebase only allows it via its own emailed link, an already-signed-in
+// user, or admin credentials (which can never ship to a browser). So the
+// control lives in the approval step instead: the request sits here until
+// an admin has confirmed with the person directly, and only then is the
+// link sent — to that person's own mailbox, which nobody else can read.
+// ==========================================
+window.loadResetRequests = async function() {
+    const listEl = document.getElementById('reset-requests-list');
+    if (!listEl) return;
+
+    try {
+        const snap = await getDocs(collection(db, "password_reset_requests"));
+        const pending = [];
+        snap.forEach(d => { const data = d.data(); if (data.status === 'pending') pending.push({ id: d.id, ...data }); });
+
+        const millis = (ts) => (ts && typeof ts.toDate === 'function') ? ts.toDate().getTime() : 0;
+        pending.sort((a, b) => millis(b.requestedAt) - millis(a.requestedAt));
+
+        console.log(`🔑 [RESET] ${pending.length} pending request(s).`);
+        updateAttentionCounts({ resetRequests: pending.length });
+
+        if (pending.length === 0) {
+            listEl.innerHTML = `<p style="color:#9ca3af; font-size:13px;">No password reset requests. 🎉</p>`;
+            return;
+        }
+
+        // Match requests to known accounts so an unrecognised address is
+        // obvious at a glance — that's the main sign of a bogus request.
+        const usersSnap = await getDocs(collection(db, "users"));
+        const knownByEmail = {};
+        usersSnap.forEach(u => { const e = (u.data().email || '').toLowerCase(); if (e) knownByEmail[e] = u.data().Name || e; });
+
+        listEl.innerHTML = pending.map(req => {
+            const known = knownByEmail[(req.email || '').toLowerCase()];
+            const when = req.requestedAt && req.requestedAt.toDate
+                ? req.requestedAt.toDate().toLocaleString()
+                : 'just now';
+
+            return `
+                <div id="reset-req-${req.id}" style="border:1px solid ${known ? '#ddd6fe' : '#fca5a5'}; background:${known ? '#f5f3ff' : '#fef2f2'}; border-radius:8px; padding:12px; margin-bottom:10px;">
+                    <div style="font-weight:800; font-size:14px;">${escapeAttr(known || 'Unrecognised address')}</div>
+                    <div style="font-size:12px; color:#4c1d95; margin-top:2px;">${escapeAttr(req.email)}</div>
+                    <div style="font-size:11px; color:#6b7280; margin-top:2px;">🕒 ${when}</div>
+                    ${known
+                        ? `<p style="font-size:11px; color:#5b21b6; margin:8px 0 0 0;">✔️ Matches an existing account. Confirm with them, then approve.</p>`
+                        : `<p style="font-size:11px; color:#b91c1c; margin:8px 0 0 0;"><strong>⚠️ No account uses this address.</strong> Almost certainly a typo or junk — dismiss it.</p>`}
+                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        <button onclick="approveResetRequest('${req.id}', '${escapeAttr(req.email)}')" class="btn-action" style="background:#7c3aed; color:white; font-weight:bold;">📧 Approve &amp; Send Link</button>
+                        <button onclick="dismissResetRequest('${req.id}')" class="btn-action btn-delete">✖️ Dismiss</button>
+                    </div>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        console.error("🔥 [RESET] Could not load requests:", e);
+        listEl.innerHTML = `<p style="color:red; font-size:13px;">Could not load requests: ${e.message}</p>`;
+    }
+};
+
+window.approveResetRequest = async function(id, email) {
+    if (!confirm(`Have you already confirmed with them directly that they asked for this?\n\nApproving emails a password reset link to:\n${email}`)) return;
+
+    try {
+        // sendPasswordResetEmail doesn't require being signed in as that
+        // person, so an admin can trigger it on their behalf. The link still
+        // only works from their own inbox.
+        const { sendPasswordResetEmail } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
+        await sendPasswordResetEmail(auth, email);
+
+        await updateDoc(doc(db, "password_reset_requests", id), {
+            status: 'approved',
+            approvedAt: serverTimestamp()
+        });
+
+        console.log("✅ [RESET] Link sent to:", email);
+        alert(`Reset link sent to ${email}.\n\nTell them to check spam if it doesn't arrive.`);
+        loadResetRequests();
+    } catch (e) {
+        console.error("🔥 [RESET] Could not send:", e);
+        if (e.code === 'auth/user-not-found') {
+            alert("No account uses that email address — nothing was sent. Dismiss this request.");
+        } else {
+            alert("Could not send the reset link: " + e.message);
+        }
+    }
+};
+
+window.dismissResetRequest = async function(id) {
+    if (!confirm("Dismiss this request? No reset link will be sent.")) return;
+    try {
+        await deleteDoc(doc(db, "password_reset_requests", id));
+        document.getElementById(`reset-req-${id}`)?.remove();
+        console.log("✖️ [RESET] Dismissed.");
+        loadResetRequests();
+    } catch (e) { alert("Could not dismiss: " + e.message); }
+};
 
 // ==========================================
 // SUGGESTED FIXES FROM FAMILY MEMBERS
@@ -663,6 +765,7 @@ window.applySuggestion = async function(id) {
         console.log(`✅ [SUGGESTIONS] Applied to "${suggestion.recipeName}".`);
         alert("Applied! Remember to hit 'Update Homepage Index' so the change shows in search.");
         loadSuggestions();
+    loadResetRequests();
     } catch (e) {
         console.error("🔥 [SUGGESTIONS] Apply failed:", e);
         alert("Could not apply: " + e.message);
@@ -676,6 +779,7 @@ window.dismissSuggestion = async function(id) {
         document.getElementById(`suggestion-${id}`)?.remove();
         console.log("✖️ [SUGGESTIONS] Dismissed.");
         loadSuggestions();
+    loadResetRequests();
     } catch (e) { alert("Could not dismiss: " + e.message); }
 };
 
