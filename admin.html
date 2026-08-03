@@ -182,17 +182,25 @@
         <div class="pending-card widget-card" style="border-left: 5px solid #16a34a;">
             <h3 style="margin-top:0; color: #166534;">👪 Invite a Family Member</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Works from anywhere, including your phone — no computer or Ollama-style local setup needed.
-                Creates a private signup link; the person sets their own password when they open it (nothing with admin access ever touches this page).
-                Creates a regular account — use "Manage Admin Access" below afterward if they need Admin, too.
+                Works from anywhere, including your phone. You give them a temporary code; the first time
+                they sign in with it, they pick their own password. Their account is created at that moment,
+                so no password ever passes through you and nothing with admin access touches this page.
+                Always creates a regular account — use "Manage Admin Access" below if they need Admin too.
             </p>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
                 <input type="text" id="invite-name" placeholder="Full name (e.g. Aunt Sally)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
                 <input type="email" id="invite-email" placeholder="Email address" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
-            <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite Link</button>
-            <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 10px;">
-                <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Send this link to them (text, email, whatever's easiest):</p>
+            <input type="text" id="invite-code" placeholder="Temporary code (leave blank and I'll make one up)" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; text-transform: uppercase;">
+            <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite</button>
+
+            <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 12px;">
+                <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Give them this code and their email address:</p>
+                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+                    <span id="invite-code-output" style="font-family: monospace; font-size: 1.5rem; font-weight: 800; letter-spacing: 3px; color:#166534;"></span>
+                    <button onclick="copyInviteCode()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy Code</button>
+                </div>
+                <p style="font-size: 11px; margin: 0 0 4px 0; color: #6b7280;">They enter it at the login page under "First time here?". Or send this direct link instead:</p>
                 <div style="display:flex; gap:6px;">
                     <input type="text" id="invite-link-output" readonly style="flex:1; padding: 6px; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 12px; font-family: monospace;">
                     <button onclick="copyInviteLink()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy</button>

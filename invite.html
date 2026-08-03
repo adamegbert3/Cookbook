@@ -14,39 +14,54 @@
     <div class="login-card">
         <div class="login-header">
             <img src="images/logo.jpg" style="height: 60px; margin-bottom: 10px;" alt="Logo">
-            <h1 id="invite-heading">You're Invited!</h1>
-            <p class="subtitle" id="invite-subtitle">Loading your invite...</p>
+            <h1 id="invite-heading">Welcome!</h1>
+            <p class="subtitle" id="invite-subtitle">Enter the code you were given to set up your account.</p>
         </div>
 
-        <form id="invite-form" class="hidden">
+        <!-- STEP 1: prove you were invited -->
+        <form id="code-form">
             <div class="input-group">
-                <label>Name</label>
-                <input type="text" id="invite-name-display" class="form-input" disabled>
+                <label>Your Email</label>
+                <input type="email" id="code-email" class="form-input" placeholder="you@example.com" required autocomplete="email">
             </div>
             <div class="input-group">
-                <label>Email</label>
-                <input type="email" id="invite-email-display" class="form-input" disabled>
+                <label>Temporary Code</label>
+                <input type="text" id="code-input" class="form-input" placeholder="e.g. K7PQ2MRT" required
+                       style="text-transform: uppercase; font-family: monospace; letter-spacing: 2px;" autocomplete="off">
             </div>
+
+            <p id="code-error" style="color: red; font-size: 14px; text-align: center; min-height: 20px;"></p>
+
+            <button id="code-submit-btn" type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center;">
+                Continue
+            </button>
+        </form>
+
+        <!-- STEP 2: choose a real password -->
+        <form id="password-form" class="hidden">
+            <p style="background:#f0fdf4; border:1px solid #bbf7d0; color:#166534; padding:10px 14px; border-radius:8px; font-size:13px; text-align:center;">
+                ✅ Code accepted — welcome, <strong id="invited-name"></strong>!<br>Now pick a password you'll remember.
+            </p>
+
             <div class="input-group">
                 <label>Choose a Password</label>
-                <input type="password" id="invite-password" class="form-input" placeholder="At least 6 characters" required minlength="6">
+                <input type="password" id="invite-password" class="form-input" placeholder="At least 6 characters" required minlength="6" autocomplete="new-password">
             </div>
             <div class="input-group">
                 <label>Confirm Password</label>
-                <input type="password" id="invite-password-confirm" class="form-input" placeholder="••••••••" required minlength="6">
+                <input type="password" id="invite-password-confirm" class="form-input" placeholder="••••••••" required minlength="6" autocomplete="new-password">
             </div>
 
             <p id="invite-error" style="color: red; font-size: 14px; text-align: center; min-height: 20px;"></p>
 
-            <button id="invite-submit-btn" type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center; margin-top: 10px;">
+            <button id="invite-submit-btn" type="submit" class="pill-btn btn-teal" style="width: 100%; justify-content: center;">
                 Create My Account
             </button>
         </form>
 
-        <div id="invite-invalid" class="hidden" style="text-align: center;">
-            <p style="color: #ef4444;">This invite link isn't valid — it may have already been used or revoked.</p>
-            <p class="subtitle">Ask whoever sent it to you for a fresh link.</p>
-        </div>
+        <p style="text-align:center; margin-top:20px;">
+            <a href="index.html" class="auth-link">Already have an account? Sign in</a>
+        </p>
     </div>
 
     <script type="module" src="scripts/invite-signup.js"></script>

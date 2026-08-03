@@ -782,21 +782,44 @@ window.rejectRecipe = async function(id) {
 // touch the browser; the invited person creates their own account via
 // invite.html + scripts/invite-signup.js)
 // ==========================================
+// Skips O/0 and I/1 so a code can be read aloud or texted without confusion.
+const INVITE_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function generateInviteCode(length = 8) {
+    let code = '';
+    for (let i = 0; i < length; i++) {
+        code += INVITE_CODE_ALPHABET[Math.floor(Math.random() * INVITE_CODE_ALPHABET.length)];
+    }
+    return code;
+}
+
 window.createInvite = async function() {
     const nameInput = document.getElementById('invite-name');
     const emailInput = document.getElementById('invite-email');
+    const codeInput = document.getElementById('invite-code');
 
     const name = nameInput.value.trim();
     const email = emailInput.value.trim().toLowerCase();
     if (!name || !email) return alert("Name and email are both required.");
 
-    console.log(`👪 [INVITE] Creating invite for ${name} <${email}>...`);
+    // The code IS the document id, which is what makes it the secret (see
+    // the /invites rules). Uppercased so it's case-insensitive in practice.
+    const typed = codeInput.value.trim().toUpperCase().replace(/\s+/g, '');
+    const code = typed || generateInviteCode();
+
+    if (typed && typed.length < 4) return alert("Give the code at least 4 characters.");
+
+    console.log(`👪 [INVITE] Creating invite for ${name} <${email}> with code ${code}...`);
 
     try {
+        // Don't silently overwrite an invite that already uses this code
+        const existing = await getDoc(doc(db, "invites", code));
+        if (existing.exists()) return alert(`The code ${code} is already in use. Pick another.`);
+
         // Invites always create a normal user account — Admin access is
         // never granted at signup (see firestore.rules), only afterward via
         // "Manage Admin Access" once they've signed up.
-        const inviteRef = await addDoc(collection(db, "invites"), {
+        await setDoc(doc(db, "invites", code), {
             name,
             email,
             used: false,
@@ -804,18 +827,24 @@ window.createInvite = async function() {
         });
 
         const basePath = location.pathname.replace(/admin\.html$/, '');
-        const link = `${location.origin}${basePath}invite.html?id=${inviteRef.id}`;
-        document.getElementById('invite-link-output').value = link;
+        document.getElementById('invite-code-output').innerText = code;
+        document.getElementById('invite-link-output').value = `${location.origin}${basePath}invite.html?id=${code}`;
         document.getElementById('invite-result').style.display = 'block';
 
-        console.log("✅ [INVITE] Created:", inviteRef.id);
+        console.log("✅ [INVITE] Created with code:", code);
         nameInput.value = "";
         emailInput.value = "";
+        codeInput.value = "";
         loadPendingInvites();
     } catch (e) {
         console.error("🔥 [INVITE] Could not create invite:", e);
         alert("Could not create invite: " + e.message);
     }
+};
+
+window.copyInviteCode = function() {
+    const code = document.getElementById('invite-code-output').innerText;
+    navigator.clipboard.writeText(code).then(() => alert(`Copied: ${code}`));
 };
 
 window.copyInviteLink = function() {
@@ -837,7 +866,10 @@ window.loadPendingInvites = async function() {
         list.innerHTML = `<p style="font-size:11px; color:#6b7280; margin-bottom:6px;">Pending invites (not signed up yet):</p>` +
             pending.map(inv => `
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid #f3f4f6; font-size:12px;">
-                    <span>${inv.name} (${inv.email})</span>
+                    <span>
+                        ${inv.name} (${inv.email})<br>
+                        <span style="font-family:monospace; font-weight:800; letter-spacing:1px; color:#166534;">${inv.id}</span>
+                    </span>
                     <button onclick="revokeInvite('${inv.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:4px 8px; border-radius:4px; font-size:11px; cursor:pointer; white-space:nowrap;">Revoke</button>
                 </div>`).join('');
     } catch (e) {

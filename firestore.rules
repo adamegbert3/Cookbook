@@ -125,11 +125,21 @@ service cloud.firestore {
     // createUserWithEmailAndPassword call, never with admin credentials).
     // The invited person reads their own invite by its doc id (a link only
     // they were given) to self-serve their signup, then marks it used.
-    match /invites/{inviteId} {
+    // The document ID **is** the invite code, which makes the code itself
+    // the secret and lets us split these two cases:
+    //
+    //   get  — anyone may read ONE invite, but only if they already know
+    //          the code (you can't guess a random 8-character code).
+    //   list — admins only. Previously this was `read: if true`, which
+    //          also permits querying the whole collection, so anyone could
+    //          enumerate every pending invite (names + emails) and claim
+    //          one. Splitting get/list closes that.
+    match /invites/{inviteCode} {
       allow create, delete: if isAdmin();
-      allow read: if true;
-      // Only the person the invite was actually addressed to (matched by
-      // their newly-created account's email) can mark it consumed.
+      allow get: if true;
+      allow list: if isAdmin();
+      // Only the person the invite was addressed to (matched by their
+      // newly-created account's email) can mark it consumed.
       allow update: if request.auth != null
                     && request.auth.token.email == resource.data.email
                     && resource.data.used == false;
