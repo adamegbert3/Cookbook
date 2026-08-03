@@ -127,13 +127,47 @@ window.printSelected = async function(options = {}) {
             : recipes.map(recipeToPrintHtml).join('');
 
         console.log("🖨️ [PRINT] Opening the print dialog now...");
-        setTimeout(() => window.print(), 300);
+        printOnly(output);
 
     } catch (e) {
         console.error("🔥 [PRINT] Print error:", e);
         alert("Could not prepare recipes for printing.");
     }
 };
+
+// Detaches the recipe-picker UI from the document while printing.
+//
+// `.no-print { display: none }` hid it visually but left every node in the
+// tree — and the print stylesheet applies a very broad
+// `div, span, p, li { ... !important }` rule, so the browser still had to
+// recompute styles and lay out the ENTIRE cookbook picker (one row per
+// recipe) before it could render even a 3-recipe printout. That's the
+// "console says it's done, then it hangs" delay. Physically removing the
+// picker means the print document contains only what's being printed.
+function printOnly(output) {
+    const main = document.querySelector('main');
+    const placeholder = document.createComment('picker-hidden-while-printing');
+    const parent = main && main.parentNode;
+
+    if (parent) parent.replaceChild(placeholder, main);
+    output.style.display = 'block';
+
+    const restore = () => {
+        if (parent && placeholder.parentNode) parent.replaceChild(main, placeholder);
+        output.style.display = '';
+        window.removeEventListener('afterprint', restore);
+        console.log("🖨️ [PRINT] Print dialog closed, picker restored.");
+    };
+    window.addEventListener('afterprint', restore);
+
+    // Let the browser paint the detached layout once before opening the
+    // dialog, then hard-restore after a while in case afterprint never
+    // fires (Safari has historically been unreliable about it).
+    requestAnimationFrame(() => {
+        window.print();
+        setTimeout(restore, 60000);
+    });
+}
 
 // ==========================================
 // GIFT-ABLE COOKBOOK LAYOUT

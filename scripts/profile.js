@@ -6,6 +6,7 @@ import {
     doc, getDoc, collection, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { escapeHtml } from './main.js';
 // "Built-in" admins — keep in sync with firestore.rules and the ADMIN_UIDS
 // arrays in scripts/dashboard.js, scripts/main.js, scripts/review.js, and
 // edit-recipe.html. Everyone else is promoted live via the admin console's
@@ -179,21 +180,29 @@ function ProfileCardTemplate(id, recipe) {
     legacyBadges += `</div>`;
 
     // 🚀 THE FIX: height: 100% and flex-direction: column forces cards to stretch and align!
+    // Text is escaped for the same reason as the homepage cards — a recipe
+    // name containing quotes or angle brackets used to break its own card.
     return `
-    <div class="recipe-card ${colorClass}" onclick="window.location.href='recipe.html?id=${id}'" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; cursor: pointer;">
+    <div class="recipe-card ${colorClass}" data-recipe-id="${escapeHtml(id)}" style="display: flex; flex-direction: column; justify-content: space-between; height: 100%; box-sizing: border-box; cursor: pointer;">
         <button class="card-heart" style="cursor: default;" title="Saved Favorite">❤️</button>
         <div class="card-content" style="display: flex; flex-direction: column; flex-grow: 1;">
-            <h2>${recName}</h2>
-            <div class="recipe-author" style="margin-bottom: auto;">From: ${recAuth}</div>
-            
+            <h2>${escapeHtml(recName)}</h2>
+            <div class="recipe-author" style="margin-bottom: auto;">From: ${escapeHtml(recAuth)}</div>
+
             ${legacyBadges}
 
             <div class="tag-container" style="margin-top: 10px;">
                 ${recTags
                     .filter(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite")
-                    .map(t => `<span class="tag-pill">${t}</span>`)
+                    .map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`)
                     .join('')}
             </div>
         </div>
     </div>`;
 }
+
+// Delegated navigation for the favorites grid (see the homepage equivalent)
+document.getElementById('favorites-grid')?.addEventListener('click', (event) => {
+    const card = event.target.closest('[data-recipe-id]');
+    if (card) window.location.href = `recipe.html?id=${encodeURIComponent(card.dataset.recipeId)}`;
+});

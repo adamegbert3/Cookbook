@@ -485,6 +485,20 @@ function getCategoryClass(category) {
 
 let offlineChecklist = [];
 
+// Escapes text before it goes anywhere near HTML. A recipe literally named
+// `"Poop" Cookies` used to break its own card: the name was interpolated
+// into onclick="goToRecipe('id', 'name')", and the double quotes closed the
+// attribute early, truncating the JavaScript ("SyntaxError: Unexpected
+// EOF") so the card silently did nothing when tapped.
+export function escapeHtml(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function buildRecipeCardHtml(item) {
     const isHidden = item.h === true || item.isHidden === true;
 
@@ -526,23 +540,27 @@ function buildRecipeCardHtml(item) {
     const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
     const dimStyle = isHidden ? `opacity: 0.6; background-color: #f8fafc;` : "";
 
+    // Recipe id/name travel as data attributes read by a delegated click
+    // handler (see setupRecipeCardClicks) rather than being baked into an
+    // inline onclick — that's what made quotes in a recipe name fatal.
     return `
-        <div class="recipe-card ${colorClass}" style="${dimStyle}" onclick="goToRecipe('${recId}', '${recName.replace(/'/g, "\\'")}')">
+        <div class="recipe-card ${colorClass}" style="${dimStyle}"
+             data-recipe-id="${escapeHtml(recId)}" data-recipe-name="${escapeHtml(recName)}">
             ${eyeIcon}
-            <button class="card-heart" onclick="toggleHeart(event, '${recId}')">${heartIcon}</button>
+            <button class="card-heart" data-heart-id="${escapeHtml(recId)}">${heartIcon}</button>
             <div class="card-content">
-                <h2>${recName}</h2>
-                <div class="recipe-author">From: ${recAuth}</div>
+                <h2>${escapeHtml(recName)}</h2>
+                <div class="recipe-author">From: ${escapeHtml(recAuth)}</div>
 
                 ${legacyBadges}
 
                 <div class="tag-container">
                     ${recTags
                         .filter(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite")
-                        .map(t => `<span class="tag-pill">${t}</span>`)
+                        .map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`)
                         .join('')}
                     ${getDietaryTags({ dietary: item.d || item.dietary })
-                        .map(t => `<span class="diet-pill">${t}</span>`)
+                        .map(t => `<span class="diet-pill">${escapeHtml(t)}</span>`)
                         .join('')}
                 </div>
             </div>
@@ -578,6 +596,8 @@ function renderLocalList(list) {
     }
 
     container.innerHTML = "";
+    setupRecipeCardClicks();
+    setupDietaryFilters(); // needs allRecipes populated to count tag usage
     renderNextRecipeBatch(container);
 }
 
@@ -610,12 +630,32 @@ window.goToRecipe = function(id, name) {
     window.location.href = `recipe.html?id=${id}`;
 };
 
-window.toggleHeart = async function(event, recipeId) {
-    event.stopPropagation(); 
+// One delegated listener for every recipe card, now and in the future.
+// Cards are re-rendered constantly (filters, lazy batches, offline mode), so
+// binding here — once, on the container — beats re-attaching per card, and
+// it means card markup carries plain data instead of executable strings.
+function setupRecipeCardClicks() {
+    const container = document.getElementById('recipes');
+    if (!container || container.dataset.clicksBound === 'true') return;
+    container.dataset.clicksBound = 'true';
+
+    container.addEventListener('click', (event) => {
+        const heart = event.target.closest('[data-heart-id]');
+        if (heart) {
+            event.stopPropagation();
+            toggleHeart(heart, heart.dataset.heartId);
+            return;
+        }
+
+        const card = event.target.closest('[data-recipe-id]');
+        if (card) goToRecipe(card.dataset.recipeId, card.dataset.recipeName);
+    });
+}
+
+window.toggleHeart = async function(btn, recipeId) {
     const user = auth.currentUser;
     if (!user) return alert("Log in to favorite!");
-    
-    const btn = event.currentTarget;
+
     const userRef = doc(db, "users", user.uid);
 
     try {
@@ -1006,13 +1046,38 @@ function setupDietaryFilters() {
     const wrap = document.getElementById('dietary-filters');
     if (!wrap) return;
 
-    wrap.innerHTML = DIETARY_TAGS.map(tag =>
-        `<button class="cat-green diet-filter-btn" style="font-size:0.78rem; padding:6px 14px;">${tag}</button>`
+    // Only show a chip if at least one recipe actually carries that tag —
+    // otherwise you get a row of buttons that all lead to "No recipes
+    // found", which just reads as broken. They appear on their own as
+    // recipes get tagged, so nothing needs re-enabling later.
+    const tagCounts = {};
+    allRecipes.forEach(r => {
+        (r.d || r.dietary || []).forEach(tag => { tagCounts[tag] = (tagCounts[tag] || 0) + 1; });
+    });
+
+    const usedTags = DIETARY_TAGS.filter(tag => tagCounts[tag] > 0);
+
+    if (usedTags.length === 0) {
+        wrap.style.display = 'none';
+        wrap.innerHTML = '';
+        return;
+    }
+
+    wrap.style.display = '';
+    wrap.innerHTML = usedTags.map(tag =>
+        `<button class="cat-green diet-filter-btn" data-diet-tag="${escapeHtml(tag)}" style="font-size:0.78rem; padding:6px 14px;">${escapeHtml(tag)} <span style="opacity:0.75; font-weight:600;">(${tagCounts[tag]})</span></button>`
     ).join('');
 
     wrap.querySelectorAll('button').forEach(btn => {
+        // This runs on every re-render, so re-apply the current selection —
+        // otherwise clicking a chip would visually deselect itself as the
+        // list it just filtered re-renders underneath it.
+        if (btn.dataset.dietTag === currentDietFilter) btn.classList.add('active-filter');
+
         btn.onclick = () => {
-            const tag = btn.innerText.trim();
+            // Read the tag from the data attribute, not the label — the
+            // label carries a "(3)" count suffix.
+            const tag = btn.dataset.dietTag;
             const wasActive = btn.classList.contains('active-filter');
 
             wrap.querySelectorAll('button').forEach(b => b.classList.remove('active-filter'));
@@ -1029,7 +1094,10 @@ function setupDietaryFilters() {
     });
 }
 
-setTimeout(() => { setupSearch(); setupCategoryFilters(); setupDietaryFilters(); }, 500);
+// setupDietaryFilters is NOT called here — it counts how many recipes carry
+// each tag, so it has to wait until the recipes are actually loaded. It's
+// invoked from renderLocalList() instead.
+setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
 
 // ==========================================
 // 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)
