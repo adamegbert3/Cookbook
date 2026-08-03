@@ -109,6 +109,12 @@
             <a href="submit.html" class="btn-dark">+ Add Your Own Recipe</a>
         </div>
 
+        <!-- Adam-only; revealed by setupTestModeToggle() in scripts/main.js -->
+        <div id="test-mode-slot" class="hidden" style="text-align: center; margin-bottom: 15px;">
+            <button onclick="toggleTestMode()" class="pill-btn btn-slate js-test-mode-btn" style="font-size:0.8rem;">🧪 Test Mode: OFF</button>
+            <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">While on, opening or cooking recipes won't count toward views or the leaderboard.</p>
+        </div>
+
         <div style="text-align: center; margin-bottom: 30px;">
             <button onclick="downloadAllForOffline(event)" class="pill-btn btn-teal">⛺ Download All Recipes for Offline</button>
             <p id="offline-status-line" style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Do this before you lose signal — recipes you've already opened stay available too.</p>

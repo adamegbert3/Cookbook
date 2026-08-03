@@ -529,15 +529,68 @@ input:checked + .slider:before {
     font-style: italic;
 }
 
-/* Inline "Personalize This Recipe" edit mode — the ingredient list item
-   that holds the ingredients textarea shouldn't look/act like a normal
-   crossable ingredient line */
-.inline-edit-li {
+/* ==========================================================================
+   PERSONALIZE EDIT MODE — a per-line editor that mirrors the published
+   layout, instead of one big textarea holding the whole recipe.
+   ========================================================================== */
+.edit-section-block {
     list-style: none;
     cursor: default;
+    margin: 0 0 18px -20px;   /* pull back out of the <ul> indent */
+    padding: 12px 14px;
+    background: var(--bg-body);
+    border: 1px solid var(--border);
+    border-radius: 10px;
 }
-.inline-edit-li:hover { background: none; }
-.inline-edit-li textarea.form-input { min-height: 150px; }
+.edit-section-block:hover { background: var(--bg-body); }
+#instructions-container .edit-section-block { margin-left: 0; }
+
+.edit-section-head { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.edit-part-name {
+    flex: 1;
+    font-family: var(--font-header);
+    font-size: 1.25rem !important;
+    color: var(--accent-warm);
+    padding: 6px 10px !important;
+    background: var(--bg-card);
+}
+
+.edit-row { display: flex; gap: 8px; align-items: center; margin-bottom: 7px; }
+.edit-row input, .edit-row textarea {
+    flex: 1;
+    padding: 9px 11px !important;
+    font-size: 0.95rem !important;
+    border-radius: 8px;
+    background: var(--bg-card);
+}
+.edit-row textarea { resize: vertical; min-height: 0; line-height: 1.4; }
+.edit-row-step { align-items: flex-start; }
+.edit-step-num {
+    flex-shrink: 0; width: 26px; height: 26px; margin-top: 7px;
+    background: var(--accent-teal); color: #fff;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem; font-weight: 800; font-family: var(--font-main);
+}
+
+.edit-row-actions { margin-top: 8px; }
+.edit-mini-btn {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-family: var(--font-main);
+    cursor: pointer;
+}
+.edit-mini-btn:hover { border-color: var(--accent-teal); color: var(--accent-teal); }
+.edit-mini-danger {
+    flex-shrink: 0; padding: 6px 11px; color: #ef4444; border-color: transparent; background: transparent;
+}
+.edit-mini-danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+
+.edit-add-part { background: none; border: 1px dashed var(--border); text-align: center; }
 
 /* ==========================================================================
    MULTI-PART RECIPES (crust / filling / topping)

@@ -3,7 +3,8 @@ import {
     doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe } from './main.js';
+import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe,
+         isTestModeOn, canUseTestMode, updateTestModeUi } from './main.js';
 import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags } from './recipe-model.js';
 import { getPlanPath } from './household.js';
 
@@ -244,7 +245,7 @@ async function loadRecipe() {
             loadCookStats();
             logViewToDatabase(fullData);
             applyPersonalizationIfAny(fullData);
-            maybeShowCookPrompt();
+            afterRecipeShown(fullData);
         } else if (!renderCachedRecipe(localData, recipeContainer)) {
             recipeContainer.innerHTML = "<h2>Recipe not found.</h2>";
         }
@@ -300,12 +301,20 @@ function renderCachedRecipe(localData, recipeContainer) {
     return false;
 }
 
+// Runs once the recipe is on screen, however it got there. Warns first if
+// the recipe is unverified, and only asks "viewing or cooking?" afterwards —
+// stacking both modals at once would be a mess.
+function afterRecipeShown(recipe) {
+    if (maybeShowUnreviewedWarning(recipe)) return; // it chains into the cook prompt on dismiss
+    maybeShowCookPrompt();
+}
+
 // Shared tail-end for every offline/cached render path. The cook counter
 // reads from localStorage so it still works with no signal, but comments
 // need Firestore — without this they both sat on "Loading..." forever.
 function markOfflineRecipeView() {
     loadCookStats();
-    maybeShowCookPrompt();
+    afterRecipeShown(lastRenderedRecipe || originalRecipeData || {});
 
     const commentsList = document.getElementById('commentsList');
     if (commentsList && commentsList.innerText.includes('Loading')) {
@@ -359,66 +368,163 @@ window.toggleEditMode = function() {
     }
 };
 
+// ==========================================
+// EDIT MODE — a per-line, per-part editor that mirrors the published layout.
+//
+// This replaced a pair of raw textareas holding the whole recipe. Those were
+// confusing (you edited a wall of text that looked nothing like the recipe)
+// and made multi-part recipes effectively uneditable, since parts were just
+// "## Crust" lines buried in the middle of the text.
+//
+// Now each ingredient and step is its own input, grouped under its part, so
+// editing looks like the recipe you're reading. `editDraft` is the working
+// copy; nothing is written until Save.
+// ==========================================
+let editDraft = null;
+
 function enterEditMode() {
     editModeActive = true;
     const current = lastRenderedRecipe || originalRecipeData;
 
-    const rawIng = current.ingredients || current.recipeIngredient || [];
-    const rawInst = current.instructions || current.recipeInstructions || [];
-    const ingArr = Array.isArray(rawIng) ? rawIng : String(rawIng || '').split('\n').filter(Boolean);
-    const instArr = Array.isArray(rawInst) ? rawInst : String(rawInst || '').split('\n').filter(Boolean);
+    // Deep-copy into a draft so Cancel is a genuine discard
+    editDraft = {
+        ingredientSections: getSections(current, 'ingredients').map(s => ({ title: s.title, items: [...(s.items || [])] })),
+        instructionSections: getSections(current, 'instructions').map(s => ({ title: s.title, items: [...(s.items || [])] })),
+        notes: current.notes || ''
+    };
+    if (editDraft.ingredientSections.length === 0) editDraft.ingredientSections = [{ title: '', items: [''] }];
+    if (editDraft.instructionSections.length === 0) editDraft.instructionSections = [{ title: '', items: [''] }];
 
-    // Ingredients: swap the rendered <li>s for one editable textarea in place
+    renderEditor();
+    showEditModeBar(current.isPersonalized);
+    document.getElementById('ingredient-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Rebuilds both editors from editDraft. Called after every structural change
+// (add/remove a line or a part) so the DOM always matches the draft.
+function renderEditor() {
     const ingList = document.getElementById('ingredient-list');
     if (ingList) {
-        ingList.innerHTML = '';
-        const li = document.createElement('li');
-        li.className = 'inline-edit-li';
-        const ta = document.createElement('textarea');
-        ta.id = 'edit-ingredients-inline';
-        ta.className = 'form-input';
-        ta.rows = Math.max(6, ingArr.length);
-        ta.value = ingArr.join('\n');
-        li.appendChild(ta);
-        ingList.appendChild(li);
+        ingList.className = ''; // drop the substitution-hiding class while editing
+        ingList.innerHTML = editDraft.ingredientSections.map((section, si) => `
+            <li class="edit-section-block">
+                ${editDraft.ingredientSections.length > 1 || section.title ? `
+                    <div class="edit-section-head">
+                        <input class="edit-part-name" type="text" placeholder="Part name (e.g. Crust)"
+                               value="${escapeAttrJs(section.title)}"
+                               oninput="updateDraft('ingredients', ${si}, null, this.value)">
+                        <button class="edit-mini-btn edit-mini-danger" title="Remove this part"
+                                onclick="removePart('ingredients', ${si})">✕</button>
+                    </div>` : ''}
+
+                ${section.items.map((item, ii) => `
+                    <div class="edit-row">
+                        <input type="text" value="${escapeAttrJs(item)}" placeholder="e.g. 2 cups flour"
+                               oninput="updateDraft('ingredients', ${si}, ${ii}, this.value)">
+                        <button class="edit-mini-btn edit-mini-danger" title="Delete"
+                                onclick="removeLine('ingredients', ${si}, ${ii})">✕</button>
+                    </div>`).join('')}
+
+                <div class="edit-row-actions">
+                    <button class="edit-mini-btn" onclick="addLine('ingredients', ${si})">＋ Ingredient</button>
+                </div>
+            </li>`).join('') + `
+            <li class="edit-section-block edit-add-part">
+                <button class="edit-mini-btn" onclick="addPart('ingredients')">＋ Add a part (Crust, Filling…)</button>
+            </li>`;
     }
 
-    // Instructions: swap the rendered <ol> for one editable textarea
     const instContainer = document.getElementById('instructions-container');
     if (instContainer) {
-        instContainer.innerHTML = '';
-        const ta = document.createElement('textarea');
-        ta.id = 'edit-instructions-inline';
-        ta.className = 'form-input';
-        ta.rows = Math.max(6, instArr.length);
-        ta.value = instArr.join('\n');
-        instContainer.appendChild(ta);
+        instContainer.className = '';
+        instContainer.innerHTML = editDraft.instructionSections.map((section, si) => `
+            <div class="edit-section-block">
+                ${editDraft.instructionSections.length > 1 || section.title ? `
+                    <div class="edit-section-head">
+                        <input class="edit-part-name" type="text" placeholder="Part name (e.g. Filling)"
+                               value="${escapeAttrJs(section.title)}"
+                               oninput="updateDraft('instructions', ${si}, null, this.value)">
+                        <button class="edit-mini-btn edit-mini-danger" title="Remove this part"
+                                onclick="removePart('instructions', ${si})">✕</button>
+                    </div>` : ''}
 
-        // Notes go right under the instructions edit box
-        const notesLabel = document.createElement('label');
-        notesLabel.style.cssText = 'display:block; font-weight:bold; margin-top:15px; margin-bottom:5px;';
-        notesLabel.innerText = 'Notes';
-        const notesTa = document.createElement('textarea');
-        notesTa.id = 'edit-notes-inline';
-        notesTa.className = 'form-input';
-        notesTa.rows = 2;
-        notesTa.value = current.notes || '';
-        instContainer.appendChild(notesLabel);
-        instContainer.appendChild(notesTa);
+                ${section.items.map((item, ii) => `
+                    <div class="edit-row edit-row-step">
+                        <span class="edit-step-num">${ii + 1}</span>
+                        <textarea rows="2" placeholder="Describe this step…"
+                                  oninput="updateDraft('instructions', ${si}, ${ii}, this.value)">${escapeAttrJs(item)}</textarea>
+                        <button class="edit-mini-btn edit-mini-danger" title="Delete"
+                                onclick="removeLine('instructions', ${si}, ${ii})">✕</button>
+                    </div>`).join('')}
+
+                <div class="edit-row-actions">
+                    <button class="edit-mini-btn" onclick="addLine('instructions', ${si})">＋ Step</button>
+                </div>
+            </div>`).join('') + `
+            <div class="edit-section-block edit-add-part">
+                <button class="edit-mini-btn" onclick="addPart('instructions')">＋ Add a part</button>
+            </div>
+
+            <label style="display:block; font-weight:bold; margin-top:20px; margin-bottom:5px;">Notes</label>
+            <textarea id="edit-notes-inline" class="form-input" rows="2"
+                      oninput="updateDraftNotes(this.value)">${escapeAttrJs(editDraft.notes)}</textarea>`;
     }
-
-    const revertBtnHtml = current.isPersonalized
-        ? `<button onclick="revertPersonalization()" class="pill-btn btn-slate">↩️ Revert to Original</button>`
-        : '';
-    setPersonalizeSlotHtml(`
-        <button onclick="saveInlinePersonalization()" class="pill-btn btn-teal">💾 Save My Version</button>
-        <button onclick="toggleEditMode()" class="pill-btn btn-slate">✖️ Cancel</button>
-        ${revertBtnHtml}
-    `);
-
-    showEditModeBar(current.isPersonalized);
-    document.getElementById('edit-ingredients-inline')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
+
+// Escapes a value for use inside an HTML attribute or textarea body.
+function escapeAttrJs(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+const draftKey = (kind) => kind === 'instructions' ? 'instructionSections' : 'ingredientSections';
+
+// itemIndex === null means we're editing the part's title.
+// Note this deliberately does NOT re-render — that would blur the input and
+// lose the caret on every keystroke.
+window.updateDraft = function(kind, sectionIndex, itemIndex, value) {
+    const section = editDraft[draftKey(kind)][sectionIndex];
+    if (!section) return;
+    if (itemIndex === null) section.title = value;
+    else section.items[itemIndex] = value;
+};
+
+window.updateDraftNotes = function(value) { editDraft.notes = value; };
+
+window.addLine = function(kind, sectionIndex) {
+    editDraft[draftKey(kind)][sectionIndex].items.push('');
+    renderEditor();
+    // Focus the newly added field
+    const blocks = document.querySelectorAll(`#${kind === 'instructions' ? 'instructions-container' : 'ingredient-list'} .edit-section-block`);
+    const inputs = blocks[sectionIndex]?.querySelectorAll('input[type="text"], textarea');
+    inputs?.[inputs.length - 1]?.focus();
+};
+
+window.removeLine = function(kind, sectionIndex, itemIndex) {
+    const sections = editDraft[draftKey(kind)];
+    sections[sectionIndex].items.splice(itemIndex, 1);
+    // Never leave a part with nothing in it at all
+    if (sections[sectionIndex].items.length === 0 && sections.length > 1) sections.splice(sectionIndex, 1);
+    else if (sections[sectionIndex].items.length === 0) sections[sectionIndex].items.push('');
+    renderEditor();
+};
+
+window.addPart = function(kind) {
+    editDraft[draftKey(kind)].push({ title: '', items: [''] });
+    renderEditor();
+};
+
+window.removePart = function(kind, sectionIndex) {
+    const sections = editDraft[draftKey(kind)];
+    if (sections.length <= 1) {
+        // Last part: keep the lines, just drop the heading
+        sections[0].title = '';
+    } else {
+        if (!confirm("Remove this whole part and everything in it?")) return;
+        sections.splice(sectionIndex, 1);
+    }
+    renderEditor();
+};
 
 // Sticky bottom action bar. The Kitchen Tools buttons live far below the
 // ingredient/instruction boxes, so on a phone "Save" was a scroll hunt once
@@ -476,19 +582,55 @@ function exitEditMode() {
     renderRecipeHTML(lastRenderedRecipe || originalRecipeData);
 }
 
-window.saveInlinePersonalization = async function() {
+// Turns the working draft into the fields Firestore stores, dropping blank
+// lines and untitled empty parts left behind while editing.
+function draftToRecipeFields() {
+    const clean = (sections) => sections
+        .map(s => ({ title: (s.title || '').trim(), items: s.items.map(i => i.trim()).filter(Boolean) }))
+        .filter(s => s.items.length > 0);
+
+    const ingSections = clean(editDraft.ingredientSections);
+    const instSections = clean(editDraft.instructionSections);
+
+    const flatten = (sections) => sections.reduce((all, s) => all.concat(s.items), []);
+    // Only persist section structure when it's real — a single untitled
+    // group is just an ordinary recipe.
+    const structured = (sections) => (sections.length > 1 || sections[0]?.title) ? sections : [];
+
+    return {
+        ingredients: flatten(ingSections),
+        recipeIngredient: flatten(ingSections),
+        ingredientSections: structured(ingSections),
+        instructions: flatten(instSections),
+        recipeInstructions: flatten(instSections),
+        instructionSections: structured(instSections),
+        notes: (editDraft.notes || '').trim()
+    };
+}
+
+// Asks what the edit is FOR: just for them, or a fix everyone should get.
+window.saveInlinePersonalization = function() {
+    if (!auth.currentUser) return alert("Please log in.");
+    const modal = document.getElementById('save-choice-modal');
+    if (modal) { modal.classList.remove('hidden'); modal.style.display = 'flex'; }
+};
+
+window.closeSaveChoiceModal = function() {
+    const modal = document.getElementById('save-choice-modal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+};
+
+// "Just for me" — the original private override behaviour.
+window.saveAsPersonal = async function() {
     const user = auth.currentUser;
     if (!user) return alert("Please log in.");
+    closeSaveChoiceModal();
 
-    const ingArray = document.getElementById('edit-ingredients-inline').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const instArray = document.getElementById('edit-instructions-inline').value.split('\n').map(s => s.trim()).filter(Boolean);
-    const notes = document.getElementById('edit-notes-inline').value.trim();
+    const fields = draftToRecipeFields();
 
     try {
         await setDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId), {
-            ingredients: ingArray,
-            instructions: instArray,
-            notes,
+            ...fields,
             updatedAt: serverTimestamp()
         });
 
@@ -496,10 +638,57 @@ window.saveInlinePersonalization = async function() {
         editModeActive = false;
         hideEditModeBar();
         setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
-        renderRecipeHTML({ ...originalRecipeData, ingredients: ingArray, instructions: instArray, notes, isPersonalized: true });
+        renderRecipeHTML({ ...originalRecipeData, ...fields, isPersonalized: true });
     } catch (e) {
         console.error("🔥 [PERSONALIZE] Save failed:", e);
         alert("Could not save your changes: " + e.message);
+    }
+};
+
+// "Suggest for everyone" — files the proposed version for admin approval.
+// It also saves privately, so the person immediately sees their own version
+// while the suggestion is pending rather than watching their edit vanish.
+window.saveAsSuggestion = async function() {
+    const user = auth.currentUser;
+    if (!user) return alert("Please log in.");
+
+    const reason = document.getElementById('suggestion-reason')?.value.trim() || "";
+    closeSaveChoiceModal();
+
+    const fields = draftToRecipeFields();
+
+    try {
+        let suggesterName = user.email ? user.email.split('@')[0] : "Family Member";
+        try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists() && userDoc.data().Name) suggesterName = userDoc.data().Name;
+        } catch (e) { /* fall back to the email-derived name */ }
+
+        await addDoc(collection(db, "recipe_suggestions"), {
+            recipeId,
+            recipeName: (originalRecipeData && (originalRecipeData.name || originalRecipeData.n)) || "Unknown",
+            proposed: fields,
+            reason,
+            suggestedBy: suggesterName,
+            uid: user.uid,
+            status: "pending",
+            createdAt: serverTimestamp()
+        });
+
+        // Keep it applied for them in the meantime
+        await setDoc(doc(db, "users", user.uid, "recipe_overrides", recipeId), {
+            ...fields, updatedAt: serverTimestamp()
+        });
+
+        console.log("📬 [SUGGESTION] Sent for admin review:", recipeId);
+        editModeActive = false;
+        hideEditModeBar();
+        setPersonalizeSlotHtml(PERSONALIZE_BTN_HTML);
+        renderRecipeHTML({ ...originalRecipeData, ...fields, isPersonalized: true });
+        alert("Thanks! Your suggested fix was sent to the Chef.\n\nIn the meantime it's saved as your own version, so you'll keep seeing it.");
+    } catch (e) {
+        console.error("🔥 [SUGGESTION] Failed:", e);
+        alert("Could not send that suggestion: " + e.message);
     }
 };
 
@@ -520,46 +709,6 @@ window.revertPersonalization = async function() {
         alert("Could not revert: " + e.message);
     }
 };
-
-// ==========================================
-// ADMIN TEST MODE
-// Checking that a recipe renders correctly shouldn't inflate its view count
-// or the family leaderboard. While this is on, views and cooks are skipped
-// entirely. It's a per-device localStorage flag, so it can't accidentally
-// affect anyone else.
-// ==========================================
-export function isTestModeOn() {
-    return localStorage.getItem('adminTestMode') === 'true';
-}
-
-window.toggleTestMode = function() {
-    const next = !isTestModeOn();
-    localStorage.setItem('adminTestMode', next);
-    console.log(`🧪 [TEST MODE] ${next ? 'ON — views and cooks will NOT be recorded.' : 'OFF — back to normal tracking.'}`);
-    updateTestModeUi();
-};
-
-function updateTestModeUi() {
-    const on = isTestModeOn();
-    document.querySelectorAll('.js-test-mode-btn').forEach(b => {
-        b.innerText = `🧪 Test Mode: ${on ? 'ON' : 'OFF'}`;
-        b.classList.toggle('cook-mode-active', on);
-    });
-
-    let banner = document.getElementById('test-mode-banner');
-    if (on && !banner) {
-        banner = document.createElement('div');
-        banner.id = 'test-mode-banner';
-        banner.className = 'no-print';
-        banner.style.cssText = `background:#fef3c7; border-bottom:2px solid #f59e0b; color:#92400e;
-            padding:6px 14px; font-size:12px; font-weight:700; text-align:center;
-            position:sticky; top:0; z-index:120;`;
-        banner.innerText = "🧪 Test Mode is ON — views and cooks aren't being counted.";
-        document.body.prepend(banner);
-    } else if (!on && banner) {
-        banner.remove();
-    }
-}
 
 async function logViewToDatabase(recipeData) {
     if (isTestModeOn()) {
@@ -1112,6 +1261,81 @@ window.confirmAddToPlan = async function() {
     }
 }
 
+// --- UNREVIEWED RECIPE WARNING ---
+// Shown once per recipe per session, before the cooking prompt, so nobody
+// starts following an unverified recipe without knowing. Also the easiest
+// place to let someone flag that it's worth reviewing.
+let unreviewedWarningShown = false;
+
+function maybeShowUnreviewedWarning(recipe) {
+    const isReviewed = recipe.r === true || recipe.reviewed === true;
+    if (isReviewed || unreviewedWarningShown) return false;
+
+    const dismissKey = `unreviewed-ack-${recipeId}`;
+    if (sessionStorage.getItem(dismissKey)) return false;
+
+    const modal = document.getElementById('unreviewed-modal');
+    if (!modal) return false;
+
+    unreviewedWarningShown = true;
+    console.log("⚠️ [UNREVIEWED] Warning shown for an unverified recipe.");
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    return true;
+}
+
+window.dismissUnreviewedWarning = function() {
+    const modal = document.getElementById('unreviewed-modal');
+    if (modal) { modal.classList.add('hidden'); modal.style.display = 'none'; }
+    sessionStorage.setItem(`unreviewed-ack-${recipeId}`, 'true');
+    // Chain into the usual "viewing or cooking?" question
+    maybeShowCookPrompt();
+};
+
+// Files the same kind of record the Report Issue button does, so it lands in
+// the admin dashboard's Reported Issues list alongside everything else.
+window.requestRecipeReview = async function() {
+    const btn = document.querySelector('.js-request-review-btn');
+    if (btn) { btn.disabled = true; btn.innerText = "Sending..."; }
+
+    const current = lastRenderedRecipe || originalRecipeData || {};
+
+    try {
+        const user = auth.currentUser;
+        let requesterName = "Guest";
+        let requesterEmail = "No Email";
+
+        if (user) {
+            requesterEmail = user.email || "No Email";
+            requesterName = requesterEmail.split('@')[0];
+            try {
+                const userDoc = await getDoc(doc(db, "users", user.uid));
+                if (userDoc.exists() && userDoc.data().Name) requesterName = userDoc.data().Name;
+            } catch (e) { /* fall back to the email-derived name */ }
+        }
+
+        await addDoc(collection(db, "recipe_reports"), {
+            recipeId: recipeId,
+            recipeName: current.name || current.n || "Unknown",
+            issue: "🙋 Review requested — someone wants this recipe verified.",
+            type: "review_request",
+            userName: requesterName,
+            userEmail: requesterEmail,
+            uid: user ? user.uid : "anonymous",
+            createdAt: serverTimestamp()
+        });
+
+        console.log("🙋 [REVIEW REQUEST] Sent for recipe:", recipeId);
+        alert("Thanks! The Chef has been asked to review this recipe.");
+    } catch (e) {
+        console.error("🔥 [REVIEW REQUEST] Failed:", e);
+        alert("Couldn't send that request — check your connection.");
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerText = "🙋 Ask the Chef to review this"; }
+        dismissUnreviewedWarning();
+    }
+};
+
 // --- VIEWING OR COOKING? PROMPT ---
 // Asked once per page load — if the answer is "cooking it now", automatically
 // records it the same way the "🎉 I Made This!" button does, instead of
@@ -1570,33 +1794,15 @@ window.closeMobileToolsModal = function() {
 // attached, so under login-required security rules it got denied even for
 // a signed-in user (the "works on the second refresh" symptom). Waiting on
 // the first onAuthStateChanged tick closes that race for good.
-// Reveal the admin-only Kitchen Tools (Test Mode) for admins. Uses the same
-// built-in list + role lookup as everywhere else; a non-admin simply never
-// sees the section.
-const ADMIN_UIDS = [
-    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
-    "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
-    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
-];
-
-async function revealAdminToolsIfAdmin(user) {
-    if (!user) return;
-    let isAdmin = ADMIN_UIDS.includes(user.uid);
-    if (!isAdmin) {
-        try {
-            const snap = await getDoc(doc(db, "users", user.uid));
-            isAdmin = snap.exists() && snap.data().role === 'admin';
-        } catch (e) { return; }
-    }
-    if (!isAdmin) return;
-
+// Test Mode is restricted to Adam alone (see canUseTestMode in main.js) —
+// it silently suppresses activity tracking, so it shouldn't be reachable by
+// every admin. The homepage carries the main toggle; this is the
+// convenience copy while you're actually looking at a recipe.
+onAuthStateChanged(auth, (user) => {
+    if (!canUseTestMode(user)) return;
     document.getElementById('admin-tools-slot')?.classList.remove('hidden');
     updateTestModeUi();
-}
-
-onAuthStateChanged(auth, (user) => { if (user) revealAdminToolsIfAdmin(user); });
-updateTestModeUi(); // show the warning banner immediately if it was left on
+});
 
 const authReady = new Promise((resolve) => {
     // Offline there's nothing to wait for — Auth can't reach

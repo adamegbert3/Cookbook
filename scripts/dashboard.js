@@ -5,7 +5,7 @@ import {
     arrayUnion, arrayRemove
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { getSections, hasRealSections } from './recipe-model.js';
+import { getSections, hasRealSections, getEditableText, buildRecipeFields } from './recipe-model.js';
 import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } from './household.js';
 
 // --- CONFIGURATION ---
@@ -73,6 +73,7 @@ async function loadAdminDashboard() {
     loadPendingInvites();
     loadAdminUsersList();
     loadAdminHouseholds();
+    loadSuggestions();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -476,7 +477,7 @@ window.closePersonActivityModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
-async function loadPendingRecipes() {
+window.loadPendingRecipes = async function loadPendingRecipes() {
     const loadingDiv = document.getElementById('loading');
     const listContainer = document.getElementById('pending-list');
     if(!listContainer) return;
@@ -525,21 +526,195 @@ async function loadPendingRecipes() {
                     ${notesHtml}
                     <div class="pending-actions">
                         <button class="btn-approve" onclick="approveRecipe('${doc.id}')">✅ Approve</button>
+                        <button class="btn-toggle" style="flex:1; padding:10px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;" onclick="editPendingRecipe('${doc.id}')">✏️ Edit First</button>
                         <button class="btn-reject" onclick="rejectRecipe('${doc.id}')">❌ Reject</button>
                     </div>
                 </div>`;
         });
         listContainer.innerHTML = html;
     } catch (error) { console.error(error); }
+};
+
+// ==========================================
+// SUGGESTED FIXES FROM FAMILY MEMBERS
+// ==========================================
+window.loadSuggestions = async function() {
+    const listEl = document.getElementById('suggestions-list');
+    if (!listEl) return;
+
+    try {
+        const snap = await getDocs(query(collection(db, "recipe_suggestions"), orderBy("createdAt", "desc")));
+        const pending = [];
+        snap.forEach(d => { const data = d.data(); if (data.status !== 'resolved') pending.push({ id: d.id, ...data }); });
+
+        console.log(`📬 [SUGGESTIONS] ${pending.length} pending.`);
+
+        if (pending.length === 0) {
+            listEl.innerHTML = `<p style="color:#9ca3af; font-size:13px;">No suggested fixes right now. 🎉</p>`;
+            return;
+        }
+
+        listEl.innerHTML = pending.map(s => {
+            const p = s.proposed || {};
+            const ingPreview = (p.ingredients || []).slice(0, 6).join(' · ');
+            const more = (p.ingredients || []).length > 6 ? ` …+${p.ingredients.length - 6} more` : '';
+            return `
+                <div id="suggestion-${s.id}" style="border:1px solid #fde68a; background:#fffbeb; border-radius:8px; padding:12px; margin-bottom:10px;">
+                    <div style="font-weight:800; font-size:14px;">${escapeAttr(s.recipeName || 'Unknown recipe')}</div>
+                    <div style="font-size:11px; color:#92400e; margin-top:2px;">Suggested by ${escapeAttr(s.suggestedBy || 'Someone')}</div>
+                    ${s.reason ? `<div style="margin-top:8px; font-size:13px; background:#fff; border:1px solid #fde68a; border-radius:6px; padding:8px;"><strong>Their note:</strong> ${escapeAttr(s.reason)}</div>` : ''}
+                    <div style="margin-top:8px; font-size:12px; color:#374151;">
+                        <strong>Proposed ingredients:</strong> ${escapeAttr(ingPreview)}${more}
+                    </div>
+                    <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                        <a href="recipe.html?id=${encodeURIComponent(s.recipeId)}" target="_blank" class="btn-action btn-toggle" style="text-decoration:none;">👀 View current</a>
+                        <button onclick="applySuggestion('${s.id}')" class="btn-action" style="background:#16a34a; color:white; font-weight:bold;">✅ Apply to shared recipe</button>
+                        <button onclick="dismissSuggestion('${s.id}')" class="btn-action btn-delete">✖️ Dismiss</button>
+                    </div>
+                </div>`;
+        }).join('');
+    } catch (e) {
+        console.error("🔥 [SUGGESTIONS] Could not load:", e);
+        listEl.innerHTML = `<p style="color:red; font-size:13px;">Could not load suggestions: ${e.message}</p>`;
+    }
+};
+
+window.applySuggestion = async function(id) {
+    if (!confirm("Apply this suggested version to the shared recipe everyone sees?\n\nThe current version is saved to the recipe's history first.")) return;
+
+    try {
+        const sugSnap = await getDoc(doc(db, "recipe_suggestions", id));
+        if (!sugSnap.exists()) return alert("That suggestion no longer exists.");
+        const suggestion = sugSnap.data();
+
+        // Snapshot the current version before overwriting, same as the editor
+        const beforeSnap = await getDoc(doc(db, "recipes", suggestion.recipeId));
+        if (beforeSnap.exists()) {
+            try {
+                await addDoc(collection(db, "recipes", suggestion.recipeId, "history"), {
+                    ...beforeSnap.data(), timestamp: serverTimestamp()
+                });
+            } catch (e) { console.error("Could not snapshot history:", e); }
+        }
+
+        await updateDoc(doc(db, "recipes", suggestion.recipeId), {
+            ...suggestion.proposed,
+            lastUpdated: serverTimestamp()
+        });
+        await updateDoc(doc(db, "recipe_suggestions", id), { status: 'resolved', resolvedAt: serverTimestamp() });
+
+        console.log(`✅ [SUGGESTIONS] Applied to "${suggestion.recipeName}".`);
+        alert("Applied! Remember to hit 'Update Homepage Index' so the change shows in search.");
+        loadSuggestions();
+    } catch (e) {
+        console.error("🔥 [SUGGESTIONS] Apply failed:", e);
+        alert("Could not apply: " + e.message);
+    }
+};
+
+window.dismissSuggestion = async function(id) {
+    if (!confirm("Dismiss this suggestion? The shared recipe stays as it is.")) return;
+    try {
+        await deleteDoc(doc(db, "recipe_suggestions", id));
+        document.getElementById(`suggestion-${id}`)?.remove();
+        console.log("✖️ [SUGGESTIONS] Dismissed.");
+        loadSuggestions();
+    } catch (e) { alert("Could not dismiss: " + e.message); }
+};
+
+// ==========================================
+// EDIT A SUBMISSION BEFORE APPROVING IT
+// Typos and formatting are easiest to fix while it's still in the queue —
+// approving first would briefly publish the unfixed version. The card turns
+// into a form in place; the recipe stays in pending_recipes until you're
+// happy with it.
+// ==========================================
+window.editPendingRecipe = async function(id) {
+    const card = document.getElementById(`card-${id}`);
+    if (!card) return;
+
+    try {
+        const snap = await getDoc(doc(db, "pending_recipes", id));
+        if (!snap.exists()) return alert("That submission no longer exists.");
+        const data = snap.data();
+
+        const categoryOptions = SCAN_CATEGORIES.map(c =>
+            `<option value="${c}" ${((data.tags && data.tags[0]) || data.category) === c ? 'selected' : ''}>${c}</option>`
+        ).join('');
+
+        card.innerHTML = `
+            <div class="pending-header"><h2>✏️ Editing submission</h2></div>
+            <label style="font-size:12px; font-weight:700;">Recipe Name</label>
+            <input type="text" id="pe-name-${id}" value="${escapeAttr(data.name || '')}" style="width:100%; padding:8px; margin:4px 0 10px 0; border:1px solid #ddd; border-radius:6px;">
+
+            <label style="font-size:12px; font-weight:700;">From (Chef)</label>
+            <input type="text" id="pe-author-${id}" value="${escapeAttr(data.author || '')}" style="width:100%; padding:8px; margin:4px 0 10px 0; border:1px solid #ddd; border-radius:6px;">
+
+            <label style="font-size:12px; font-weight:700;">Category</label>
+            <select id="pe-category-${id}" style="width:100%; padding:8px; margin:4px 0 10px 0; border:1px solid #ddd; border-radius:6px;">${categoryOptions}</select>
+
+            <label style="font-size:12px; font-weight:700;">Ingredients <span style="font-weight:400; color:#6b7280;">(one per line — "## Crust" starts a new part)</span></label>
+            <textarea id="pe-ingredients-${id}" rows="8" style="width:100%; padding:8px; margin:4px 0 10px 0; border:1px solid #ddd; border-radius:6px; font-size:13px;">${escapeAttr(getEditableText(data, 'ingredients'))}</textarea>
+
+            <label style="font-size:12px; font-weight:700;">Instructions <span style="font-weight:400; color:#6b7280;">(one step per line)</span></label>
+            <textarea id="pe-instructions-${id}" rows="8" style="width:100%; padding:8px; margin:4px 0 10px 0; border:1px solid #ddd; border-radius:6px; font-size:13px;">${escapeAttr(getEditableText(data, 'instructions'))}</textarea>
+
+            <label style="font-size:12px; font-weight:700;">Notes</label>
+            <textarea id="pe-notes-${id}" rows="2" style="width:100%; padding:8px; margin:4px 0 10px 0; border:1px solid #ddd; border-radius:6px; font-size:13px;">${escapeAttr(data.notes || '')}</textarea>
+
+            <div class="pending-actions">
+                <button class="btn-approve" onclick="savePendingRecipe('${id}', true)">✅ Save &amp; Approve</button>
+                <button class="btn-toggle" style="flex:1; padding:10px; border-radius:8px; font-weight:700; font-size:13px; cursor:pointer;" onclick="savePendingRecipe('${id}', false)">💾 Save, Keep in Queue</button>
+                <button class="btn-reject" onclick="loadPendingRecipes()">✖️ Cancel</button>
+            </div>`;
+    } catch (e) {
+        console.error("🔥 [PENDING] Could not open editor:", e);
+        alert("Could not open that submission: " + e.message);
+    }
+};
+
+// Minimal escape for values placed inside HTML attributes / textareas.
+function escapeAttr(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-window.approveRecipe = async function(id) {
-    if(!confirm("Publish?")) return;
+window.savePendingRecipe = async function(id, thenApprove) {
+    const val = (prefix) => document.getElementById(`pe-${prefix}-${id}`).value;
+
+    const updated = {
+        name: val('name').trim(),
+        author: val('author').trim(),
+        category: val('category'),
+        tags: [val('category')],
+        notes: val('notes').trim(),
+        ...buildRecipeFields(val('ingredients'), 'ingredients'),
+        ...buildRecipeFields(val('instructions'), 'instructions')
+    };
+
+    try {
+        await updateDoc(doc(db, "pending_recipes", id), updated);
+        console.log(`💾 [PENDING] Saved edits to "${updated.name}".`);
+
+        if (thenApprove) {
+            await approveRecipe(id, { skipConfirm: true });
+        } else {
+            loadPendingRecipes();
+        }
+    } catch (e) {
+        console.error("🔥 [PENDING] Save failed:", e);
+        alert("Could not save: " + e.message);
+    }
+};
+
+window.approveRecipe = async function(id, options = {}) {
+    if (!options.skipConfirm && !confirm("Publish this recipe to the cookbook?")) return;
     try {
         const snap = await getDoc(doc(db, "pending_recipes", id));
         await addDoc(collection(db, "recipes"), { ...snap.data(), reviewed: true, createdAt: new Date() });
         await deleteDoc(doc(db, "pending_recipes", id));
-        document.getElementById(`card-${id}`).remove();
+        console.log(`✅ [PENDING] Approved and published "${snap.data().name}".`);
+        document.getElementById(`card-${id}`)?.remove();
     } catch (e) { alert(e.message); }
 };
 window.rejectRecipe = async function(id) {

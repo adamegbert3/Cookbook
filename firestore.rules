@@ -74,6 +74,15 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // --- SUGGESTED RECIPE FIXES ---
+    // Anyone signed in can propose a corrected version of a recipe from the
+    // recipe page; only an admin can read the queue or act on it. Writers
+    // can't read others' suggestions back, same as recipe_reports.
+    match /recipe_suggestions/{suggestionId} {
+      allow create: if isLoggedIn();
+      allow read, update, delete: if isAdmin();
+    }
+
     // --- ANALYTICS: per-recipe views (admin dashboard only) ---
     match /recipe_views/{viewId} {
       allow create: if true;

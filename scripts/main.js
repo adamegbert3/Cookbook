@@ -43,6 +43,72 @@ async function checkIsAdmin(uid) {
 console.log("✅ MAIN.JS LOADED - v19.0 (Multi-Admin)");
 
 // ==========================================
+// TEST MODE (Adam only)
+// Checking that a recipe renders correctly shouldn't inflate its view count
+// or the family leaderboard. While this is on, views and cooks are skipped.
+//
+// Deliberately restricted to ONE uid rather than all admins: it silently
+// stops recording activity, so it should only ever be reachable by the
+// person who maintains the cookbook. Lives here (main.js loads on every
+// page) so it can be switched off from the homepage — previously it only
+// existed on the recipe page, meaning you had to open a recipe just to
+// turn it back off.
+// ==========================================
+const TEST_MODE_UID = "n5aAU1g1tBY04Ut0HnhqegSgZe92"; // Adam
+
+export function isTestModeOn() {
+    return localStorage.getItem('adminTestMode') === 'true';
+}
+
+export function canUseTestMode(user) {
+    return Boolean(user) && user.uid === TEST_MODE_UID;
+}
+
+window.toggleTestMode = function() {
+    if (!canUseTestMode(auth.currentUser)) return;
+    const next = !isTestModeOn();
+    localStorage.setItem('adminTestMode', next);
+    console.log(`🧪 [TEST MODE] ${next ? 'ON — views and cooks will NOT be recorded.' : 'OFF — back to normal tracking.'}`);
+    updateTestModeUi();
+};
+
+export function updateTestModeUi() {
+    const on = isTestModeOn();
+    document.querySelectorAll('.js-test-mode-btn').forEach(b => {
+        b.innerText = `🧪 Test Mode: ${on ? 'ON' : 'OFF'}`;
+        b.classList.toggle('cook-mode-active', on);
+    });
+
+    let banner = document.getElementById('test-mode-banner');
+    if (on && !banner) {
+        banner = document.createElement('div');
+        banner.id = 'test-mode-banner';
+        banner.className = 'no-print';
+        banner.style.cssText = `background:#fef3c7; border-bottom:2px solid #f59e0b; color:#92400e;
+            padding:8px 14px; font-size:12px; font-weight:700; text-align:center;
+            position:sticky; top:0; z-index:200; cursor:pointer;`;
+        banner.title = "Tap to turn Test Mode off";
+        banner.innerHTML = "🧪 Test Mode is ON — views and cooks aren't being counted. <u>Tap to turn off</u>";
+        banner.onclick = () => window.toggleTestMode();
+        document.body.prepend(banner);
+    } else if (!on && banner) {
+        banner.remove();
+    }
+}
+
+// The banner is the always-available off switch: it shows on every page
+// whenever test mode is left on, so it can never get stuck.
+updateTestModeUi();
+
+// Reveals the homepage toggle, for Adam only.
+function setupTestModeToggle(user) {
+    const slot = document.getElementById('test-mode-slot');
+    if (!slot || !canUseTestMode(user)) return;
+    slot.classList.remove('hidden');
+    updateTestModeUi();
+}
+
+// ==========================================
 // OFFLINE RECIPE STORAGE (plain localStorage — no Firestore persistence
 // involved, so it can never block or slow down a live read; see
 // firebase-config.js for why we stopped using enableIndexedDbPersistence)
@@ -180,6 +246,7 @@ onAuthStateChanged(auth, async (user) => {
         loadUserSettings(user);
         loadHomepageMenu(user);
         syncPendingNotes(user);
+        setupTestModeToggle(user);
 
         // 4. Everything below is background work — none of it blocks the
         // recipe list appearing.
