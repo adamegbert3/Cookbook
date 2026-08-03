@@ -252,6 +252,22 @@ async function loadRecipe() {
     } catch (error) {
         console.error("Recipe load failed:", error);
 
+        // Recipes now require a signed-in read. The auth gate below waits
+        // for Firebase to restore the session, but it gives up after a few
+        // seconds so a stalled SDK can't hang the page forever — which means
+        // on a very slow connection we can arrive here unauthenticated and
+        // get permission-denied. Wait properly for auth, then try once more
+        // before falling back to the cached copy.
+        if (error.code === 'permission-denied' && !auth.currentUser && navigator.onLine && !loadRecipe.retried) {
+            loadRecipe.retried = true;
+            console.warn("🔐 [RECIPE] Read denied before sign-in finished — waiting for auth and retrying.");
+            const signedIn = await new Promise((resolve) => {
+                const unsub = onAuthStateChanged(auth, (u) => { if (u) { unsub(); resolve(true); } });
+                setTimeout(() => { unsub(); resolve(false); }, 8000);
+            });
+            if (signedIn) return loadRecipe();
+        }
+
         // Fall back to a locally cached copy if we have one (offline / rules trouble)
         if (renderCachedRecipe(localData, recipeContainer)) return;
 

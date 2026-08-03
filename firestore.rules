@@ -36,19 +36,26 @@ service cloud.firestore {
     // =========================================================
     // COLLECTION RULES
     //
-    // Reads on `recipes`, `global_cooks`, `announcements`, and
-    // `static_assets` are public (not gated on isLoggedIn()) on purpose:
-    // pages fire their first Firestore read as soon as they load, often
-    // before Firebase Auth has finished restoring the signed-in session
-    // from storage. Requiring isLoggedIn() on those reads loses that race
-    // and the page fails to load even for a logged-in user. The site's
-    // own pages already redirect signed-out visitors away, so this isn't
-    // opening anything the app doesn't already show to anyone with a link.
+    // Reads used to be public on `recipes`, `global_cooks`, `announcements`
+    // and `static_assets`. That was a workaround: pages fired their first
+    // Firestore read before Firebase Auth had finished restoring the
+    // session, so requiring a login lost that race and the page failed to
+    // load even for a signed-in user.
+    //
+    // That race is fixed — every read now happens after auth resolves
+    // (loadAllRecipes runs inside onAuthStateChanged; recipePage.js awaits
+    // its authReady promise and retries once on permission-denied;
+    // print.js, leaderboard.js, profile.js and shopping-list.html all gate
+    // on onAuthStateChanged). So these are now properly login-gated.
+    //
+    // ROLLBACK: if anything fails to load with "Missing or insufficient
+    // permissions", set the four `read` rules below back to `if true` and
+    // redeploy — that restores the previous, working-but-public behaviour.
     // =========================================================
 
     // --- RECIPES (the shared, canonical copy everyone sees) ---
     match /recipes/{recipeId} {
-      allow read: if true;
+      allow read: if isLoggedIn();
       allow create, update, delete: if isAdmin();
 
       match /comments/{commentId} {
@@ -120,13 +127,16 @@ service cloud.firestore {
 
     // --- ANNOUNCEMENTS ---
     match /announcements/{docId} {
-      allow read: if true;
+      allow read: if isLoggedIn();
       allow write: if isAdmin();
     }
 
     // --- HOMEPAGE INDEX / STATIC ASSETS ---
+    // This one doc holds every recipe name plus all their ingredients, so
+    // leaving it public exposed the whole cookbook regardless of the
+    // /recipes rule above.
     match /static_assets/{docId} {
-      allow read: if true;
+      allow read: if isLoggedIn();
       allow write: if isAdmin();
     }
 
