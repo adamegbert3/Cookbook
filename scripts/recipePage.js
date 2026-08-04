@@ -851,18 +851,35 @@ function renderRecipeHTML(recipe) {
         ? rawIng.map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
         : rawIng;
 
-    // Renders one ingredient line (scaling/altitude already applied upstream)
-    const ingredientLineHtml = (line) => {
-        const sub = findSubstitution(line);
+    // Applies scaling + altitude, keeping the untouched original alongside so
+    // the conversion can be checked at a glance rather than taken on trust.
+    const adjustLine = (line) => ({
+        text: applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand),
+        original: line
+    });
+
+    const isAdjusted = currentScaleFactor !== 1 || Boolean(currentElevationBand);
+
+    // Renders one ingredient line. `entry` is { text, original }.
+    const ingredientLineHtml = (entry) => {
+        const sub = findSubstitution(entry.text);
         const subHtml = sub ? `<div class="sub-hint no-print">🔄 No ${sub.key}? Try: ${sub.sub}</div>` : '';
-        return `<li>${line}${subHtml}</li>`;
+
+        // Only show the "was" when the line actually changed — plenty of
+        // lines ("Pinch of salt") have no number to scale.
+        const changed = isAdjusted && entry.text !== entry.original;
+        const originalHtml = changed
+            ? `<span class="original-amount" title="Original, unscaled amount">was ${escapeAttrJs(entry.original)}</span>`
+            : '';
+
+        return `<li>${entry.text}${originalHtml}${subHtml}</li>`;
     };
 
     // Multi-part recipes (crust / filling / topping) render each group under
     // its own heading. Everything else falls back to a single flat list.
     const ingSections = getSections(recipe, 'ingredients').map(s => ({
         title: s.title,
-        items: (s.items || []).map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand))
+        items: (s.items || []).map(adjustLine)
     }));
     const ingredientsAreSectioned = hasRealSections(ingSections);
 
@@ -872,8 +889,8 @@ function renderRecipeHTML(recipe) {
             ${s.title ? `<li class="recipe-subsection">${s.title}</li>` : ''}
             ${s.items.map(ingredientLineHtml).join('')}
         `).join('');
-    } else if (Array.isArray(scaledIng)) {
-        ingHtml = scaledIng.map(ingredientLineHtml).join("");
+    } else if (Array.isArray(rawIng)) {
+        ingHtml = rawIng.map(adjustLine).map(ingredientLineHtml).join("");
     } else if (typeof scaledIng === 'string') {
         ingHtml = `<pre>${scaledIng}</pre>`;
     }
@@ -894,6 +911,14 @@ function renderRecipeHTML(recipe) {
         <button class="pill-btn btn-slate scale-btn${currentElevationBand === '3000' ? ' scale-active' : ''}" onclick="setAltitudeBand('3000')">3-5k ft</button>
         <button class="pill-btn btn-slate scale-btn${currentElevationBand === '5000' ? ' scale-active' : ''}" onclick="setAltitudeBand('5000')">5-7k ft</button>
         <button class="pill-btn btn-slate scale-btn${currentElevationBand === '7000' ? ' scale-active' : ''}" onclick="setAltitudeBand('7000')">7k+ ft</button>` : "";
+
+    // Makes it obvious the amounts on screen aren't the ones as written,
+    // and offers a one-tap way back to the original.
+    const scaleBannerHtml = (hasIngredients && currentScaleFactor !== 1) ? `
+        <div class="scale-active-banner no-print">
+            ⚖️ Showing <strong>${currentScaleFactor}×</strong> the original recipe — the amount as written is in grey beside each line.
+            <button onclick="setRecipeScale(1)" class="pill-btn btn-slate" style="padding:3px 10px; font-size:0.7rem; margin-left:8px;">Reset to 1×</button>
+        </div>` : "";
 
     // The advisory banner stays with the ingredient list since it explains
     // the 🏔️ marks that show up right there.
@@ -952,6 +977,7 @@ function renderRecipeHTML(recipe) {
         <hr class="recipe-divider">
         <h3 class="section-header">Ingredients</h3>
         <p class="no-print" style="font-size:12px; color:#94a3b8; font-style:italic;">(Tap to cross out)</p>
+        ${scaleBannerHtml}
         ${altitudeBannerHtml}
         <ul id="ingredient-list" class="${showSubstitutions ? '' : 'hide-substitutions'}">${ingHtml}</ul>
 
@@ -978,6 +1004,27 @@ function renderRecipeHTML(recipe) {
 
     // Trigger Mobile Tools layout setup
     setupMobileKitchenTools();
+
+    // The mobile tools sheet is built from CLONES of the inline buttons,
+    // taken at the moment it opens. So tapping "2x" in the sheet updated the
+    // real (hidden) button but left the clone showing the old highlight —
+    // you had to close the sheet and reopen it to see which option was
+    // actually selected. Re-clone in place if it's open, keeping the scroll
+    // position so the sheet doesn't jump under your finger.
+    refreshMobileToolsIfOpen();
+}
+
+function refreshMobileToolsIfOpen() {
+    const modal = document.getElementById('mobile-tools-modal');
+    if (!modal || modal.style.display !== 'flex') return;
+
+    const content = document.getElementById('mobile-tools-content');
+    const scrollTop = content ? content.scrollTop : 0;
+
+    openMobileToolsModal();
+
+    const refreshed = document.getElementById('mobile-tools-content');
+    if (refreshed) refreshed.scrollTop = scrollTop;
 }
 
 // ==========================================

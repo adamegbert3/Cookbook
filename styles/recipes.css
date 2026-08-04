@@ -664,6 +664,33 @@ input:checked + .slider:before {
     margin: 14px 0 6px 0;
 }
 
+/* The untouched original amount, shown beside a scaled/altitude-adjusted
+   ingredient so the conversion can be sanity-checked at a glance */
+.original-amount {
+    display: inline-block;
+    margin-left: 8px;
+    font-size: 0.75rem;
+    font-style: italic;
+    color: #94a3b8;
+    white-space: nowrap;
+}
+.original-amount::before { content: "("; }
+.original-amount::after { content: ")"; }
+
+/* Banner above the ingredient list while a scale factor is active */
+.scale-active-banner {
+    background: #ecfeff;
+    border: 1px solid #67e8f9;
+    color: #155e75;
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin: 10px 0;
+    font-size: 0.8rem;
+    text-align: center;
+    font-weight: 600;
+}
+[data-theme="dark"] .scale-active-banner { background: #164e63; color: #a5f3fc; border-color: #0e7490; }
+
 /* Recipe scale (0.5x/1x/2x/3x) and altitude buttons */
 .scale-btn { padding: 6px 14px; font-size: 0.8rem; opacity: 0.65; }
 .scale-btn.scale-active { opacity: 1; background: var(--accent-teal); color: white; }
