@@ -311,7 +311,7 @@ async function loadAnalytics(allRecipes) {
 
         snapshot.forEach(docSnap => {
             const data = docSnap.data();
-            viewDocs.push(data);
+            viewDocs.push({ id: docSnap.id, ...data });
             const title = data.recipeTitle || "Unknown Recipe";
             viewCounts[title] = (viewCounts[title] || 0) + 1;
         });
@@ -344,13 +344,13 @@ async function renderActivityRoster(viewDocs, allRecipes) {
     let cookDocs = [];
     try {
         const cookSnap = await getDocs(query(collection(db, "global_cooks"), orderBy("timestamp", "desc"), limit(currentActivityLimit)));
-        cookSnap.forEach(d => cookDocs.push(d.data()));
+        cookSnap.forEach(d => cookDocs.push({ id: d.id, ...d.data() }));
     } catch (e) { console.error("Could not load cook history for the activity roster:", e); }
 
     let visitDocs = [];
     try {
         const visitSnap = await getDocs(query(collection(db, "site_visits_log"), orderBy("timestamp", "desc"), limit(currentActivityLimit)));
-        visitSnap.forEach(d => visitDocs.push(d.data()));
+        visitSnap.forEach(d => visitDocs.push({ id: d.id, ...d.data() }));
     } catch (e) { console.error("Could not load site-visit history for the activity roster:", e); }
 
     // Current names, straight from the profiles. Each activity record stores
@@ -465,17 +465,86 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         }
         const timeStr = lastActivityTs ? tsToStr(lastActivityTs) : "";
 
+        // Anyone keyed by name rather than uid has activity that was saved
+        // without an account attached, so it can never be resolved
+        // automatically — that's the stray "Family Member". Offer to hand it
+        // to the right person instead.
+        const isUnattributed = p.key.startsWith('name:');
+
         return `
-            <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; cursor: pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-                    <strong>${p.name}</strong>
+            <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">
+                    <strong>${p.name}${isUnattributed ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· not linked to an account</span>' : ''}</strong>
                     <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'} · ${p.visits.length} visit${p.visits.length === 1 ? '' : 's'}</span>
                 </div>
-                <div style="color: #6b7280; margin-top: 2px;">${lastActivityText}</div>
+                <div style="color: #6b7280; margin-top: 2px; cursor:pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">${lastActivityText}</div>
                 <div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>
+                ${isUnattributed ? `
+                    <button onclick="reassignActivity('${p.key.replace(/'/g, "\\'")}')"
+                            style="margin-top:8px; background:#4f46e5; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                        🔗 Assign to a person
+                    </button>` : ''}
             </div>`;
     }).join('');
 }
+
+// Permanently attaches orphaned activity to a real account.
+//
+// Records written before sign-in had resolved were saved with no uid, so
+// there's nothing to look their owner up by — they show as a phantom person
+// (the "Family Member" with 19 cooks). This writes the chosen account's uid
+// and name onto every one of those records, so they merge into that person
+// from then on, here and on the leaderboard.
+window.reassignActivity = async function(key) {
+    const person = personActivityMap[key];
+    if (!person) return;
+
+    let users = [];
+    try {
+        const snap = await getDocs(collection(db, "users"));
+        snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
+        users.sort((a, b) => (a.Name || a.email || "").localeCompare(b.Name || b.email || ""));
+    } catch (e) {
+        return alert("Could not load the list of people: " + e.message);
+    }
+
+    const menu = users.map((u, i) => `${i + 1}. ${u.Name || u.email || u.uid}`).join('\n');
+    const total = person.views.length + person.cooks.length + person.visits.length;
+    const answer = prompt(
+        `Who does this activity belong to?\n\n"${person.name}" — ${person.cooks.length} cooks, ${person.views.length} views, ${person.visits.length} visits (${total} records)\n\nType the number:\n\n${menu}`
+    );
+    if (!answer) return;
+
+    const choice = users[parseInt(answer, 10) - 1];
+    if (!choice) return alert("That wasn't one of the numbers listed.");
+
+    const name = choice.Name || choice.email || "Family Member";
+    if (!confirm(`Reassign all ${total} record(s) from "${person.name}" to ${name}?\n\nThis updates the records permanently.`)) return;
+
+    console.log(`🔗 [ACTIVITY] Reassigning ${total} record(s) to ${name} (${choice.uid})...`);
+
+    let done = 0, failed = 0;
+    const patch = async (path, id, fields) => {
+        try {
+            await updateDoc(doc(db, path, id), fields);
+            done++;
+        } catch (e) {
+            failed++;
+            console.error(`Could not update ${path}/${id}:`, e.message);
+        }
+    };
+
+    for (const v of person.views)  await patch("recipe_views",    v.id, { uid: choice.uid, viewer: name });
+    for (const c of person.cooks)  await patch("global_cooks",    c.id, { uid: choice.uid, chef: name });
+    for (const s of person.visits) await patch("site_visits_log", s.id, { uid: choice.uid, viewerName: name });
+
+    console.log(`✅ [ACTIVITY] Reassigned ${done} record(s)${failed ? `, ${failed} failed` : ''}.`);
+    alert(failed
+        ? `Reassigned ${done} record(s). ${failed} couldn't be updated — check the console.`
+        : `Done — all ${done} record(s) now belong to ${name}.`);
+
+    loadAdminDashboard();
+};
 
 window.openPersonActivity = function(key) {
     const person = personActivityMap[key];
