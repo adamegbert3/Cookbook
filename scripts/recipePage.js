@@ -1462,20 +1462,30 @@ window.recordCook = async function() {
     if(btn) btn.innerText = "🎉 Yay!";
 
     try {
-        const user = auth.currentUser;
-        let chefName = "Guest";
-        let uid = null;
+        // Wait for sign-in rather than writing an unattributed record. The
+        // page can start before auth has restored (there's a timeout on the
+        // auth gate so a stalled SDK can't hang it), and a cook saved in
+        // that window used to land with no uid and the generic "Family
+        // Member" name — surfacing later as a phantom person in the admin
+        // Activity list who couldn't be traced back to anyone.
+        const user = auth.currentUser || await new Promise((resolve) => {
+            const unsub = onAuthStateChanged(auth, (u) => { if (u) { unsub(); resolve(u); } });
+            setTimeout(() => { unsub(); resolve(null); }, 5000);
+        });
 
-        if (user) {
-            uid = user.uid;
-            chefName = user.displayName || (user.email ? user.email.split('@')[0] : "Family Member");
-            try {
-                const userDoc = await getDoc(doc(db, "users", user.uid));
-                if (userDoc.exists() && userDoc.data().Name) {
-                    chefName = userDoc.data().Name;
-                }
-            } catch (err) { console.log("Could not fetch profile name for cook record"); }
+        if (!user) {
+            console.warn("🎉 [COOK] Counted on this device, but not signed in — not added to the leaderboard.");
+            return;
         }
+
+        const uid = user.uid;
+        let chefName = user.displayName || (user.email ? user.email.split('@')[0] : "Family Member");
+        try {
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists() && userDoc.data().Name) {
+                chefName = userDoc.data().Name;
+            }
+        } catch (err) { console.log("Could not fetch profile name for cook record"); }
 
         const cookRef = await addDoc(collection(db, "global_cooks"), {
             recipeId: recipeId,

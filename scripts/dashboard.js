@@ -353,6 +353,22 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         visitSnap.forEach(d => visitDocs.push(d.data()));
     } catch (e) { console.error("Could not load site-visit history for the activity roster:", e); }
 
+    // Current names, straight from the profiles. Each activity record stores
+    // whatever name was resolvable at the moment it was written, so a record
+    // saved before the profile loaded (or while offline) got stuck with the
+    // "Family Member" fallback forever — showing up as a phantom extra
+    // person in this list. The profile is the authority, so we look the name
+    // up live rather than trusting the copy frozen into the record.
+    const nameByUid = {};
+    try {
+        const usersSnap = await getDocs(collection(db, "users"));
+        usersSnap.forEach(u => {
+            const data = u.data();
+            const name = data.Name || (data.email || '').split('@')[0];
+            if (name) nameByUid[u.id] = name;
+        });
+    } catch (e) { console.error("Could not load profiles for the activity roster:", e); }
+
     // Group per person.
     //
     // The tricky part: `uid` was only added to recipe_views recently, so one
@@ -398,6 +414,21 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         if (!people[key]) people[key] = { key, name: v.viewerName || "Family Member", views: [], cooks: [], visits: [] };
         if (v.viewerName) people[key].name = v.viewerName;
         people[key].visits.push(v);
+    });
+
+    // The profile wins over whatever name was frozen into the record. This
+    // is what turns a stray "Family Member" row back into the real person —
+    // and folds their history into that person's existing row rather than
+    // leaving it stranded as a separate entry.
+    Object.values(people).forEach(p => {
+        const liveName = nameByUid[p.key]; // p.key is the uid for anyone signed in
+        if (liveName && liveName !== p.name) {
+            console.log(`🕵️‍♀️ [ACTIVITY] Re-attributed "${p.name}" → "${liveName}" from their profile.`);
+            p.name = liveName;
+        } else if (!liveName && !p.key.startsWith('name:')) {
+            // Has a uid, but no matching profile — a deleted account.
+            p.name = `${p.name} (account removed)`;
+        }
     });
 
     const roster = Object.values(people).map(p => {

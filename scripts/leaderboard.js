@@ -17,6 +17,20 @@ async function loadLeaderboard() {
     console.log("🏆 [LEADERBOARD] Loading global_cooks...");
 
     try {
+        // Names come from the live profiles, not the copy frozen into each
+        // cook record — a record written before the profile loaded got stuck
+        // with the generic "Family Member" fallback and would otherwise show
+        // up here as a stranger.
+        const nameByUid = {};
+        try {
+            const usersSnap = await getDocs(collection(db, "users"));
+            usersSnap.forEach(u => {
+                const data = u.data();
+                const name = data.Name || (data.email || '').split('@')[0];
+                if (name) nameByUid[u.id] = name;
+            });
+        } catch (e) { console.warn("Could not load profiles for the leaderboard:", e.message); }
+
         const snap = await getDocs(collection(db, "global_cooks"));
         const byUser = {}; // uid -> { name, recipeIds: Set }
 
@@ -24,8 +38,9 @@ async function loadLeaderboard() {
             const data = docSnap.data();
             if (!data.uid) return; // Skip guest/unattributed cooks logged before per-user tracking existed
 
-            if (!byUser[data.uid]) byUser[data.uid] = { name: data.chef || "Family Member", recipeIds: new Set() };
-            if (data.chef) byUser[data.uid].name = data.chef;
+            if (!byUser[data.uid]) byUser[data.uid] = { name: "Family Member", recipeIds: new Set() };
+            // Profile first, then whatever the record stored.
+            byUser[data.uid].name = nameByUid[data.uid] || data.chef || byUser[data.uid].name;
             if (data.recipeId) byUser[data.uid].recipeIds.add(data.recipeId);
         });
 
