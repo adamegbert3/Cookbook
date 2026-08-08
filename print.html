@@ -55,8 +55,29 @@
         .book-toc { page-break-after: always; padding: 40px; }
         .book-toc h2 { font-size: 2.6rem; text-align: center; margin-bottom: 30px; }
         .book-toc-category { font-weight: 800; margin: 18px 0 6px 0; font-size: 1.05rem; border-bottom: 1px solid #ccc; padding-bottom: 4px; }
-        .book-toc-item { font-size: 0.92rem; padding: 2px 0 2px 14px; display: flex; justify-content: space-between; gap: 10px; }
+        /* Contents row: name … author … page, with dotted leaders that
+           stretch to fill whatever space is left */
+        .book-toc-item { font-size: 0.92rem; padding: 3px 0 3px 14px; display: flex; align-items: baseline; gap: 6px; }
+        .book-toc-item .toc-name { white-space: nowrap; }
+        .book-toc-item .toc-dots {
+            flex: 1;
+            border-bottom: 1px dotted currentColor;
+            opacity: 0.3;
+            transform: translateY(-3px);
+            min-width: 12px;
+        }
         .book-toc-item .toc-author { opacity: 0.55; font-style: italic; white-space: nowrap; }
+        .book-toc-item .toc-page { font-weight: 700; min-width: 1.6em; text-align: right; white-space: nowrap; }
+
+        /* Page number on each recipe page */
+        .page-number {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            font-size: 0.8rem;
+            opacity: 0.5;
+        }
+        .print-recipe-block { position: relative; padding-bottom: 26px; }
 
         /* Only break AFTER — the preceding element (contents page, or the
            previous recipe block) already breaks after itself, so adding
