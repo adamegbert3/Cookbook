@@ -304,6 +304,13 @@ let personActivityMap = {};
 // whole family rather than only people who already have activity.
 let knownUsers = [];
 
+// Names the app wrote when it couldn't identify anyone (see the note in
+// renderActivityRoster). Module-level so reassignActivity can warn too.
+const PLACEHOLDER_ACTIVITY_NAMES = ['family member', 'guest', 'unknown', ''];
+function isPlaceholderName(name) {
+    return PLACEHOLDER_ACTIVITY_NAMES.includes(String(name || '').trim().toLowerCase());
+}
+
 async function loadAnalytics(allRecipes) {
     const leaderboardList = document.getElementById('leaderboard-list');
     try {
@@ -371,6 +378,17 @@ async function renderActivityRoster(viewDocs, allRecipes) {
     } catch (e) { console.error("Could not load profiles for the activity roster:", e); }
 
     const normalize = (name) => String(name || "").trim().toLowerCase();
+
+    // Placeholder names the app itself wrote when it couldn't identify
+    // anyone. The original recordCook (Dec 2025) used
+    //   chef: user.displayName || "Family Member"
+    // and Firebase leaves displayName null on email/password accounts unless
+    // it's explicitly set — so EVERY signed-in person was recorded as
+    // "Family Member". These rows therefore represent many different people
+    // mixed together, not one person, and can never be assigned to somebody
+    // without inventing history.
+    const PLACEHOLDER_NAMES = ['family member', 'guest', 'unknown', ''];
+    const isPlaceholder = (name) => PLACEHOLDER_NAMES.includes(normalize(name));
 
     const nameByUid = {};
     const uidByName = {};
@@ -468,22 +486,84 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         const safeKey = p.key.replace(/'/g, "\\'");
         const isIdle = p.lastActivityMillis === 0;
 
+        // A placeholder row isn't a person at all — it's whatever the app
+        // couldn't identify, from many people at once. Say so, rather than
+        // presenting "Family Member" as though someone by that name exists.
+        const legacy = isOrphan && isPlaceholder(p.name);
+        const displayName = legacy ? "Unidentified (older records)" : escapeAttr(p.name);
+
+        let actionsHtml = '';
+        if (legacy) {
+            actionsHtml = `
+                <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:8px 10px; margin-top:8px; font-size:11px; color:#6b7280;">
+                    The app didn't record who did these — it saved everyone under one placeholder name,
+                    so they're from several different people. They can't be traced back to anyone.
+                    <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+                        <button onclick="deleteOrphanActivity('${safeKey}')"
+                                style="background:#dc2626; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                            🗑️ Delete these ${p.unlinked.length} record(s)
+                        </button>
+                        <button onclick="reassignActivity('${safeKey}')"
+                                style="background:white; color:#4f46e5; border:1px solid #c7d2fe; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                            Assign anyway
+                        </button>
+                    </div>
+                </div>`;
+        } else if (p.unlinked.length > 0) {
+            actionsHtml = `
+                <button onclick="reassignActivity('${safeKey}')"
+                        style="margin-top:8px; background:${isOrphan ? '#4f46e5' : '#f59e0b'}; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                    ${isOrphan ? '🔗 Assign to a person' : `🔗 Link ${p.unlinked.length} record(s) to ${escapeAttr(p.name)}`}
+                </button>`;
+        }
+
         return `
             <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; ${isIdle ? 'opacity:0.6;' : ''}">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">
-                    <strong>${escapeAttr(p.name)}${isOrphan ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}</strong>
+                    <strong style="${legacy ? 'color:#6b7280; font-style:italic;' : ''}">${displayName}${isOrphan && !legacy ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}</strong>
                     <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'} · ${p.visits.length} visit${p.visits.length === 1 ? '' : 's'}</span>
                 </div>
                 <div style="color: #6b7280; margin-top: 2px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">${lastActivityText}</div>
                 ${timeStr ? `<div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>` : ''}
-                ${p.unlinked.length > 0 ? `
-                    <button onclick="reassignActivity('${safeKey}')"
-                            style="margin-top:8px; background:${isOrphan ? '#4f46e5' : '#f59e0b'}; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
-                        ${isOrphan ? '🔗 Assign to a person' : `🔗 Link ${p.unlinked.length} record(s) to ${escapeAttr(p.name)}`}
-                    </button>` : ''}
+                ${actionsHtml}
             </div>`;
     }).join('')}`;
 }
+
+// Clears activity that can never be attributed to anyone.
+window.deleteOrphanActivity = async function(key) {
+    const person = personActivityMap[key];
+    if (!person) return;
+
+    const cooks = person.cooks.length;
+    const total = person.unlinked.length;
+
+    if (!confirm(
+        `Delete ${total} unidentified record(s)?\n\n` +
+        (cooks ? `This removes ${cooks} cook(s) from the "Total Meals Cooked" count — they were real meals, just with no record of who made them.\n\n` : '') +
+        `This can't be undone.`
+    )) return;
+
+    console.log(`🗑️ [ACTIVITY] Deleting ${total} unidentified record(s)...`);
+
+    let done = 0, failed = 0;
+    for (const rec of person.unlinked) {
+        try {
+            await deleteDoc(doc(db, rec.collectionPath, rec.id));
+            done++;
+        } catch (e) {
+            failed++;
+            console.error(`Could not delete ${rec.collectionPath}/${rec.id}:`, e.message);
+        }
+    }
+
+    console.log(`✅ [ACTIVITY] Deleted ${done} record(s)${failed ? `, ${failed} failed` : ''}.`);
+    alert(failed
+        ? `Deleted ${done}. ${failed} couldn't be removed — check the console.`
+        : `Removed ${done} unidentified record(s).`);
+
+    loadAdminDashboard();
+};
 
 // Permanently attaches records that were saved without a uid to a real
 // account, so they stop being anonymous — here and on the leaderboard,
@@ -496,6 +576,15 @@ window.reassignActivity = async function(key) {
     let target;
 
     if (isOrphan) {
+        // A placeholder row is several people's activity merged under one
+        // meaningless name, so handing it to a single person credits them
+        // with meals other people cooked. Allowed, but not silently.
+        if (isPlaceholderName(person.name) && !confirm(
+            `Heads up: these ${person.unlinked.length} record(s) were saved under a placeholder name, ` +
+            `so they're probably from SEVERAL different people.\n\n` +
+            `Assigning them all to one person will credit them with meals others cooked. Continue anyway?`
+        )) return;
+
         // Nothing matched by name — ask who it belongs to.
         target = await pickPerson(person);
         if (!target) return;

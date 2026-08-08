@@ -97,9 +97,9 @@ service cloud.firestore {
     match /recipe_views/{viewId} {
       allow create: if isLoggedIn();
       allow read: if isAdmin();
-      // Admins can re-attribute historical records that were saved before
-      // per-user tracking existed (see reassignActivity in dashboard.js).
-      allow update: if isAdmin();
+      // Admins can re-attribute or clear historical records that were saved
+      // before per-user tracking existed (see dashboard.js).
+      allow update, delete: if isAdmin();
     }
 
     // --- ANALYTICS: site-wide daily visits (admin dashboard only) ---
@@ -115,6 +115,7 @@ service cloud.firestore {
       // Your own row, or an admin re-attributing an orphaned record.
       allow update: if isAdmin()
                     || (isLoggedIn() && request.resource.data.uid == request.auth.uid);
+      allow delete: if isAdmin();
       allow read: if isAdmin();
     }
 
