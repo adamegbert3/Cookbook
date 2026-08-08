@@ -416,6 +416,15 @@
 
     <a href="index.html" id="floating-back-btn">← Cookbook</a>
 
+    <div id="person-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1100;">
+        <div style="background: white; padding: 22px; border-radius: 10px; width: 420px; max-width: 92%; max-height: 82vh; display: flex; flex-direction: column;">
+            <h2 style="margin: 0 0 6px 0; font-size: 1.15rem;">🔗 Who does this belong to?</h2>
+            <p id="person-picker-summary" style="font-size: 12px; color: #6b7280; margin: 0 0 12px 0;"></p>
+            <div id="person-picker-list" style="overflow-y: auto; flex: 1; margin: 0 -4px; padding: 0 4px;"></div>
+            <button id="person-picker-cancel" style="margin-top: 14px; width: 100%; padding: 10px; border: none; background: #f3f4f6; border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
+        </div>
+    </div>
+
     <div id="person-activity-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
         <div style="background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
             <h2 id="person-activity-title" style="margin: 0 0 15px 0;">🕵️‍♀️ Activity</h2>

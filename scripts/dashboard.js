@@ -300,6 +300,10 @@ function tsToStr(ts) {
 // read by openPersonActivity when a roster row is clicked.
 let personActivityMap = {};
 
+// Every account, loaded with the roster so the person picker can offer the
+// whole family rather than only people who already have activity.
+let knownUsers = [];
+
 async function loadAnalytics(allRecipes) {
     const leaderboardList = document.getElementById('leaderboard-list');
     try {
@@ -353,82 +357,62 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         visitSnap.forEach(d => visitDocs.push({ id: d.id, ...d.data() }));
     } catch (e) { console.error("Could not load site-visit history for the activity roster:", e); }
 
-    // Current names, straight from the profiles. Each activity record stores
-    // whatever name was resolvable at the moment it was written, so a record
-    // saved before the profile loaded (or while offline) got stuck with the
-    // "Family Member" fallback forever — showing up as a phantom extra
-    // person in this list. The profile is the authority, so we look the name
-    // up live rather than trusting the copy frozen into the record.
-    const nameByUid = {};
+    // Everyone with an account, so the roster is a full family list rather
+    // than only whoever happens to have activity. People who've never opened
+    // a recipe still get a row saying so.
+    knownUsers = [];
     try {
         const usersSnap = await getDocs(collection(db, "users"));
         usersSnap.forEach(u => {
             const data = u.data();
-            const name = data.Name || (data.email || '').split('@')[0];
-            if (name) nameByUid[u.id] = name;
+            knownUsers.push({ uid: u.id, name: data.Name || (data.email || '').split('@')[0] || u.id });
         });
+        knownUsers.sort((a, b) => a.name.localeCompare(b.name));
     } catch (e) { console.error("Could not load profiles for the activity roster:", e); }
 
-    // Group per person.
-    //
-    // The tricky part: `uid` was only added to recipe_views recently, so one
-    // person's history is a mix of newer records that HAVE a uid and older
-    // ones that only have a display name. Keying naively on `uid || name`
-    // therefore split the same person into two rows — which is exactly the
-    // "some people are on there multiple times" problem.
-    //
-    // So: first learn every name→uid pairing from the records that do carry
-    // a uid, then use that to attach the older name-only records to the same
-    // person instead of stranding them in their own row.
     const normalize = (name) => String(name || "").trim().toLowerCase();
-    const nameToUid = {};
-    const learnName = (uid, name) => {
-        if (uid && normalize(name)) nameToUid[normalize(name)] = uid;
-    };
 
-    viewDocs.forEach(v => learnName(v.uid, v.viewer));
-    cookDocs.forEach(c => learnName(c.uid, c.chef));
-    visitDocs.forEach(v => learnName(v.uid, v.viewerName));
+    const nameByUid = {};
+    const uidByName = {};
+    knownUsers.forEach(u => {
+        nameByUid[u.uid] = u.name;
+        uidByName[normalize(u.name)] = u.uid;
+    });
 
-    const personKey = (uid, name) =>
-        uid || nameToUid[normalize(name)] || `name:${normalize(name) || "guest"}`;
+    // `uid` was only added to activity records partway through the project,
+    // so older ones store just a display name. Those can still be matched
+    // confidently when that name belongs to exactly one profile — which is
+    // what folds "Kristen Simpson viewed X" back into Kristen's row instead
+    // of stranding it as a separate phantom person. Generic fallback names
+    // like "Family Member" match nobody and stay unattributed on purpose.
+    const resolveKey = (uid, name) =>
+        uid || uidByName[normalize(name)] || `name:${normalize(name) || "guest"}`;
 
     const people = {};
 
-    viewDocs.forEach(v => {
-        const key = personKey(v.uid, v.viewer);
-        if (!people[key]) people[key] = { key, name: v.viewer || "Guest", views: [], cooks: [], visits: [] };
-        if (v.viewer) people[key].name = v.viewer;
-        people[key].views.push(v);
+    // Seed with every account first
+    knownUsers.forEach(u => {
+        people[u.uid] = { key: u.uid, name: u.name, views: [], cooks: [], visits: [], unlinked: [] };
     });
 
-    cookDocs.forEach(c => {
-        const key = personKey(c.uid, c.chef);
-        if (!people[key]) people[key] = { key, name: c.chef || "Family Member", views: [], cooks: [], visits: [] };
-        if (c.chef) people[key].name = c.chef;
-        people[key].cooks.push(c);
-    });
-
-    visitDocs.forEach(v => {
-        const key = personKey(v.uid, v.viewerName);
-        if (!people[key]) people[key] = { key, name: v.viewerName || "Family Member", views: [], cooks: [], visits: [] };
-        if (v.viewerName) people[key].name = v.viewerName;
-        people[key].visits.push(v);
-    });
-
-    // The profile wins over whatever name was frozen into the record. This
-    // is what turns a stray "Family Member" row back into the real person —
-    // and folds their history into that person's existing row rather than
-    // leaving it stranded as a separate entry.
-    Object.values(people).forEach(p => {
-        const liveName = nameByUid[p.key]; // p.key is the uid for anyone signed in
-        if (liveName && liveName !== p.name) {
-            console.log(`🕵️‍♀️ [ACTIVITY] Re-attributed "${p.name}" → "${liveName}" from their profile.`);
-            p.name = liveName;
-        } else if (!liveName && !p.key.startsWith('name:')) {
-            // Has a uid, but no matching profile — a deleted account.
-            p.name = `${p.name} (account removed)`;
+    const addRecord = (bucket, record, uid, name, collectionPath, nameField) => {
+        const key = resolveKey(uid, name);
+        if (!people[key]) {
+            people[key] = { key, name: name || "Unknown", views: [], cooks: [], visits: [], unlinked: [] };
         }
+        if (!uid && nameByUid[key]) people[key].name = nameByUid[key];
+        people[key][bucket].push(record);
+        // Track records that carry no uid so they can be linked permanently
+        if (!uid) people[key].unlinked.push({ id: record.id, collectionPath, nameField });
+    };
+
+    viewDocs.forEach(v  => addRecord('views',  v, v.uid, v.viewer,     "recipe_views",    "viewer"));
+    cookDocs.forEach(c  => addRecord('cooks',  c, c.uid, c.chef,       "global_cooks",    "chef"));
+    visitDocs.forEach(v => addRecord('visits', v, v.uid, v.viewerName, "site_visits_log", "viewerName"));
+
+    // A profile name always beats the copy frozen into a record
+    Object.values(people).forEach(p => {
+        if (nameByUid[p.key]) p.name = nameByUid[p.key];
     });
 
     const roster = Object.values(people).map(p => {
@@ -436,7 +420,11 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         const lastCookMillis = p.cooks[0] ? tsToMillis(p.cooks[0].timestamp) : 0;
         const lastVisitMillis = p.visits[0] ? tsToMillis(p.visits[0].timestamp) : 0;
         return { ...p, lastViewMillis, lastCookMillis, lastVisitMillis, lastActivityMillis: Math.max(lastViewMillis, lastCookMillis, lastVisitMillis) };
-    }).sort((a, b) => b.lastActivityMillis - a.lastActivityMillis);
+    }).sort((a, b) => {
+        // Most recently active first, then everyone else alphabetically
+        if (b.lastActivityMillis !== a.lastActivityMillis) return b.lastActivityMillis - a.lastActivityMillis;
+        return a.name.localeCompare(b.name);
+    });
 
     personActivityMap = {};
     roster.forEach(p => { personActivityMap[p.key] = p; });
@@ -446,8 +434,20 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         return;
     }
 
-    activityList.innerHTML = roster.map(p => {
-        let lastActivityText = "No recent activity";
+    const unlinkedTotal = roster.reduce((n, p) => n + p.unlinked.length, 0);
+    const orphanRows = roster.filter(p => p.key.startsWith('name:')).length;
+
+    activityList.innerHTML = `
+        ${unlinkedTotal > 0 ? `
+            <div style="background:#fffbeb; border:1px solid #fcd34d; border-radius:6px; padding:10px; font-size:12px; color:#92400e; margin-bottom:10px;">
+                <strong>${unlinkedTotal} record(s) aren't linked to an account.</strong>
+                They were saved before the cookbook recorded who did what. Matching names have been
+                grouped with the right person below — tap <strong>Link</strong> to make that permanent
+                (which also credits them on the leaderboard).
+                ${orphanRows > 0 ? `<br>${orphanRows} row(s) couldn't be matched to anyone and need assigning by hand.` : ''}
+            </div>` : ''}
+        ${roster.map(p => {
+        let lastActivityText = "No activity yet";
         let lastActivityTs = null;
 
         if (p.lastActivityMillis > 0) {
@@ -464,87 +464,107 @@ async function renderActivityRoster(viewDocs, allRecipes) {
             }
         }
         const timeStr = lastActivityTs ? tsToStr(lastActivityTs) : "";
-
-        // Anyone keyed by name rather than uid has activity that was saved
-        // without an account attached, so it can never be resolved
-        // automatically — that's the stray "Family Member". Offer to hand it
-        // to the right person instead.
-        const isUnattributed = p.key.startsWith('name:');
+        const isOrphan = p.key.startsWith('name:');
+        const safeKey = p.key.replace(/'/g, "\\'");
+        const isIdle = p.lastActivityMillis === 0;
 
         return `
-            <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">
-                    <strong>${p.name}${isUnattributed ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· not linked to an account</span>' : ''}</strong>
+            <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; ${isIdle ? 'opacity:0.6;' : ''}">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">
+                    <strong>${escapeAttr(p.name)}${isOrphan ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}</strong>
                     <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'} · ${p.visits.length} visit${p.visits.length === 1 ? '' : 's'}</span>
                 </div>
-                <div style="color: #6b7280; margin-top: 2px; cursor:pointer;" onclick="openPersonActivity('${p.key.replace(/'/g, "\\'")}')">${lastActivityText}</div>
-                <div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>
-                ${isUnattributed ? `
-                    <button onclick="reassignActivity('${p.key.replace(/'/g, "\\'")}')"
-                            style="margin-top:8px; background:#4f46e5; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
-                        🔗 Assign to a person
+                <div style="color: #6b7280; margin-top: 2px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">${lastActivityText}</div>
+                ${timeStr ? `<div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>` : ''}
+                ${p.unlinked.length > 0 ? `
+                    <button onclick="reassignActivity('${safeKey}')"
+                            style="margin-top:8px; background:${isOrphan ? '#4f46e5' : '#f59e0b'}; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                        ${isOrphan ? '🔗 Assign to a person' : `🔗 Link ${p.unlinked.length} record(s) to ${escapeAttr(p.name)}`}
                     </button>` : ''}
             </div>`;
-    }).join('');
+    }).join('')}`;
 }
 
-// Permanently attaches orphaned activity to a real account.
-//
-// Records written before sign-in had resolved were saved with no uid, so
-// there's nothing to look their owner up by — they show as a phantom person
-// (the "Family Member" with 19 cooks). This writes the chosen account's uid
-// and name onto every one of those records, so they merge into that person
-// from then on, here and on the leaderboard.
+// Permanently attaches records that were saved without a uid to a real
+// account, so they stop being anonymous — here and on the leaderboard,
+// which skips any cook record with no uid.
 window.reassignActivity = async function(key) {
     const person = personActivityMap[key];
-    if (!person) return;
+    if (!person || person.unlinked.length === 0) return;
 
-    let users = [];
-    try {
-        const snap = await getDocs(collection(db, "users"));
-        snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
-        users.sort((a, b) => (a.Name || a.email || "").localeCompare(b.Name || b.email || ""));
-    } catch (e) {
-        return alert("Could not load the list of people: " + e.message);
+    const isOrphan = key.startsWith('name:');
+    let target;
+
+    if (isOrphan) {
+        // Nothing matched by name — ask who it belongs to.
+        target = await pickPerson(person);
+        if (!target) return;
+    } else {
+        target = { uid: person.key, name: person.name };
+        if (!confirm(`Link ${person.unlinked.length} older record(s) to ${person.name}?\n\nThey're already grouped here by name; this writes the connection permanently so the leaderboard counts them too.`)) return;
     }
 
-    const menu = users.map((u, i) => `${i + 1}. ${u.Name || u.email || u.uid}`).join('\n');
-    const total = person.views.length + person.cooks.length + person.visits.length;
-    const answer = prompt(
-        `Who does this activity belong to?\n\n"${person.name}" — ${person.cooks.length} cooks, ${person.views.length} views, ${person.visits.length} visits (${total} records)\n\nType the number:\n\n${menu}`
-    );
-    if (!answer) return;
-
-    const choice = users[parseInt(answer, 10) - 1];
-    if (!choice) return alert("That wasn't one of the numbers listed.");
-
-    const name = choice.Name || choice.email || "Family Member";
-    if (!confirm(`Reassign all ${total} record(s) from "${person.name}" to ${name}?\n\nThis updates the records permanently.`)) return;
-
-    console.log(`🔗 [ACTIVITY] Reassigning ${total} record(s) to ${name} (${choice.uid})...`);
+    console.log(`🔗 [ACTIVITY] Linking ${person.unlinked.length} record(s) to ${target.name} (${target.uid})...`);
 
     let done = 0, failed = 0;
-    const patch = async (path, id, fields) => {
+    for (const rec of person.unlinked) {
         try {
-            await updateDoc(doc(db, path, id), fields);
+            await updateDoc(doc(db, rec.collectionPath, rec.id), {
+                uid: target.uid,
+                [rec.nameField]: target.name
+            });
             done++;
         } catch (e) {
             failed++;
-            console.error(`Could not update ${path}/${id}:`, e.message);
+            console.error(`Could not update ${rec.collectionPath}/${rec.id}:`, e.message);
         }
-    };
+    }
 
-    for (const v of person.views)  await patch("recipe_views",    v.id, { uid: choice.uid, viewer: name });
-    for (const c of person.cooks)  await patch("global_cooks",    c.id, { uid: choice.uid, chef: name });
-    for (const s of person.visits) await patch("site_visits_log", s.id, { uid: choice.uid, viewerName: name });
-
-    console.log(`✅ [ACTIVITY] Reassigned ${done} record(s)${failed ? `, ${failed} failed` : ''}.`);
+    console.log(`✅ [ACTIVITY] Linked ${done} record(s)${failed ? `, ${failed} failed` : ''}.`);
     alert(failed
-        ? `Reassigned ${done} record(s). ${failed} couldn't be updated — check the console.`
-        : `Done — all ${done} record(s) now belong to ${name}.`);
+        ? `Linked ${done} record(s). ${failed} couldn't be updated — check the console.`
+        : `Done — ${done} record(s) now belong to ${target.name}.`);
 
     loadAdminDashboard();
 };
+
+// Scrollable picker. Replaces a prompt(), which silently truncated the list
+// after about nine names — so most of the family simply wasn't offered.
+function pickPerson(person) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('person-picker-modal');
+        const listEl = document.getElementById('person-picker-list');
+        const titleEl = document.getElementById('person-picker-summary');
+
+        const total = person.views.length + person.cooks.length + person.visits.length;
+        titleEl.innerHTML = `<strong>"${escapeAttr(person.name)}"</strong> — ${person.cooks.length} cooks, ${person.views.length} views, ${person.visits.length} visits (${total} records)`;
+
+        listEl.innerHTML = knownUsers.map(u => `
+            <button class="person-picker-option" data-uid="${escapeAttr(u.uid)}" data-name="${escapeAttr(u.name)}"
+                    style="display:block; width:100%; text-align:left; background:white; border:1px solid #e5e7eb;
+                           border-radius:6px; padding:10px 12px; margin-bottom:6px; cursor:pointer; font-size:13px;">
+                ${escapeAttr(u.name)}
+            </button>`).join('');
+
+        const cleanup = () => {
+            modal.style.display = 'none';
+            listEl.onclick = null;
+            document.getElementById('person-picker-cancel').onclick = null;
+        };
+
+        listEl.onclick = (e) => {
+            const btn = e.target.closest('.person-picker-option');
+            if (!btn) return;
+            cleanup();
+            resolve({ uid: btn.dataset.uid, name: btn.dataset.name });
+        };
+
+        document.getElementById('person-picker-cancel').onclick = () => { cleanup(); resolve(null); };
+
+        modal.style.display = 'flex';
+    });
+}
+
 
 window.openPersonActivity = function(key) {
     const person = personActivityMap[key];
