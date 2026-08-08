@@ -31,6 +31,42 @@
 export const SECTION_MARKER = '##';
 
 // ==========================================
+// PRETTY FRACTIONS
+// Recipes are typed by hand, so the same cookbook ends up with "½ cup" on
+// one line and "1/2 cup" on the next — and the scaling code emits ASCII
+// fractions too ("1 1/2"), so even a tidy recipe goes ragged at 2×.
+//
+// This is applied at DISPLAY time rather than rewritten into the database:
+// every existing recipe is fixed instantly with no migration, and the
+// editors keep showing plain "1/2", which is far easier to type than
+// hunting for a ½ on a phone keyboard.
+// ==========================================
+const UNICODE_FRACTIONS_OUT = {
+    '1/2': '½',
+    '1/3': '⅓', '2/3': '⅔',
+    '1/4': '¼', '3/4': '¾',
+    '1/5': '⅕', '2/5': '⅖', '3/5': '⅗', '4/5': '⅘',
+    '1/6': '⅙', '5/6': '⅚',
+    '1/8': '⅛', '3/8': '⅜', '5/8': '⅝', '7/8': '⅞'
+};
+
+// Turns "1/2 cup" into "½ cup" and "1 1/2 cups" into "1½ cups".
+// Anything that isn't a recognised cooking fraction is left exactly as it
+// was, so pan sizes and odd ratios ("13/9") never get mangled.
+export function prettyFractions(text) {
+    if (typeof text !== 'string') return text;
+
+    // The whole number and its trailing space are one optional unit — if
+    // `\s*` sat outside the group it would swallow the space in "and 2/3",
+    // gluing the fraction onto the previous word.
+    return text.replace(/(?:(\d+)\s+)?\b(\d+)\/(\d+)\b/g, (match, whole, numerator, denominator) => {
+        const glyph = UNICODE_FRACTIONS_OUT[`${numerator}/${denominator}`];
+        if (!glyph) return match;
+        return whole ? `${whole}${glyph}` : glyph;
+    });
+}
+
+// ==========================================
 // FAMILY OWNERSHIP
 // Which side of the family a recipe belongs to. Everything defaults to
 // "Both" — including every recipe that predates this field — so turning the

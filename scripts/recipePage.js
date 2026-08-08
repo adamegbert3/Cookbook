@@ -5,7 +5,7 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe,
          isTestModeOn, canUseTestMode, updateTestModeUi } from './main.js';
-import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags } from './recipe-model.js';
+import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags, prettyFractions } from './recipe-model.js';
 import { getPlanPath } from './household.js';
 
 const urlParams = new URLSearchParams(window.location.search);
@@ -853,9 +853,11 @@ function renderRecipeHTML(recipe) {
 
     // Applies scaling + altitude, keeping the untouched original alongside so
     // the conversion can be checked at a glance rather than taken on trust.
+    // prettyFractions runs last so it catches both the typed-in fractions
+    // and the ASCII ones the scaler produces ("1 1/2" → "1½").
     const adjustLine = (line) => ({
-        text: applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand),
-        original: line
+        text: prettyFractions(applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand)),
+        original: prettyFractions(line)
     });
 
     const isAdjusted = currentScaleFactor !== 1 || Boolean(currentElevationBand);
@@ -892,7 +894,7 @@ function renderRecipeHTML(recipe) {
     } else if (Array.isArray(rawIng)) {
         ingHtml = rawIng.map(adjustLine).map(ingredientLineHtml).join("");
     } else if (typeof scaledIng === 'string') {
-        ingHtml = `<pre>${scaledIng}</pre>`;
+        ingHtml = `<pre>${prettyFractions(scaledIng)}</pre>`;
     }
 
     const hasIngredients = Array.isArray(rawIng) && rawIng.length > 0;
@@ -932,8 +934,10 @@ function renderRecipeHTML(recipe) {
     const showSubstitutions = localStorage.getItem('showSubstitutions') === 'true';
 
     const stepHtml = (s) => {
+        // Match against the raw step (keyword matching is unaffected by
+        // fraction glyphs), but display the prettified version.
         const matched = matchIngredientsForStep(s, ingredientsArr);
-        return `<li class="instruction-step">${s}${stepIngredientsHtml(matched)}</li>`;
+        return `<li class="instruction-step">${prettyFractions(s)}${stepIngredientsHtml(matched)}</li>`;
     };
 
     const instSections = getSections(recipe, 'instructions');
@@ -947,14 +951,14 @@ function renderRecipeHTML(recipe) {
     } else if (Array.isArray(rawInst)) {
         instHtml = `<ol id="normal-instructions">${rawInst.map(stepHtml).join("")}</ol>`;
     } else if (typeof rawInst === 'string') {
-        instHtml = `<p style="white-space: pre-wrap;">${rawInst}</p>`;
+        instHtml = `<p style="white-space: pre-wrap;">${prettyFractions(rawInst)}</p>`;
     }
 
     let notesHtml = "";
     if (recipe.notes && String(recipe.notes).trim()) {
         notesHtml = `
         <h3 class="section-header">📝 Recipe Notes</h3>
-        <p style="white-space: pre-wrap;">${recipe.notes}</p>`;
+        <p style="white-space: pre-wrap;">${prettyFractions(recipe.notes)}</p>`;
     }
 
     const personalizedBadgeHtml = recipe.isPersonalized
@@ -1120,7 +1124,7 @@ window.startCookMode = function() {
     }
 
     cookModeIngredients = flattenSections(getSections(current, 'ingredients'))
-        .map(line => applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand));
+        .map(line => prettyFractions(applyAltitudeAdjustment(scaleIngredientLine(line, currentScaleFactor), currentElevationBand)));
 
     if (cookModeSteps.length === 0) return alert("No instructions found for this recipe yet.");
 
@@ -1228,7 +1232,7 @@ function renderCookModeStep() {
     const sectionTitle = cookModeStepSections[cookModeIndex];
     document.getElementById('cook-mode-step-count').innerText =
         `${sectionTitle ? sectionTitle + ' · ' : ''}Step ${cookModeIndex + 1} of ${cookModeSteps.length}`;
-    document.getElementById('cook-mode-step-text').innerText = stepText;
+    document.getElementById('cook-mode-step-text').innerText = prettyFractions(stepText);
     document.getElementById('cook-mode-progress-bar').style.width = `${((cookModeIndex + 1) / cookModeSteps.length) * 100}%`;
 
     const matched = matchIngredientsForStep(stepText, cookModeIngredients);
