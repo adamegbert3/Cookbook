@@ -24,7 +24,10 @@ async function loadPickList() {
             return;
         }
 
-        indexedRecipes = (docSnap.data().recipes || []).filter(r => r.h !== true);
+        // Testing Kitchen drafts are excluded here too — print.html isn't
+        // admin-gated, so without this any signed-in family member could
+        // print/see a recipe that isn't meant to be visible to them yet.
+        indexedRecipes = (docSnap.data().recipes || []).filter(r => r.h !== true && r.draft !== true);
         console.log(`✅ [PRINT] Loaded ${indexedRecipes.length} recipe(s) into the pick list.`);
         indexedRecipes.sort((a, b) => (a.n || "").localeCompare(b.n || ""));
 

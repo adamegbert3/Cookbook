@@ -154,7 +154,9 @@ async function main() {
     for (const docSnap of snap.docs) {
         const recipe = docSnap.data();
 
-        if (recipe.isHidden === true) { skipped++; continue; }
+        // Testing Kitchen (draft) recipes must never reach the shared family
+        // Drive folder — that's the whole point of the holding space.
+        if (recipe.isHidden === true || recipe.isDraft === true) { skipped++; continue; }
 
         const html = recipeToHtml(recipe);
         const name = recipe.name || 'Untitled Recipe';
