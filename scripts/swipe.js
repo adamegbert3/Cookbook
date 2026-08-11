@@ -255,20 +255,25 @@ function renderStack() {
 // browser's native scrolling (never captured, never prevented); only a
 // mostly-horizontal move becomes the swipe-to-decide drag.
 function attachDrag(card) {
-    let startX = 0, startY = 0, deltaX = 0, deltaY = 0, mode = null;
+    let startX = 0, startY = 0, deltaX = 0, deltaY = 0, mode = null, isDown = false;
     const keepStamp = card.querySelector('.stamp.keep');
     const skipStamp = card.querySelector('.stamp.skip');
 
     const reset = () => { mode = null; deltaX = 0; deltaY = 0; };
 
     const onPointerDown = (e) => {
+        // Mouse "pointermove" fires just from hovering, with no button
+        // pressed — without this flag, moving the mouse anywhere over the
+        // card (never having clicked) was read as a drag from an
+        // uninitialized start point, throwing the card way off to one side.
+        isDown = true;
         startX = e.clientX;
         startY = e.clientY;
         reset();
     };
 
     const onPointerMove = (e) => {
-        if (mode === 'scroll') return;
+        if (!isDown || mode === 'scroll') return;
         deltaX = e.clientX - startX;
         deltaY = e.clientY - startY;
 
@@ -288,6 +293,7 @@ function attachDrag(card) {
     };
 
     const onPointerUp = () => {
+        isDown = false;
         if (mode !== 'swipe') { reset(); return; }
         const THRESHOLD = 100;
         if (deltaX > THRESHOLD) decide('keep');
