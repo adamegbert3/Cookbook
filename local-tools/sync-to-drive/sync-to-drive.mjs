@@ -126,7 +126,9 @@ function recipeToHtml(recipe) {
 
     const ingHtml = Array.isArray(ingredients) ? ingredients.map(i => `<li>${i}</li>`).join('') : '';
     const instHtml = Array.isArray(instructions) ? instructions.map(s => `<li>${s}</li>`).join('') : '';
-    const notesHtml = recipe.notes ? `<h2>Notes</h2><p>${recipe.notes}</p>` : '';
+    const notesHtml = recipe.notes && String(recipe.notes).trim()
+        ? `<h2>Notes</h2><p>${recipe.notes}</p>`
+        : '';
 
     return `<html><body>
         <h1>${recipe.name || 'Untitled'}</h1>
