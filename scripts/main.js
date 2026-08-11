@@ -14,6 +14,27 @@ let allRecipes = [];
 let userFavorites = [];
 let isAdmin = false; // <-- ADD THIS
 
+// Firebase Auth's displayName is essentially never set for these email/
+// password accounts, so `user.displayName || user.email.split('@')[0]`
+// (used in a few places) reliably shows the part of someone's email before
+// the @ sign instead of their name. users/{uid}.Name is the real display
+// name (same field the profile icon and admin console use). Cached per uid
+// since comment threads can have several messages from the same person.
+const authorNameCache = new Map();
+async function resolveAuthorName(uid, fallback) {
+    const fallbackName = fallback || "Family Member";
+    if (!uid) return fallbackName;
+    if (authorNameCache.has(uid)) return authorNameCache.get(uid);
+    try {
+        const snap = await getDoc(doc(db, "users", uid));
+        const name = (snap.exists() && snap.data().Name) || fallbackName;
+        authorNameCache.set(uid, name);
+        return name;
+    } catch (e) {
+        return fallbackName;
+    }
+}
+
 // "Built-in" admins — always work even if their users/{uid} doc is ever
 // missing or corrupted. Keep in sync with firestore.rules and the
 // ADMIN_UIDS arrays in scripts/dashboard.js, scripts/profile.js,
@@ -777,17 +798,24 @@ function loadComments() {
     const user = auth.currentUser;
     const q = query(collection(db, "recipes", currentRecipe.id, "comments"), orderBy("timestamp", "asc"));
     
-    onSnapshot(q, (snap) => {
+    onSnapshot(q, async (snap) => {
         if(snap.empty){list.innerHTML='<p class="empty-feed">No comments.</p>';return;}
-        
+
+        const comments = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+        // Resolve each commenter's real name live from their profile instead
+        // of trusting whatever was frozen into the comment when it was
+        // posted — this fixes the display for every past comment too, not
+        // just new ones.
+        const names = await Promise.all(comments.map(d => resolveAuthorName(d.uid, d.author)));
+
         let html='';
-        snap.forEach(docSnap => {
-            const d = docSnap.data(); 
-            const init = (d.author||"G").charAt(0).toUpperCase();
-            
+        comments.forEach((d, i) => {
+            const authorName = names[i];
+            const init = (authorName||"G").charAt(0).toUpperCase();
+
             let deleteBtn = "";
             if (user && (user.uid === d.uid || isAdmin)) {
-                deleteBtn = `<span onclick="deleteComment('${docSnap.id}')" class="delete-icon" title="Delete">🗑️</span>`;
+                deleteBtn = `<span onclick="deleteComment('${d.id}')" class="delete-icon" title="Delete">🗑️</span>`;
             }
 
             html += `
@@ -795,7 +823,7 @@ function loadComments() {
                 <div class="comment-avatar">${init}</div>
                 <div class="comment-bubble">
                     <div class="comment-author">
-                        ${d.author}
+                        ${authorName}
                         ${deleteBtn}
                     </div>
                     <div class="comment-text">${d.text}</div>
@@ -821,8 +849,9 @@ window.postComment = async function() {
     const val = inp.value.trim();
     if(!val) return;
     const currentRecipe = JSON.parse(localStorage.getItem("currentRecipeData"));
+    const authorName = await resolveAuthorName(user.uid, user.displayName || user.email.split('@')[0]);
     await addDoc(collection(db, "recipes", currentRecipe.id, "comments"), {
-        text: val, author: user.displayName || user.email.split('@')[0], uid: user.uid, timestamp: serverTimestamp()
+        text: val, author: authorName, uid: user.uid, timestamp: serverTimestamp()
     });
     inp.value = "";
 }
