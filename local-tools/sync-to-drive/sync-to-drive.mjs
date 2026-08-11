@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { createServer } from 'http';
+import { createHash } from 'crypto';
 import { google } from 'googleapis';
 import admin from 'firebase-admin';
 
@@ -138,6 +139,22 @@ function recipeToHtml(recipe) {
     </body></html>`;
 }
 
+// A short fingerprint of everything that actually shows up in the Drive
+// doc. Lets a run skip recipes that haven't changed since last time —
+// which matters once this runs automatically after every save instead of
+// once a day, since re-uploading every recipe every time would make a
+// large cookbook take minutes for a one-recipe edit.
+function contentHash(recipe) {
+    const key = JSON.stringify({
+        name: recipe.name || '',
+        author: recipe.author || '',
+        ingredients: recipe.ingredients || recipe.recipeIngredient || [],
+        instructions: recipe.instructions || recipe.recipeInstructions || [],
+        notes: recipe.notes || ''
+    });
+    return createHash('sha1').update(key).digest('hex');
+}
+
 // --- 5. Main sync ---
 async function main() {
     const drive = await getDriveClient();
@@ -149,26 +166,51 @@ async function main() {
     console.log('Reading recipes from Firestore...');
     const snap = await db.collection('recipes').get();
 
-    let created = 0, updated = 0, skipped = 0;
+    let created = 0, updated = 0, unchanged = 0, hidden = 0;
+    const keepFileIds = new Set();
 
     for (const docSnap of snap.docs) {
         const recipe = docSnap.data();
-
-        if (recipe.isHidden === true) { skipped++; continue; }
-
-        const html = recipeToHtml(recipe);
         const name = recipe.name || 'Untitled Recipe';
 
-        try {
-            if (recipe.driveFileId) {
+        // Hidden recipes aren't created, and if one was visible before (and
+        // already has a Drive file), the cleanup pass below removes it —
+        // same as a deleted recipe.
+        if (recipe.isHidden === true) { hidden++; continue; }
+
+        const hash = contentHash(recipe);
+
+        if (recipe.driveFileId && recipe.driveContentHash === hash) {
+            keepFileIds.add(recipe.driveFileId);
+            unchanged++;
+            continue;
+        }
+
+        const html = recipeToHtml(recipe);
+        let handledAsUpdate = false;
+
+        if (recipe.driveFileId) {
+            try {
                 await drive.files.update({
                     fileId: recipe.driveFileId,
                     requestBody: { name },
                     media: { mimeType: 'text/html', body: html }
                 });
+                await docSnap.ref.update({ driveContentHash: hash });
+                keepFileIds.add(recipe.driveFileId);
                 updated++;
                 process.stdout.write(`  updated: ${name}\n`);
-            } else {
+                handledAsUpdate = true;
+            } catch (err) {
+                // The Drive file this recipe used to point to is gone (e.g.
+                // it was manually deleted from Drive) — recreate it below
+                // instead of failing the whole sync.
+                console.warn(`  ${name}: existing Drive file is gone (${err.message}), recreating...`);
+            }
+        }
+
+        if (!handledAsUpdate) {
+            try {
                 const file = await drive.files.create({
                     requestBody: { name, mimeType: 'application/vnd.google-apps.document', parents: [folderId] },
                     media: { mimeType: 'text/html', body: html },
@@ -177,18 +219,40 @@ async function main() {
 
                 await docSnap.ref.update({
                     driveFileId: file.data.id,
-                    autoDriveUrl: file.data.webViewLink
+                    autoDriveUrl: file.data.webViewLink,
+                    driveContentHash: hash
                 });
 
+                keepFileIds.add(file.data.id);
                 created++;
                 process.stdout.write(`  created: ${name}\n`);
+            } catch (err) {
+                console.error(`  failed: ${name} (${err.message})`);
             }
-        } catch (err) {
-            console.error(`  failed: ${name} (${err.message})`);
         }
     }
 
-    console.log(`\nDone. Created ${created}, updated ${updated}, skipped ${skipped} hidden recipe(s).`);
+    // Anything left in the Drive folder that isn't a current, visible
+    // recipe was either deleted from the cookbook or hidden since the last
+    // sync — trash it so the family's Drive folder never gets stale or
+    // shows something that was pulled from the site.
+    console.log('Checking for recipes removed from the cookbook...');
+    const existingFiles = await drive.files.list({
+        q: `'${folderId}' in parents and trashed=false`,
+        fields: 'files(id, name)',
+        pageSize: 1000
+    });
+
+    let removed = 0;
+    for (const file of existingFiles.data.files) {
+        if (!keepFileIds.has(file.id)) {
+            await drive.files.update({ fileId: file.id, requestBody: { trashed: true } });
+            removed++;
+            process.stdout.write(`  removed: ${file.name}\n`);
+        }
+    }
+
+    console.log(`\nDone. Created ${created}, updated ${updated}, removed ${removed}, unchanged ${unchanged}, ${hidden} hidden.`);
     console.log(`Folder: https://drive.google.com/drive/folders/${folderId}\n`);
 }
 

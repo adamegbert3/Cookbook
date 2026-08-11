@@ -111,6 +111,7 @@
         import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
         import { buildRecipeFields, getEditableText, DIETARY_TAGS, getDietaryTags, getRecipeFamily } from './scripts/recipe-model.js';
+        import { triggerDriveSyncSilently } from './scripts/drive-sync-trigger.js';
 
         // Build the dietary checkbox row from the shared list
         document.getElementById('e-dietary').innerHTML = DIETARY_TAGS.map(tag => `
@@ -350,6 +351,7 @@
                 btn.innerText = "💾 Update Recipe";
                 btn.disabled = false;
                 loadHistory(recipeId);
+                triggerDriveSyncSilently();
 
             } catch (error) {
                 console.error(error);
