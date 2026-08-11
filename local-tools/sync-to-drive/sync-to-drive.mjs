@@ -173,10 +173,12 @@ async function main() {
         const recipe = docSnap.data();
         const name = recipe.name || 'Untitled Recipe';
 
-        // Hidden recipes aren't created, and if one was visible before (and
-        // already has a Drive file), the cleanup pass below removes it —
-        // same as a deleted recipe.
-        if (recipe.isHidden === true) { hidden++; continue; }
+        // Hidden AND Testing Kitchen (draft) recipes aren't created — a
+        // draft is explicitly not ready for the family to see yet, so it
+        // must never reach the shared Drive folder. If one was visible
+        // before (and already has a Drive file), the cleanup pass below
+        // removes it — same as a deleted recipe.
+        if (recipe.isHidden === true || recipe.isDraft === true) { hidden++; continue; }
 
         const hash = contentHash(recipe);
 

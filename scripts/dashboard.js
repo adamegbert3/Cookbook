@@ -122,11 +122,13 @@ async function loadAdminDashboard() {
 // ==========================================
 function buildRecipeRowHtml(r) {
     const isHidden = r.isHidden === true;
+    const isDraft = r.isDraft === true;
     const isReviewed = r.reviewed === true;
     const viewCount = r.views || 0;
 
     let badge = `<span class="status-badge status-live">🟢 Live</span>`;
-    if (!isReviewed) badge = `<span class="status-badge status-review">⚠️ Review</span>`;
+    if (isDraft) badge = `<span class="status-badge status-hidden">🍳 Testing Kitchen</span>`;
+    else if (!isReviewed) badge = `<span class="status-badge status-review">⚠️ Review</span>`;
     else if (isHidden) badge = `<span class="status-badge status-hidden">❌ Hidden</span>`;
 
     let cat = "Misc";
@@ -1550,9 +1552,14 @@ window.postAnnouncement = async function() {
 };
 window.uploadBulkRecipes = async function() {
     const input = document.getElementById('bulk-input');
+    const draftCheckbox = document.getElementById('bulk-upload-as-draft');
+    const asDraft = draftCheckbox ? draftCheckbox.checked : false;
     try {
         const recipes = JSON.parse(input.value);
-        if(confirm(`Upload ${recipes.length}?`)) {
+        const confirmMsg = asDraft
+            ? `Add ${recipes.length} to your Testing Kitchen? Only you'll see them until you release each one.`
+            : `Upload ${recipes.length}?`;
+        if(confirm(confirmMsg)) {
             for(const r of recipes) {
                 const ingredients = r.recipeIngredient || r.ingredients || [];
                 const instructions = r.recipeInstructions || r.instructions || [];
@@ -1564,6 +1571,7 @@ window.uploadBulkRecipes = async function() {
                     instructionSections: r.instructionSections || [],
                     notes: r.notes || "",
                     sourceUrl: r.sourceUrl || "",
+                    isDraft: asDraft,
                     reviewed: false
                 });
             }
@@ -1826,6 +1834,7 @@ window.generateMegaIndex = async function() {
             c: data.category || "Misc",
             r: data.reviewed || false,
             h: data.isHidden === true,
+            draft: data.isDraft === true,        // Testing Kitchen — never shown outside it
             fam: data.family || 'Both',          // family separation filter
             d: Array.isArray(data.dietary) ? data.dietary : [],  // dietary/allergy tags
             // Compact lowercase ingredient text so homepage search can match ingredients too
