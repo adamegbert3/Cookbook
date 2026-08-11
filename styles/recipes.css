@@ -238,6 +238,14 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
     font-weight: 800;
 }
 
+/* Testing Kitchen button lives outside .folders on purpose (see homepage.html)
+   so it isn't picked up as a category-tag filter — same active-state look. */
+#testing-kitchen-btn.active-filter {
+    transform: scale(1.05);
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
 #meal-plan-box, #recent-recipes-box {
     background: var(--bg-card); border-radius: 12px; padding: 20px;
     margin: 20px auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border);

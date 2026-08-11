@@ -29,7 +29,7 @@ const ADMIN_UIDS = [
 
 // Checks the hardcoded list first (instant, no network call), then falls
 // back to the user's Firestore role field for admins promoted via the console.
-async function checkIsAdmin(uid) {
+export async function checkIsAdmin(uid) {
     if (ADMIN_UIDS.includes(uid)) return true;
     try {
         const snap = await getDoc(doc(db, "users", uid));
@@ -236,6 +236,7 @@ onAuthStateChanged(auth, async (user) => {
         // "not admin" and re-render below if that turns out to be wrong.
         isAdmin = ADMIN_UIDS.includes(user.uid);
         if (isAdmin && adminBtn) adminBtn.classList.add('visible');
+        if (isAdmin) showTestingKitchenButton();
 
         loadAllRecipes();
         if (document.getElementById('family-feed')) loadFamilyFeed();
@@ -255,6 +256,7 @@ onAuthStateChanged(auth, async (user) => {
                 if (!result) return;
                 isAdmin = true;
                 if (adminBtn) adminBtn.classList.add('visible');
+                showTestingKitchenButton();
                 // Re-render so hidden recipes appear for the admin
                 if (allRecipes.length > 0) renderLocalList(allRecipes);
             });
@@ -449,6 +451,7 @@ function renderFromOfflineStore(container) {
             c: data.category || data.c || "Misc",
             r: data.reviewed || data.r || false,
             h: data.isHidden === true || data.h === true,
+            draft: data.isDraft === true || data.draft === true,
             fam: data.family || data.fam || 'Both',
             d: Array.isArray(data.dietary || data.d) ? (data.dietary || data.d) : [],
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
@@ -494,6 +497,7 @@ async function loadAllRecipesDirect(container) {
             c: data.category || "Misc",
             r: data.reviewed || false,
             h: data.isHidden === true,
+            draft: data.isDraft === true,
             fam: data.family || 'Both',
             d: Array.isArray(data.dietary) ? data.dietary : [],
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
@@ -652,13 +656,24 @@ function renderLocalList(list) {
         return nameA.localeCompare(nameB);
     });
 
-    // 2. Skip hidden recipes up front (unless admin) so pagination counts are accurate
-    lazyRenderQueue = list.filter(item => isAdmin || !(item.h === true || item.isHidden === true));
+    // 2. Skip hidden recipes up front (unless admin) so pagination counts are accurate.
+    // Testing Kitchen recipes are the opposite of everything else here: they
+    // NEVER appear in the normal grid (even for admins — that's the whole
+    // point of a dedicated holding space), and ONLY appear when Testing
+    // Kitchen mode is on, where they're the only thing shown.
+    lazyRenderQueue = list.filter(item => {
+        const isDraft = item.draft === true || item.isDraft === true;
+        if (currentShowDrafts) return isDraft;
+        if (isDraft) return false;
+        return isAdmin || !(item.h === true || item.isHidden === true);
+    });
 
     if (lazyRenderObserver) { lazyRenderObserver.disconnect(); lazyRenderObserver = null; }
 
     if (lazyRenderQueue.length === 0) {
-        container.innerHTML = "<p style='text-align:center'>No recipes found.</p>";
+        container.innerHTML = currentShowDrafts
+            ? "<p style='text-align:center'>Nothing in your Testing Kitchen yet — add one from the admin console, or check \"Testing Kitchen\" while uploading a recipe.</p>"
+            : "<p style='text-align:center'>No recipes found.</p>";
         return;
     }
 
@@ -958,12 +973,46 @@ let currentCategoryFilter = null;
 let currentFavFilter = null; // 🚀 NEW: Tracks favorites independently!
 let currentDietFilter = null; // Vegetarian / Gluten-Free / etc
 
+// 🍳 TESTING KITCHEN — a personal holding space for recipes an admin wants
+// to try before releasing them to the whole family (see toggleDraftKitchen
+// below and window.releaseFromDraft in recipePage.js). Deliberately its own
+// mode rather than folded into the existing "Hidden" filter: hidden recipes
+// mix in dimmed among everything else, which is the exact clutter this is
+// meant to avoid — a recipe you're actively testing shouldn't sit in the
+// same pile as things someone chose to retire.
+let currentShowDrafts = false;
+
+window.toggleDraftKitchen = function() {
+    currentShowDrafts = !currentShowDrafts;
+    const btn = document.getElementById('testing-kitchen-btn');
+    if (btn) btn.classList.toggle('active-filter', currentShowDrafts);
+    applyHomepageFilters();
+};
+
+function showTestingKitchenButton() {
+    const btn = document.getElementById('testing-kitchen-btn');
+    if (btn) btn.style.display = 'inline-block';
+}
+
 window.applyHomepageFilters = function() {
     const searchInput = document.getElementById('searchbar');
     const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
     const showReviewedOnly = document.getElementById('reviewed-toggle') ? document.getElementById('reviewed-toggle').checked : false;
 
     let filtered = allRecipes;
+
+    // Testing Kitchen bypasses every other filter (family separation,
+    // dietary, category, reviewed) — it's a personal holding space, not
+    // part of the family-facing cookbook, so those toggles don't apply.
+    // renderLocalList does the actual draft-only narrowing below.
+    if (currentShowDrafts) {
+        if (term) {
+            filtered = filtered.filter(r => (r.n || "").toLowerCase().includes(term) || (r.ing || "").includes(term));
+        }
+        renderLocalList(filtered);
+        updateActiveSearchChip(term);
+        return;
+    }
 
     // 0. Family separation (a Settings preference, not an on-page filter).
     //    Recipes marked "Both" — which is the default, including everything
@@ -1070,7 +1119,15 @@ function setupCategoryFilters() {
         btn.onclick = () => {
             const tag = btn.innerText.trim();
             const isFavoriteBtn = tag === "Egbert Favorite" || tag === "Wheeler Favorite";
-            
+
+            // Leave Testing Kitchen mode as soon as a normal filter is used —
+            // otherwise clicking a category while viewing drafts would look
+            // like it did nothing (Testing Kitchen ignores every other filter).
+            if (currentShowDrafts) {
+                currentShowDrafts = false;
+                document.getElementById('testing-kitchen-btn')?.classList.remove('active-filter');
+            }
+
             if (isFavoriteBtn) {
                 // Handle Favorite buttons independently
                 if (btn.classList.contains('active-filter')) {
