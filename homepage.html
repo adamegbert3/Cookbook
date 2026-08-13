@@ -95,6 +95,15 @@
         <!-- Dietary / allergy filter chips (built from DIETARY_TAGS in scripts/recipe-model.js) -->
         <div class="folders" id="dietary-filters" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);"></div>
 
+        <!-- Admin-only holding space for recipes being tried out before release
+             to the family. Deliberately NOT inside a .folders div — setupCategoryFilters
+             in scripts/main.js grabs every button in a .folders container and treats
+             it as a tag filter, which this isn't. Revealed by showTestingKitchenButton()
+             in scripts/main.js once the admin check resolves. -->
+        <div style="text-align:center; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+            <button id="testing-kitchen-btn" onclick="toggleDraftKitchen()" style="display:none; background:#fff7ed; color:#9a3412; border:1px solid #fdba74; font-weight:800; padding:8px 16px; border-radius:20px; cursor:pointer;">🍳 Testing Kitchen</button>
+        </div>
+
         <div style="text-align: center; margin: 15px 0 25px 0; display: flex; justify-content: center;">
             <label class="toggle-wrapper">
                 <div class="switch">
@@ -105,8 +114,9 @@
             </label>
         </div>
 
-        <div style="text-align: center; margin-bottom: 15px;">
+        <div style="text-align: center; margin-bottom: 15px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
             <a href="submit.html" class="btn-dark">+ Add Your Own Recipe</a>
+            <a href="swipe.html" class="pill-btn btn-orange" style="text-decoration:none;">🃏 Swipe to Decide</a>
         </div>
 
         <!-- Adam-only; revealed by setupTestModeToggle() in scripts/main.js -->

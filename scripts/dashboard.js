@@ -7,6 +7,8 @@ import {
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { getSections, hasRealSections, getEditableText, buildRecipeFields } from './recipe-model.js';
 import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } from './household.js';
+import { parseRecipeFromHtml } from './recipe-import.js';
+import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
 
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
@@ -120,11 +122,13 @@ async function loadAdminDashboard() {
 // ==========================================
 function buildRecipeRowHtml(r) {
     const isHidden = r.isHidden === true;
+    const isDraft = r.isDraft === true;
     const isReviewed = r.reviewed === true;
     const viewCount = r.views || 0;
 
     let badge = `<span class="status-badge status-live">🟢 Live</span>`;
-    if (!isReviewed) badge = `<span class="status-badge status-review">⚠️ Review</span>`;
+    if (isDraft) badge = `<span class="status-badge status-hidden">🍳 Testing Kitchen</span>`;
+    else if (!isReviewed) badge = `<span class="status-badge status-review">⚠️ Review</span>`;
     else if (isHidden) badge = `<span class="status-badge status-hidden">❌ Hidden</span>`;
 
     let cat = "Misc";
@@ -216,6 +220,7 @@ window.deleteRecipe = async function(id, recipeName) {
         await deleteDoc(doc(db, "recipes", id));
         allRecipeData = allRecipeData.filter(r => r.id !== id);
         applyAdminFilters();
+        triggerDriveSyncSilently();
     } catch (error) { alert("Error deleting: " + error.message); }
 };
 
@@ -227,6 +232,7 @@ window.toggleVisibility = async function(id, currentStatus) {
         const recipe = allRecipeData.find(r => r.id === id);
         if(recipe) recipe.isHidden = newStatus;
         applyAdminFilters();
+        triggerDriveSyncSilently();
     } catch (error) { alert("Could not update visibility."); }
 };
 // ==========================================
@@ -1085,6 +1091,7 @@ window.approveRecipe = async function(id, options = {}) {
         await deleteDoc(doc(db, "pending_recipes", id));
         console.log(`✅ [PENDING] Approved and published "${snap.data().name}".`);
         document.getElementById(`card-${id}`)?.remove();
+        triggerDriveSyncSilently();
     } catch (e) { alert(e.message); }
 };
 window.rejectRecipe = async function(id) {
@@ -1545,9 +1552,14 @@ window.postAnnouncement = async function() {
 };
 window.uploadBulkRecipes = async function() {
     const input = document.getElementById('bulk-input');
+    const draftCheckbox = document.getElementById('bulk-upload-as-draft');
+    const asDraft = draftCheckbox ? draftCheckbox.checked : false;
     try {
         const recipes = JSON.parse(input.value);
-        if(confirm(`Upload ${recipes.length}?`)) {
+        const confirmMsg = asDraft
+            ? `Add ${recipes.length} to your Testing Kitchen? Only you'll see them until you release each one.`
+            : `Upload ${recipes.length}?`;
+        if(confirm(confirmMsg)) {
             for(const r of recipes) {
                 const ingredients = r.recipeIngredient || r.ingredients || [];
                 const instructions = r.recipeInstructions || r.instructions || [];
@@ -1555,13 +1567,131 @@ window.uploadBulkRecipes = async function() {
                     name: r.name, author: r.author, tags: r.tags,
                     ingredients, recipeIngredient: ingredients,
                     instructions, recipeInstructions: instructions,
+                    ingredientSections: r.ingredientSections || [],
+                    instructionSections: r.instructionSections || [],
                     notes: r.notes || "",
+                    sourceUrl: r.sourceUrl || "",
+                    isDraft: asDraft,
                     reviewed: false
                 });
             }
             alert("Done!"); input.value="";
+            triggerDriveSyncSilently();
         }
     } catch(e) { alert("Invalid JSON"); }
+};
+
+// ==========================================
+// IMPORT RECIPE FROM A LINK
+// ==========================================
+function mergeIntoUploadStation(jsonText) {
+    const bulkInput = document.getElementById('bulk-input');
+    const incoming = JSON.parse(jsonText);
+    let existing = [];
+    if (bulkInput.value.trim()) {
+        try {
+            existing = JSON.parse(bulkInput.value);
+            if (!Array.isArray(existing)) existing = [];
+        } catch (e) { existing = []; }
+    }
+    bulkInput.value = JSON.stringify([...existing, ...incoming], null, 2);
+    bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+window.importRecipeFromUrl = async function() {
+    const input = document.getElementById('import-recipe-url');
+    const statusEl = document.getElementById('import-recipe-status');
+    const resultBox = document.getElementById('import-recipe-result');
+    const btn = document.getElementById('import-recipe-btn');
+
+    const url = input.value.trim();
+    if (!url) { statusEl.innerText = "Paste a recipe link first."; return; }
+
+    btn.disabled = true;
+    resultBox.style.display = 'none';
+    statusEl.innerText = "⏳ Fetching...";
+
+    let recipe = null;
+    let lastError = null;
+
+    // 1. Try straight from the browser — works on the rare site that
+    // allows cross-origin reads, and needs no local setup at all.
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`That site returned an error (${res.status}).`);
+        const html = await res.text();
+        recipe = parseRecipeFromHtml(html, url);
+        console.log("🔗 [IMPORT] Direct browser fetch worked.");
+    } catch (e) {
+        lastError = e;
+        console.log("🔗 [IMPORT] Direct fetch didn't work (expected for most sites), trying the local helper...", e.message);
+    }
+
+    // 2. Fall back to the local import helper — only reachable when this
+    // page is being served by local-tools/scan-recipe/serve-locally.mjs,
+    // which fetches server-side with no such restriction.
+    if (!recipe) {
+        try {
+            statusEl.innerText = "⏳ Trying the local import helper...";
+            const res = await fetch('/api/import-recipe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await res.json();
+            if (!data.ok) throw new Error(data.error || "Import failed.");
+            recipe = data.recipe;
+            console.log("🔗 [IMPORT] Local helper worked.");
+        } catch (e) {
+            lastError = e;
+        }
+    }
+
+    btn.disabled = false;
+
+    if (!recipe) {
+        statusEl.innerHTML = `❌ Couldn't import that one: ${lastError ? lastError.message : 'unknown error'}.<br>
+            Most recipe sites need the local helper — run <code>node local-tools/scan-recipe/serve-locally.mjs</code>
+            and open the printed <code>http://localhost:8080</code> link, then try again from there.`;
+        return;
+    }
+
+    document.getElementById('import-recipe-json').value = JSON.stringify([recipe], null, 2);
+    resultBox.style.display = 'block';
+    statusEl.innerText = `✅ Found "${recipe.name}" — ${recipe.ingredients.length} ingredients, ${recipe.instructions.length} steps. Review it below before sending.`;
+    input.value = "";
+};
+
+window.sendImportToUploadStation = function() {
+    try {
+        mergeIntoUploadStation(document.getElementById('import-recipe-json').value);
+    } catch (e) {
+        alert("Could not merge into the upload box: " + e.message);
+    }
+};
+
+// ==========================================
+// GOOGLE DRIVE SYNC (manual trigger — see drive-sync-trigger.js for the
+// automatic version fired after saves/approvals/deletes)
+// ==========================================
+window.triggerDriveSync = async function() {
+    const btn = document.getElementById('drive-sync-btn');
+    const statusEl = document.getElementById('drive-sync-status');
+    btn.disabled = true;
+    statusEl.innerText = "⏳ Starting...";
+    try {
+        const res = await fetch('/api/sync-to-drive', { method: 'POST' });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Could not start the sync.");
+        statusEl.innerText = data.status === 'queued'
+            ? "⏳ A sync was already running — yours is queued right behind it."
+            : "☁️ Sync started in the background — this can take a minute or two for a large cookbook. Check local-tools/sync-to-drive/logs/sync.log for progress.";
+    } catch (e) {
+        statusEl.innerHTML = `❌ Couldn't reach the local sync helper: ${e.message}.<br>
+            This only works while viewing this page over <code>http://localhost:8080</code> — run
+            <code>node local-tools/scan-recipe/serve-locally.mjs</code> first.`;
+    }
+    btn.disabled = false;
 };
 function renderDeepStats(recipes) {
     const cookCountEl = document.getElementById('total-cooks-count');
@@ -1704,6 +1834,7 @@ window.generateMegaIndex = async function() {
             c: data.category || "Misc",
             r: data.reviewed || false,
             h: data.isHidden === true,
+            draft: data.isDraft === true,        // Testing Kitchen — never shown outside it
             fam: data.family || 'Both',          // family separation filter
             d: Array.isArray(data.dietary) ? data.dietary : [],  // dietary/allergy tags
             // Compact lowercase ingredient text so homepage search can match ingredients too

@@ -1,10 +1,10 @@
 import { db, auth } from './firebase-config.js';
 import {
-    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc
+    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc, updateDoc
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe,
-         isTestModeOn, canUseTestMode, updateTestModeUi } from './main.js';
+         isTestModeOn, canUseTestMode, updateTestModeUi, checkIsAdmin } from './main.js';
 import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags, prettyFractions } from './recipe-model.js';
 import { getPlanPath } from './household.js';
 
@@ -765,6 +765,10 @@ async function logViewToDatabase(recipeData) {
 let currentScaleFactor = 1;
 let currentElevationBand = localStorage.getItem('altitudeElevationBand') || null;
 let lastRenderedRecipe = null;
+// Controls the "🚀 Release to Family" button on a Testing Kitchen recipe —
+// resolved async below, so it starts false and the page re-renders once the
+// real answer comes back (same pattern main.js uses for hidden recipes).
+let recipePageIsAdmin = false;
 
 window.setRecipeScale = function(factor) {
     if (editModeActive) return alert("Finish or cancel your edits first.");
@@ -796,6 +800,7 @@ function renderRecipeHTML(recipe) {
     // 2. Check recipe statuses
     const isReviewed = recipe.r === true || recipe.reviewed === true;
     const isHidden = recipe.h === true || recipe.isHidden === true;
+    const isDraft = recipe.draft === true || recipe.isDraft === true;
     const recTags = Array.isArray(recipe.t || recipe.tags) ? (recipe.t || recipe.tags) : [String(recipe.t || recipe.tags || "")];
     
     // 3. Build Status Pills
@@ -811,6 +816,10 @@ function renderRecipeHTML(recipe) {
 
     if (isHidden) {
         statusBarHtml += `<span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #94a3b8;">👁️ Hidden</span>`;
+    }
+
+    if (isDraft) {
+        statusBarHtml += `<span style="background: #fff7ed; color: #9a3412; padding: 4px 12px; border-radius: 16px; font-size: 0.85rem; font-weight: bold; border: 1px solid #fdba74;">🍳 Testing Kitchen</span>`;
     }
 
     if (recTags.includes("Egbert Favorite")) {
@@ -830,6 +839,17 @@ function renderRecipeHTML(recipe) {
     });
 
     statusBarHtml += `</div>`;
+
+    // Only an admin gets the action button — everyone else who happens to
+    // land on a draft's direct link (same caveat as "Hidden" recipes: this
+    // is a UI-level holding space, not a database-level restriction) just
+    // sees the pill above, with no way to release it.
+    const draftBannerHtml = (isDraft && recipePageIsAdmin)
+        ? `<div class="no-print" style="background:#fff7ed; border:2px dashed #fdba74; border-radius:10px; padding:14px; margin-bottom:16px; text-align:center;">
+             <p style="margin:0 0 10px 0; color:#9a3412; font-weight:600;">🍳 This is in your Testing Kitchen — only you can see it.</p>
+             <button onclick="releaseFromDraft('${currentId}')" class="pill-btn btn-orange">🚀 Release to Family</button>
+           </div>`
+        : "";
 
     const driveUrl = recipe.driveUrl || recipe.autoDriveUrl;
     const sourceUrl = recipe.sourceUrl;
@@ -975,6 +995,7 @@ function renderRecipeHTML(recipe) {
         <h2 class="recipe-chef" style="margin-bottom: 4px;">From: ${author}</h2>
 
         ${statusBarHtml}
+        ${draftBannerHtml}
         ${driveLinkHtml}
         ${personalizedBadgeHtml}
 
@@ -1880,6 +1901,30 @@ onAuthStateChanged(auth, (user) => {
     document.getElementById('admin-tools-slot')?.classList.remove('hidden');
     updateTestModeUi();
 });
+
+// Full admin check (any admin, not just Adam — unlike Test Mode above) for
+// the "Release to Family" button on a Testing Kitchen recipe. Async, so it
+// re-renders once resolved rather than blocking the initial page load.
+onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+    recipePageIsAdmin = await checkIsAdmin(user.uid);
+    if (recipePageIsAdmin && lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
+});
+
+window.releaseFromDraft = async function(id) {
+    if (!confirm("Release this recipe to the whole family? Anyone can find it from now on — remember to hit \"🌐 Update Homepage Index\" in the admin console afterward so it actually shows up for everyone (same as any other recipe change).")) return;
+    try {
+        await updateDoc(doc(db, "recipes", id), { isDraft: false });
+        if (lastRenderedRecipe) {
+            lastRenderedRecipe.isDraft = false;
+            lastRenderedRecipe.draft = false;
+            renderRecipeHTML(lastRenderedRecipe);
+        }
+        console.log(`🚀 [TESTING KITCHEN] Released "${lastRenderedRecipe?.name || id}" to the family.`);
+    } catch (e) {
+        alert("Could not release this recipe: " + e.message);
+    }
+};
 
 const authReady = new Promise((resolve) => {
     // Offline there's nothing to wait for — Auth can't reach
