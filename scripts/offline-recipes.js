@@ -20,6 +20,31 @@ const QUEUE_KEY = 'offlineRecipeDrafts';
 document.getElementById('dietary').innerHTML = DIETARY_TAGS.map(tag => `
     <label class="dietary-check"><input type="checkbox" value="${tag}"> ${tag}</label>`).join('');
 
+// Inserts a "## Part Name" heading at the end of a textarea, so people can
+// discover multi-part recipes without knowing the syntax up front. Same
+// behavior as submit.html.
+window.addSection = function(fieldId) {
+    const box = document.getElementById(fieldId);
+    if (!box) return;
+    const name = prompt("Name this part (e.g. Crust, Filling, Topping):");
+    if (!name) return;
+    const prefix = box.value.trim() ? '\n' : '';
+    box.value = `${box.value.trimEnd()}${prefix}## ${name.trim()}\n`;
+    box.focus();
+    box.selectionStart = box.selectionEnd = box.value.length;
+};
+
+window.autoSplitInstructions = function() {
+    const instBox = document.getElementById('instructions');
+    let text = instBox.value;
+    if (!text) return;
+    if (text.includes('\n')) {
+        if (!confirm("This looks like it already has lines. Split anyway?")) return;
+    }
+    console.log("✂️ [OFFLINE] Auto-splitting instructions into steps.");
+    instBox.value = text.replace(/\. /g, '.\n');
+};
+
 // ==========================================
 // CONNECTION STATUS
 // ==========================================
@@ -87,6 +112,8 @@ let editingLocalId = null;
 function resetForm() {
     document.getElementById('submitForm').reset();
     document.querySelectorAll('#dietary input').forEach(cb => cb.checked = false);
+    document.getElementById('fav-egbert').checked = false;
+    document.getElementById('fav-wheeler').checked = false;
     editingLocalId = null;
     document.getElementById('form-heading').innerText = "📝 New Draft";
     document.getElementById('save-draft-btn').innerText = "💾 Save to This Device";
@@ -107,6 +134,8 @@ window.editDraft = function(localId) {
     document.querySelectorAll('#dietary input').forEach(cb => {
         cb.checked = Array.isArray(draft.dietary) && draft.dietary.includes(cb.value);
     });
+    document.getElementById('fav-egbert').checked = draft.favEgbert === true;
+    document.getElementById('fav-wheeler').checked = draft.favWheeler === true;
 
     editingLocalId = localId;
     document.getElementById('form-heading').innerText = "✏️ Editing Draft";
@@ -135,6 +164,8 @@ document.getElementById('submitForm').addEventListener('submit', (e) => {
         notes: document.getElementById('notes').value.trim(),
         sourceUrl: document.getElementById('sourceUrl').value.trim(),
         dietary: Array.from(document.querySelectorAll('#dietary input:checked')).map(cb => cb.value),
+        favEgbert: document.getElementById('fav-egbert').checked,
+        favWheeler: document.getElementById('fav-wheeler').checked,
         savedAt: editingLocalId ? (loadQueue().find(d => d.localId === editingLocalId)?.savedAt || new Date().toISOString()) : new Date().toISOString()
     };
 
@@ -193,6 +224,13 @@ window.uploadAllDrafts = async function() {
             const ingredientFields = buildRecipeFields(draft.ingredientsText, 'ingredients');
             const instructionFields = buildRecipeFields(draft.instructionsText, 'instructions');
 
+            // Same tag convention edit-recipe.html uses: category first,
+            // then any Hall of Fame favorites — this is what the homepage's
+            // favorite badges and filter buttons actually key off of.
+            const tags = [draft.category];
+            if (draft.favEgbert) tags.push("Egbert Favorite");
+            if (draft.favWheeler) tags.push("Wheeler Favorite");
+
             // Exactly the same shape and destination as a normal submit.html
             // submission — this is just that same form, filled out earlier
             // with no signal. Goes to the review queue like any other
@@ -205,6 +243,7 @@ window.uploadAllDrafts = async function() {
                 submittedBy: user.email,
                 uid: user.uid,
                 category: draft.category,
+                tags,
                 ...ingredientFields,
                 ...instructionFields,
                 notes: draft.notes || "",
