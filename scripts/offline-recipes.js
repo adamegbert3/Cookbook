@@ -11,32 +11,11 @@
 // needed — and only checked — at upload time, when the device is online by
 // definition.
 import { db, auth } from './firebase-config.js';
-import { addDoc, collection, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { buildRecipeFields, DIETARY_TAGS } from './recipe-model.js';
 
 const QUEUE_KEY = 'offlineRecipeDrafts';
-
-// Same built-in list used everywhere else (dashboard.js, main.js, submit.js,
-// etc.) — only decides whether an upload goes straight to your private
-// Testing Kitchen (no review needed, since you added it yourself) or the
-// normal pending_recipes queue for anyone else who uses this page.
-const ADMIN_UIDS = [
-    "n5aAU1g1tBY04Ut0HnhqegSgZe92",
-    "NrY491PYN3MIrqJp4rhu5S86w2R2",
-    "mPBrypCN9ab1LCEQ578E5YrX8DI2",
-    "WxkJYdGYlIRs4FFdDdLcr05jUm22" // Austin
-];
-
-async function checkIsAdmin(uid) {
-    if (ADMIN_UIDS.includes(uid)) return true;
-    try {
-        const snap = await getDoc(doc(db, "users", uid));
-        return snap.exists() && snap.data().role === 'admin';
-    } catch (e) {
-        return false;
-    }
-}
 
 document.getElementById('dietary').innerHTML = DIETARY_TAGS.map(tag => `
     <label class="dietary-check"><input type="checkbox" value="${tag}"> ${tag}</label>`).join('');
@@ -203,7 +182,6 @@ window.uploadAllDrafts = async function() {
         return;
     }
 
-    const isAdmin = await checkIsAdmin(user.uid);
     let uploaded = 0, failed = 0;
     const stillQueued = [];
 
@@ -214,35 +192,28 @@ window.uploadAllDrafts = async function() {
         try {
             const ingredientFields = buildRecipeFields(draft.ingredientsText, 'ingredients');
             const instructionFields = buildRecipeFields(draft.instructionsText, 'instructions');
-            const commonFields = {
+
+            // Exactly the same shape and destination as a normal submit.html
+            // submission — this is just that same form, filled out earlier
+            // with no signal. Goes to the review queue like any other
+            // submission; nothing here needs the Testing Kitchen (that's for
+            // a recipe you want to cook and verify yourself first — these
+            // are hand-typed from a known source, not something to test).
+            await addDoc(collection(db, "pending_recipes"), {
                 name: draft.name,
                 author: draft.author,
+                submittedBy: user.email,
+                uid: user.uid,
                 category: draft.category,
                 ...ingredientFields,
                 ...instructionFields,
                 notes: draft.notes || "",
                 sourceUrl: draft.sourceUrl || "",
                 family: draft.family || 'Both',
-                dietary: draft.dietary || []
-            };
-
-            if (isAdmin) {
-                await addDoc(collection(db, "recipes"), {
-                    ...commonFields,
-                    tags: [draft.category],
-                    isDraft: true,
-                    reviewed: false,
-                    createdAt: serverTimestamp()
-                });
-            } else {
-                await addDoc(collection(db, "pending_recipes"), {
-                    ...commonFields,
-                    submittedBy: user.email,
-                    uid: user.uid,
-                    timestamp: serverTimestamp(),
-                    status: "pending"
-                });
-            }
+                dietary: draft.dietary || [],
+                timestamp: serverTimestamp(),
+                status: "pending"
+            });
 
             uploaded++;
         } catch (err) {
@@ -256,9 +227,8 @@ window.uploadAllDrafts = async function() {
     renderQueue();
     btn.disabled = false;
 
-    const destination = isAdmin ? "your 🍳 Testing Kitchen (find it on the homepage)" : "the review queue for the admin to approve";
     statusEl.innerText = failed === 0
-        ? `✅ Uploaded all ${uploaded} to ${destination}.`
+        ? `✅ Uploaded all ${uploaded} — waiting in the review queue, same as any other submission.`
         : `⚠️ Uploaded ${uploaded}, ${failed} failed and are still saved here — try "Upload All" again.`;
 };
 
