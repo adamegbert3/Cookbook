@@ -3,22 +3,61 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Submit Recipe</title>
+    <title>Offline Recipe Drafts | Family Cookbook</title>
     <link rel="stylesheet" href="styles/recipes.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     <link rel="manifest" href="offline_features/manifest.json">
+    <style>
+        .offline-wrap { max-width: 700px; margin: 0 auto; padding: 0 12px 40px 12px; }
+        .status-banner {
+            text-align: center; padding: 10px 14px; border-radius: 8px; font-size: 13px;
+            font-weight: 700; margin-bottom: 18px;
+        }
+        .status-banner.online { background: #d1fae5; color: #065f46; border: 1px solid #10b981; }
+        .status-banner.offline { background: #fef08a; color: #854d0e; border: 1px solid #eab308; }
+        .explainer { font-size: 13px; color: var(--primary); opacity: 0.75; text-align: center; margin: 0 0 20px 0; }
+
+        .queue-section { margin-bottom: 28px; }
+        .queue-section h3 { margin-bottom: 10px; }
+        .queue-item {
+            background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 10px; display: flex; justify-content: space-between;
+            align-items: center; gap: 10px; flex-wrap: wrap;
+        }
+        .queue-item .qi-name { font-weight: 700; }
+        .queue-item .qi-meta { font-size: 12px; opacity: 0.6; }
+        .queue-item .qi-actions { display: flex; gap: 6px; }
+        .queue-item .qi-actions button { font-size: 12px; padding: 6px 10px; }
+        .queue-empty { opacity: 0.6; font-style: italic; font-size: 13px; }
+        .upload-status { font-size: 13px; margin-top: 10px; text-align: center; }
+
+        #submitForm .input-group { margin-bottom: 14px; }
+    </style>
 </head>
 <body class="login-page">
-    <div class="login-card" style="max-width: 700px; text-align: left;">
-        <div class="login-header" style="text-align: center;">
-            <h1>Contribute a Recipe</h1>
-            <p class="subtitle">Share your masterpiece!</p>
-            <p style="font-size:12px; opacity:0.7;">No signal right now? <a href="offline-recipes.html">Save it offline instead →</a></p>
+    <div class="offline-wrap">
+        <div class="login-header" style="text-align: center; margin-top: 20px;">
+            <h1>📴 Offline Recipe Drafts</h1>
+            <p class="subtitle">Jot down recipes with no signal — save them here, then upload once you're back online.</p>
+        </div>
+
+        <div id="status-banner" class="status-banner offline">Checking connection...</div>
+        <p class="explainer">
+            This page works with no internet connection. Anything you save here stays on <strong>this device only</strong>
+            (this browser) until you tap "Upload All" while online — it does <strong>not</strong> go to the family cookbook yet.
+        </p>
+
+        <div class="queue-section">
+            <h3>📥 Saved on This Device (<span id="queue-count">0</span>)</h3>
+            <div id="queue-list"><p class="queue-empty">Nothing saved yet.</p></div>
+            <button id="upload-all-btn" class="pill-btn btn-teal" style="width:100%; display:none;" onclick="uploadAllDrafts()">☁️ Upload All to the Cookbook</button>
+            <p class="upload-status" id="upload-status"></p>
         </div>
 
         <form id="submitForm">
+            <h3 id="form-heading">📝 New Draft</h3>
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                 <div class="input-group">
                     <label>Recipe Title</label>
@@ -33,24 +72,17 @@
             <div class="input-group">
                 <label>Ingredients (New line for each)</label>
                 <textarea id="ingredients" class="form-input" rows="5" placeholder="2 Cups Flour&#10;1 tsp Salt" required></textarea>
-                <button type="button" onclick="addSection('ingredients')" class="pill-btn btn-slate" style="margin-top:8px; font-size:0.75rem; padding:6px 12px;">➕ Add a Part (Crust, Filling…)</button>
-                <p class="section-hint">Making something with parts? Start a line with <code>## Crust</code> to group what follows under that heading.</p>
+                <p class="section-hint">Start a line with <code>## Crust</code> to group what follows under that heading.</p>
             </div>
 
             <div class="input-group">
                 <label>Instructions (New line for each)</label>
                 <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix..." required></textarea>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                    <button type="button" onclick="autoSplitInstructions()" class="pill-btn btn-slate" style="font-size:0.75rem; padding:6px 12px;">✂️ Auto-split into steps</button>
-                    <button type="button" onclick="addSection('instructions')" class="pill-btn btn-slate" style="font-size:0.75rem; padding:6px 12px;">➕ Add a Part</button>
-                </div>
                 <p class="section-hint">Steps under each <code>## Heading</code> are numbered separately.</p>
             </div>
+
             <div class="input-group">
                 <label>Category</label>
-                <!-- Keep this list in sync with edit-recipe.html's #e-category,
-                     the admin filter pills + SCAN_CATEGORIES in scripts/dashboard.js,
-                     and the folder buttons in homepage.html. -->
                 <select id="category" class="form-input">
                     <option value="Appetizers & Snacks">Appetizers & Snacks</option>
                     <option value="Breads & Rolls">Breads & Rolls</option>
@@ -58,7 +90,7 @@
                     <option value="Desserts">Desserts</option>
                     <option value="Dutch Oven">Dutch Oven</option>
                     <option value="Main Dishes">Main Dishes</option>
-                    <option value="Miscellaneous">Miscellaneous</option>
+                    <option value="Miscellaneous" selected>Miscellaneous</option>
                     <option value="Sauces, Dressings & Marinades">Sauces, Dressings & Marinades</option>
                     <option value="Sides & Veggies">Sides & Veggies</option>
                     <option value="Soups & Salads">Soups & Salads</option>
@@ -72,7 +104,6 @@
                     <option value="Egbert">Egbert only</option>
                     <option value="Wheeler">Wheeler only</option>
                 </select>
-                <p class="section-hint">"Both" is usually right — this only matters if someone turns on family filtering in Settings.</p>
             </div>
 
             <div class="input-group">
@@ -86,35 +117,16 @@
             </div>
 
             <div class="input-group">
-                <label>PDF / Google Drive Link (Optional)</label>
-                <input type="url" id="driveLink" class="form-input" placeholder="https://drive.google.com/...">
-            </div>
-
-            <div class="input-group">
                 <label>Original Recipe URL (Optional)</label>
                 <input type="url" id="sourceUrl" class="form-input" placeholder="https://example.com/the-recipe-i-adapted-this-from">
-                <p style="font-size:12px; color:#94a3b8; margin:4px 0 0 0;">If this came from a website/blog, link back to it — different from the PDF/Drive link above.</p>
-            </div>
-
-            <!-- Admin-only: revealed by scripts/submit.js once the admin check
-                 resolves. Everyone else never sees this — and even if someone
-                 forced it visible, firestore.rules only allows admins to write
-                 straight to the recipes collection, so a non-admin's attempt
-                 would still be rejected server-side. -->
-            <div id="admin-draft-option" style="display:none; background: #fff7ed; border: 1px solid #fdba74; padding: 15px; border-radius: 6px; margin-top: 15px; align-items: center; gap: 10px;">
-                <input type="checkbox" id="draft-mode-checkbox" style="width: 20px; height: 20px; margin: 0;">
-                <div>
-                    <label for="draft-mode-checkbox" style="margin: 0; font-weight: bold; color: #9a3412; cursor: pointer;">🍳 Add directly to my Testing Kitchen</label>
-                    <div style="font-size: 12px; color: #9a3412;">Skips the review queue and publishes immediately, but stays hidden from everyone else until you release it.</div>
-                </div>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 20px;">
-                <button type="submit" class="pill-btn btn-teal" style="flex: 1; justify-content: center;">Submit</button>
-                <a href="homepage.html" class="pill-btn btn-slate" style="text-decoration: none;">Cancel</a>
+                <button type="submit" class="pill-btn btn-teal" style="flex: 1; justify-content: center;" id="save-draft-btn">💾 Save to This Device</button>
+                <a href="homepage.html"><button type="button" class="pill-btn btn-slate">Back</button></a>
             </div>
         </form>
     </div>
-    <script type="module" src="scripts/submit.js"></script>
+    <script type="module" src="scripts/offline-recipes.js"></script>
 </body>
 </html>
