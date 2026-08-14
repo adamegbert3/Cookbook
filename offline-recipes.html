@@ -72,12 +72,17 @@
             <div class="input-group">
                 <label>Ingredients (New line for each)</label>
                 <textarea id="ingredients" class="form-input" rows="5" placeholder="2 Cups Flour&#10;1 tsp Salt" required></textarea>
-                <p class="section-hint">Start a line with <code>## Crust</code> to group what follows under that heading.</p>
+                <button type="button" onclick="addSection('ingredients')" class="pill-btn btn-slate" style="margin-top:8px; font-size:0.75rem; padding:6px 12px;">➕ Add a Part (Crust, Filling…)</button>
+                <p class="section-hint">Making something with parts? Start a line with <code>## Crust</code> to group what follows under that heading.</p>
             </div>
 
             <div class="input-group">
                 <label>Instructions (New line for each)</label>
                 <textarea id="instructions" class="form-input" rows="5" placeholder="1. Preheat oven...&#10;2. Mix..." required></textarea>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                    <button type="button" onclick="autoSplitInstructions()" class="pill-btn btn-slate" style="font-size:0.75rem; padding:6px 12px;">✂️ Auto-split into steps</button>
+                    <button type="button" onclick="addSection('instructions')" class="pill-btn btn-slate" style="font-size:0.75rem; padding:6px 12px;">➕ Add a Part</button>
+                </div>
                 <p class="section-hint">Steps under each <code>## Heading</code> are numbered separately.</p>
             </div>
 
@@ -109,6 +114,16 @@
             <div class="input-group">
                 <label>Dietary / Allergy Tags (Optional)</label>
                 <div id="dietary" class="dietary-checkboxes"></div>
+            </div>
+
+            <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 6px; margin-bottom: 14px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <span style="font-weight: bold; color: #166534; font-size: 14px;">Hall of Fame:</span>
+                <label style="margin: 0; font-weight: 600; color: #0369a1; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" id="fav-egbert" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Egbert Favorite
+                </label>
+                <label style="margin: 0; font-weight: 600; color: #15803d; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                    <input type="checkbox" id="fav-wheeler" style="width: 18px; height: 18px; margin: 0;"> ⭐️ Wheeler Favorite
+                </label>
             </div>
 
             <div class="input-group">
