@@ -4,6 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Chef's Admin Panel</title>
+    <!-- This page never linked the shared stylesheet before — it had its own
+         parallel inline <style> block instead, which meant it never got the
+         site's universal box-sizing reset or the width:100% treatment every
+         other page's inputs get. That's what let raw <input> elements sit at
+         their native browser width inside two-column grids (e.g. the invite
+         form below) and force the whole page to scroll sideways on a phone.
+         It also meant no dark-mode variables reached this page at all.
+         Linked BEFORE the inline block below on purpose: same-specificity
+         class name collisions (just .status-badge) resolve in document
+         order, so admin's own rule (appearing later) still wins here. -->
+    <link rel="stylesheet" href="styles/recipes.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -15,25 +26,39 @@
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
         }
     </script>
+    <script>
+        // Same pre-paint theme/font-size application every other page does,
+        // so dark mode and font size actually apply here too, with no flash
+        // of the wrong theme.
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
 
 <style>
     /* --- BASE SETTINGS --- */
-    body { font-family: 'Inter', sans-serif; background: #f3f4f6; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--primary); margin: 0; padding: 0; }
     .admin-container { max-width: 1000px; margin: 30px auto; padding: 20px; } /* Made wider for desktop */
 
     /* WIDGETS */
     .pending-card, .widget-card {
-        background: white; border: 1px solid #e5e7eb; border-radius: 12px;
-        padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+        padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm);
     }
 
     /* APPROVAL QUEUE CARD (full recipe preview) */
-    .pending-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid #f3f4f6; padding-bottom: 10px; margin-bottom: 12px; }
-    .pending-header h2 { margin: 0; font-size: 1.3rem; color: #111827; }
-    .pending-header span { font-size: 12px; color: #6b7280; font-weight: 600; }
+    .pending-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px; }
+    .pending-header h2 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+    .pending-header span { font-size: 12px; color: var(--primary); opacity: 0.6; font-weight: 600; }
     .pending-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     .pending-col h4 { margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #8b5cf6; }
-    .pending-col ul, .pending-col ol { margin: 0; padding-left: 20px; font-size: 13px; color: #374151; }
+    .pending-col ul, .pending-col ol { margin: 0; padding-left: 20px; font-size: 13px; color: var(--primary); opacity: 0.85; }
     .pending-col li { margin-bottom: 4px; }
     .pending-empty { font-size: 12px; color: #9ca3af; font-style: italic; margin: 0; }
     .pending-notes { margin-top: 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #92400e; }
@@ -63,8 +88,8 @@
     .btn-edit { background: #2563eb; color: white; }
     .btn-edit:hover { background: #1d4ed8; }
 
-    .btn-toggle { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
-    .btn-toggle:hover { background: #e5e7eb; }
+    .btn-toggle { background: var(--bg-body); color: var(--primary); border: 1px solid var(--border); }
+    .btn-toggle:hover { border-color: var(--accent-teal); }
 
     .btn-delete { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
     .btn-delete:hover { background: #fecaca; }
@@ -91,19 +116,19 @@
         .recipe-manage-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
     }
     .recipe-manage-card {
-        background: white; border: 1px solid #e5e7eb; border-radius: 12px;
-        padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+        padding: 15px; box-shadow: var(--shadow-sm);
         display: flex; flex-direction: column;
     }
     .rmc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
-    .rmc-name { font-size: 16px; font-weight: 800; color: #111827; }
-    .rmc-meta { font-size: 12px; color: #6b7280; margin-bottom: 14px; line-height: 1.7; }
+    .rmc-name { font-size: 16px; font-weight: 800; color: var(--primary); }
+    .rmc-meta { font-size: 12px; color: var(--primary); opacity: 0.65; margin-bottom: 14px; line-height: 1.7; }
     .rmc-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; margin-top: auto; }
     .rmc-favorites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .rmc-actions .btn-action, .rmc-favorites .btn-action { width: 100%; padding: 8px; }
     /* --- REPORTS TABLE STYLES --- */
-    .reports-table th { background: #fef2f2; padding: 12px; text-align: left; font-size: 13px; color: #991b1b; border-bottom: 2px solid #fee2e2; white-space: nowrap; }
-    .reports-table td { padding: 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; color: #374151; word-wrap: break-word; }
+    .reports-table th { background: var(--bg-card); padding: 12px; text-align: left; font-size: 13px; color: #991b1b; border-bottom: 2px solid var(--border); white-space: nowrap; }
+    .reports-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--primary); opacity: 0.9; word-wrap: break-word; }
 
     /* Reports Table Mobile View */
     @media only screen and (max-width: 850px) {
@@ -112,8 +137,8 @@
             display: block !important; width: 100% !important; box-sizing: border-box;
         }
         .reports-table tr {
-            background: white; margin-bottom: 15px; border: 1px solid #fee2e2;
-            border-radius: 8px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background: var(--bg-card); margin-bottom: 15px; border: 1px solid var(--border);
+            border-radius: 8px; padding: 15px; box-shadow: var(--shadow-sm);
         }
         .reports-table td { padding: 6px 0 !important; border: none !important; text-align: left; }
         
@@ -126,9 +151,9 @@
         .reports-table tr:not(.reports-empty-row) td:nth-child(4):before { content: "🚩 Issue: "; font-weight: bold; color: #6b7280; display: block; margin-bottom: 4px; }
         
         /* Action Button Container */
-        .reports-table td:nth-child(5) { 
-            margin-top: 10px; padding-top: 15px !important; 
-            border-top: 1px solid #f3f4f6 !important; text-align: right; 
+        .reports-table td:nth-child(5) {
+            margin-top: 10px; padding-top: 15px !important;
+            border-top: 1px solid var(--border) !important; text-align: right;
         }
     }
 </style>
@@ -279,7 +304,7 @@
             </div>
             <p style="font-size: 12px; color: #6b7280; margin: 8px 0 15px 0;">A raw count of signed-in visits per day (same person on 2 devices counts twice) — free, no Firebase billing plan needed. For who specifically visited, see Activity below.</p>
             <div style="overflow-x: auto; padding-bottom: 4px;">
-                <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px; min-width: 460px;">
+                <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px;">
                     <p style="color:#9ca3af; font-size: 13px;">Loading usage stats...</p>
                 </div>
             </div>
@@ -312,7 +337,7 @@
             
             <div style="display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap;">
                 <a href="review.html" style="background: #7c3aed; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center;">📋 Review Recipes</a>
-                <button id="btn-sync" onclick="syncViewCounts()" style="background: white; border: 1px solid #ccc; color: #555; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
+                <button id="btn-sync" onclick="syncViewCounts()" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--primary); padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
                 <button onclick="openStatsModal()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📊 Recipe Counts by Category</button>
                 <button onclick="generateMegaIndex()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🌐 Update Homepage Index</button>
                 <button onclick="exportRecipes()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">💾 Backup Recipes</button>
@@ -350,7 +375,7 @@
             <div id="activity-list" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
 
-        <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #7c3aed;">
+        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #7c3aed;">
             <h3 style="margin-top: 0; color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
                 Reads photos or PDFs using Ollama running on <strong>this same computer</strong> — nothing is uploaded anywhere.
@@ -392,7 +417,7 @@
             </div>
         </div>
 
-        <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0369a1;">
+        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0369a1;">
             <h3 style="margin-top: 0; color: #0369a1;">🔗 Import Recipe from a Link</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
                 Paste a link to a recipe on another site and we'll pull out the title, ingredients, and instructions
@@ -415,7 +440,7 @@
             </div>
         </div>
 
-        <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0a4d74;">
+        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0a4d74;">
             <h3 style="margin-top: 0; color: #0a4d74;">🚀 Speed Upload Station</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">Paste an array of recipes in this exact shape — it's the same shape "Send to Speed Upload Station" above produces.</p>
             <textarea id="bulk-input" rows="12" placeholder='[
@@ -435,7 +460,7 @@
             <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%;">🚀 Launch Recipes</button>
         </div>
 
-        <div style="background: white; padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #15803d;">
+        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #15803d;">
             <h3 style="margin-top: 0; color: #15803d;">☁️ Google Drive Sync (for family members without internet access)</h3>
             <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
                 Mirrors every visible recipe into a shared Google Drive folder as Google Docs. When you save, approve,
@@ -457,16 +482,16 @@
     <a href="index.html" id="floating-back-btn">← Cookbook</a>
 
     <div id="person-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1100;">
-        <div style="background: white; padding: 22px; border-radius: 10px; width: 420px; max-width: 92%; max-height: 82vh; display: flex; flex-direction: column;">
+        <div style="background: var(--bg-card); padding: 22px; border-radius: 10px; width: 420px; max-width: 92%; max-height: 82vh; display: flex; flex-direction: column;">
             <h2 style="margin: 0 0 6px 0; font-size: 1.15rem;">🔗 Who does this belong to?</h2>
             <p id="person-picker-summary" style="font-size: 12px; color: #6b7280; margin: 0 0 12px 0;"></p>
             <div id="person-picker-list" style="overflow-y: auto; flex: 1; margin: 0 -4px; padding: 0 4px;"></div>
-            <button id="person-picker-cancel" style="margin-top: 14px; width: 100%; padding: 10px; border: none; background: #f3f4f6; border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
+            <button id="person-picker-cancel" style="margin-top: 14px; width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg-body); color: var(--primary); border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
         </div>
     </div>
 
     <div id="person-activity-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
             <h2 id="person-activity-title" style="margin: 0 0 15px 0;">🕵️‍♀️ Activity</h2>
             <div id="person-activity-body" style="overflow-y: auto; flex: 1;"></div>
             <button onclick="closePersonActivityModal()" style="margin-top:15px; width:100%; padding:10px;">Close</button>
@@ -474,7 +499,7 @@
     </div>
 
     <div id="stats-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: white; padding: 25px; border-radius: 8px; width: 400px; max-width: 90%;">
+        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 400px; max-width: 90%;">
             <h2 style="margin: 0 0 5px 0;">📊 Recipe Counts by Category</h2>
             <p id="stats-total-count" style="margin: 0 0 15px 0; color: #6b7280; font-size: 13px;"></p>
             <div id="category-stats-list"></div>

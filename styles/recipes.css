@@ -302,12 +302,19 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 .input-group label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--primary); margin-bottom: 8px; font-family: var(--font-main); }
 
 .form-input, input, select, textarea {
-    width: 100%; padding: 12px; 
+    width: 100%; padding: 12px;
     border: 1px solid var(--border);
     background: var(--input-bg);
     color: var(--primary);
     border-radius: 8px; font-size: 16px; font-family: var(--font-main);
     transition: border-color 0.2s;
+    /* Flex/grid items default to min-width:auto, which floors them at their
+       OWN intrinsic content width regardless of width:100% above — inputs'
+       default browser sizing is wide enough that this silently broke every
+       two-column input row (admin.html's invite form, submit.html's
+       title/chef row, etc.) on narrow phones, forcing the whole page to
+       scroll sideways. This removes that floor so width:100% actually wins. */
+    min-width: 0;
 }
 .form-input:focus { outline: none; border-color: var(--accent-teal); box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1); }
 textarea.form-input { resize: vertical; min-height: 100px; }
