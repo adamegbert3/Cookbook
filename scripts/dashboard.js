@@ -2032,7 +2032,7 @@ window.resolveReport = async function(reportId) {
 // #e-category, the admin filter pills above, and the folder buttons in
 // homepage.html.
 const SCAN_CATEGORIES = [
-    'Appetizers & Snacks', 'Breads & Rolls', 'Breakfast', 'Desserts', 'Dutch Oven',
+    'Appetizers & Snacks', 'Beverages', 'Breads & Rolls', 'Breakfast', 'Desserts', 'Dutch Oven',
     'Main Dishes', 'Miscellaneous', 'Sauces, Dressings & Marinades', 'Sides & Veggies', 'Soups & Salads'
 ];
 

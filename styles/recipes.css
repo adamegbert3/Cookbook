@@ -184,6 +184,7 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 .border-teal { border-left-color: #14b8a6 !important; }      /* Sauces & Dressings */
 .border-slate { border-left-color: #475569 !important; }     /* Dutch Oven */
 .border-gray { border-left-color: #9ca3af !important; }      /* Miscellaneous */
+.border-cyan { border-left-color: #06b6d4 !important; }      /* Beverages */
 
 /* ==========================================================================
    5. HOMEPAGE WIDGETS
@@ -223,6 +224,7 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 .cat-teal { background-color: #14b8a6; }
 .cat-green { background-color: #10b981; }
 .cat-purple { background-color: #8b5cf6; }
+.cat-cyan { background-color: #06b6d4; }
 
 /* Hover & Active States */
 .folders button:hover {

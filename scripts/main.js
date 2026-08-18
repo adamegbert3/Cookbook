@@ -564,6 +564,7 @@ function getCategoryClass(category) {
     if (cat.includes('main')) return 'border-red';
     if (cat.includes('dessert')) return 'border-yellow';
     if (cat.includes('appetizer') || cat.includes('snack')) return 'border-blue';
+    if (cat.includes('beverage') || cat.includes('drink')) return 'border-cyan';
     if (cat.includes('breakfast')) return 'border-orange';
     if (cat.includes('bread') || cat.includes('roll')) return 'border-brown';
     if (cat.includes('soup') || cat.includes('salad')) return 'border-purple';

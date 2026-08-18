@@ -23,13 +23,14 @@ const PRESETS = [
     { emoji: '🥗', label: 'Sides & Salads', categories: ['Sides & Veggies', 'Soups & Salads'] },
     { emoji: '🥨', label: 'Snacks', categories: ['Appetizers & Snacks'] },
     { emoji: '🍞', label: 'Breads', categories: ['Breads & Rolls'] },
+    { emoji: '🥤', label: 'Drinks', categories: ['Beverages'] },
 ];
 
 const CATEGORY_COLORS = {
     'main dishes': '#ef4444', 'desserts': '#eab308', 'appetizers & snacks': '#3b82f6',
     'breakfast': '#f97316', 'breads & rolls': '#92400e', 'soups & salads': '#8b5cf6',
     'sauces, dressings & marinades': '#14b8a6', 'sides & veggies': '#22c55e',
-    'dutch oven': '#64748b', 'miscellaneous': '#9ca3af'
+    'dutch oven': '#64748b', 'miscellaneous': '#9ca3af', 'beverages': '#06b6d4'
 };
 
 let allRecipes = [];
