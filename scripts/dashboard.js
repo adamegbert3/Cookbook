@@ -90,12 +90,15 @@ async function loadAdminDashboard() {
     if (ollamaModelInput && savedOllamaModel) ollamaModelInput.value = savedOllamaModel;
 
     // The full recipes collection is only needed by the Master Recipe List
-    // (admin-recipe-list.html, #unified-list + #category-stats-list) and
-    // Most Popular (admin-popular.html, #leaderboard-list) — skip the read
+    // (admin/recipe-list.html, #unified-list + #category-stats-list), Most
+    // Popular (admin/popular.html, #leaderboard-list — loadAnalytics also
+    // renders the Activity roster as a side effect of the same call), and
+    // Activity itself (admin/activity.html, #activity-list) — skip the read
     // entirely on every other admin page now that they're split up.
     const needsAllRecipes = document.getElementById('unified-list')
         || document.getElementById('category-stats-list')
-        || document.getElementById('leaderboard-list');
+        || document.getElementById('leaderboard-list')
+        || document.getElementById('activity-list');
     if (!needsAllRecipes) return;
 
     try {
@@ -155,10 +158,10 @@ function buildRecipeRowHtml(r) {
     const isWhl = currentTags.includes("Wheeler Favorite");
 
     return `
-        <div class="recipe-manage-card">
+        <div class="recipe-manage-card" data-recipe-id="${r.id}">
+            ${badge}
             <div class="rmc-top">
                 <span class="rmc-name">${r.name || "Untitled"}</span>
-                ${badge}
             </div>
             <div class="rmc-meta">
                 👤 ${r.author || "Unknown"}<br>
@@ -183,7 +186,13 @@ function buildRecipeRowHtml(r) {
 
 const MASTER_LIST_BATCH_SIZE = 30;
 let masterListQueue = [];
+let masterListObserver = null;
 
+// Full rebuild — only for when the actual SET of cards changes (a new
+// filter/search, or the initial load). Toggling a single recipe's status
+// updates just that one card instead (see updateSingleRecipeCard) so
+// clicking a Hall of Fame star or Hide doesn't reset your scroll position
+// and yank you back to the top of a long list.
 function renderUnifiedManager(recipes) {
     const list = document.getElementById('unified-list');
     if(!list) return;
@@ -195,6 +204,8 @@ function renderUnifiedManager(recipes) {
         return (a.name || "").localeCompare(b.name || "");
     });
 
+    if (masterListObserver) { masterListObserver.disconnect(); masterListObserver = null; }
+
     if (recipes.length === 0) {
         list.innerHTML = "<div style='padding:20px; text-align:center'>No recipes found.</div>";
         return;
@@ -202,28 +213,48 @@ function renderUnifiedManager(recipes) {
 
     masterListQueue = recipes.slice();
 
-    list.innerHTML = `
-    <div class="recipe-manage-list" id="unified-cards"></div>
-    <div id="unified-load-more-wrap" style="text-align:center; margin-top:15px;"></div>
-    `;
+    list.innerHTML = `<div class="recipe-manage-list" id="unified-cards"></div>`;
 
     renderNextMasterBatch();
 }
 
-window.renderNextMasterBatch = function() {
+function renderNextMasterBatch() {
     const cardsEl = document.getElementById('unified-cards');
-    const wrap = document.getElementById('unified-load-more-wrap');
     if (!cardsEl) return;
 
     const batch = masterListQueue.splice(0, MASTER_LIST_BATCH_SIZE);
     cardsEl.insertAdjacentHTML('beforeend', batch.map(buildRecipeRowHtml).join(''));
 
-    if (masterListQueue.length > 0) {
-        wrap.innerHTML = `<button class="pill-btn btn-teal" onclick="renderNextMasterBatch()">Load ${Math.min(MASTER_LIST_BATCH_SIZE, masterListQueue.length)} More (${masterListQueue.length} remaining)</button>`;
-    } else {
-        wrap.innerHTML = '';
-    }
-};
+    const oldSentinel = document.getElementById('unified-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+
+    if (masterListQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'unified-sentinel';
+    sentinel.style.cssText = 'grid-column: 1 / -1; height: 1px;';
+    cardsEl.appendChild(sentinel);
+
+    masterListObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            masterListObserver.disconnect();
+            renderNextMasterBatch();
+        }
+    }, { rootMargin: '400px' });
+
+    masterListObserver.observe(sentinel);
+}
+
+// Replaces one card's DOM in place from the current allRecipeData, instead
+// of rebuilding the whole list — used by quickTag/toggleVisibility so nothing
+// else on screen moves. Silently no-ops if that card hasn't been rendered
+// yet (e.g. it's further down the lazy-load queue) — nothing to update yet.
+function updateSingleRecipeCard(id) {
+    const recipe = allRecipeData.find(r => r.id === id);
+    const cardEl = document.querySelector(`.recipe-manage-card[data-recipe-id="${CSS.escape(id)}"]`);
+    if (!recipe || !cardEl) return;
+    cardEl.outerHTML = buildRecipeRowHtml(recipe);
+}
 
 // ACTION FUNCTIONS
 window.deleteRecipe = async function(id, recipeName) {
@@ -231,7 +262,9 @@ window.deleteRecipe = async function(id, recipeName) {
     try {
         await deleteDoc(doc(db, "recipes", id));
         allRecipeData = allRecipeData.filter(r => r.id !== id);
-        applyAdminFilters();
+        // Deleted, so the card comes out entirely rather than being
+        // re-rendered — everything else on screen stays put.
+        document.querySelector(`.recipe-manage-card[data-recipe-id="${CSS.escape(id)}"]`)?.remove();
         triggerDriveSyncSilently();
     } catch (error) { alert("Error deleting: " + error.message); }
 };
@@ -243,7 +276,7 @@ window.toggleVisibility = async function(id, currentStatus) {
         await updateDoc(doc(db, "recipes", id), { isHidden: newStatus });
         const recipe = allRecipeData.find(r => r.id === id);
         if(recipe) recipe.isHidden = newStatus;
-        applyAdminFilters();
+        updateSingleRecipeCard(id);
         triggerDriveSyncSilently();
     } catch (error) { alert("Could not update visibility."); }
 };
@@ -272,12 +305,11 @@ window.quickTag = async function(id, tagString, currentlyHasTag) {
             }
         }
 
-        // 3. Re-render the table instantly to show the new button color —
-        // through applyAdminFilters() (not a raw renderUnifiedManager call)
-        // so an active search/category filter doesn't get silently dropped
-        // right when you click a tag (that's what made this feel like it
-        // "kicked you out" of the list).
-        applyAdminFilters();
+        // 3. Update just this one card in place — a full re-render (even
+        // through applyAdminFilters, which at least kept the active
+        // search/category filter) still rebuilt the whole list and reset
+        // your scroll position back to the top every time.
+        updateSingleRecipeCard(id);
 
     } catch (error) {
         console.error("Error updating tag:", error);
@@ -797,15 +829,15 @@ function updateAttentionCounts(partial) {
     // Each area now lives on its own page (see the admin console split) —
     // these are cross-page links now, not same-page anchors.
     const parts = [
-        chip('🛡️', 'Awaiting approval', attentionCounts.pending, 'admin-approve.html',
+        chip('🛡️', 'Awaiting approval', attentionCounts.pending, '/admin/approve.html',
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
-        chip('📬', 'Suggested fixes', attentionCounts.suggestions, 'admin-suggestions.html',
+        chip('📬', 'Suggested fixes', attentionCounts.suggestions, '/admin/suggestions.html',
              { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d' }),
-        chip('🔑', 'Password resets', attentionCounts.resetRequests, 'admin-password-resets.html',
+        chip('🔑', 'Password resets', attentionCounts.resetRequests, '/admin/password-resets.html',
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
-        chip('🙋', 'Review requests', attentionCounts.reviewRequests, 'admin-reports.html',
+        chip('🙋', 'Review requests', attentionCounts.reviewRequests, '/admin/reports.html',
              { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74' }),
-        chip('🚩', 'Reported issues', attentionCounts.reports, 'admin-reports.html',
+        chip('🚩', 'Reported issues', attentionCounts.reports, '/admin/reports.html',
              { bg: '#fee2e2', fg: '#b91c1c', border: '#fca5a5' })
     ].filter(Boolean);
 
@@ -892,7 +924,7 @@ const UPLOAD_HANDOFF_KEY = 'pendingUploadStationHandoff';
 function sendToUploadStation(jsonText) {
     JSON.parse(jsonText); // throws if malformed, caught by the caller
     sessionStorage.setItem(UPLOAD_HANDOFF_KEY, jsonText);
-    window.location.href = 'admin-upload.html';
+    window.location.href = '/admin/upload.html';
 }
 
 function consumeUploadStationHandoff() {
@@ -1775,7 +1807,7 @@ window.triggerDriveSync = async function() {
     btn.disabled = false;
 };
 // Split out from renderDeepStats — this lives on the Dashboard page (admin.html)
-// now, a different page than the category breakdown below (admin-recipe-list.html),
+// now, a different page than the category breakdown below (admin/recipe-list.html),
 // so it needs to run on its own rather than as a side effect of a recipes fetch
 // the Dashboard page doesn't otherwise need.
 async function loadTotalCooksCount() {

@@ -55,7 +55,7 @@ happen from a plain-HTTP copy of the page instead:
    this is a separate login session from the live site, so you'll need to
    sign in here too, even if you're already logged into yum4you.com.
 2. Then open the second link (`.../admin.html`) and tap the **📷 Scan
-   Photos** icon (or go straight to `.../admin-scan.html`).
+   Photos** icon (or go straight to `.../admin/scan.html`).
 3. Click the file picker and select one photo, one PDF, or **select several
    files at once**.
 4. Click **🔍 Scan File(s)**. It scans them one at a time (you'll see
@@ -99,7 +99,7 @@ blocking rule applies here too:
    `killall Ollama`, then run the command above.)
 4. On your phone (same WiFi), open `http://192.168.1.42:8080/index.html`
    (your computer's address, not "localhost" — that only means something on
-   the computer itself), log in, then go to `.../admin-scan.html`.
+   the computer itself), log in, then go to `.../admin/scan.html`.
 5. Expand **"Scanning from your phone instead of the computer running
    Ollama?"** and enter
    `http://192.168.1.42:11434` in the box.

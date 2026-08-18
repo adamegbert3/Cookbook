@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Speed Upload Station | Admin</title>
-    <link rel="stylesheet" href="styles/recipes.css">
-    <link rel="stylesheet" href="styles/admin.css">
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="images/favicon.png">
-    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-    <link rel="manifest" href="offline_features/manifest.json">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
     <script>
         const settings = JSON.parse(localStorage.getItem('userSettings'));
         if (settings) {
@@ -25,7 +25,7 @@
 <body>
 
 <div class="admin-container">
-    <a href="admin.html" class="admin-back-link">← Admin Home</a>
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
     <h1 style="color: #0a4d74;">🚀 Speed Upload Station</h1>
     <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">Paste an array of recipes in this exact shape — it's the same shape Scan Photos and Import from Link produce, and they'll land here automatically.</p>
     <textarea id="bulk-input" rows="12" placeholder='[
@@ -45,6 +45,6 @@
     <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%;">🚀 Launch Recipes</button>
 </div>
 
-<script type="module" src="scripts/dashboard.js?v=5"></script>
+<script type="module" src="../scripts/dashboard.js?v=5"></script>
 </body>
 </html>

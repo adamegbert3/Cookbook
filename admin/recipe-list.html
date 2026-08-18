@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Master Recipe List | Admin</title>
-    <link rel="stylesheet" href="styles/recipes.css">
-    <link rel="stylesheet" href="styles/admin.css">
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/png" href="images/favicon.png">
-    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
-    <link rel="manifest" href="offline_features/manifest.json">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
     <script>
         const settings = JSON.parse(localStorage.getItem('userSettings'));
         if (settings) {
@@ -25,11 +25,11 @@
 <body>
 
 <div class="admin-container">
-    <a href="admin.html" class="admin-back-link">← Admin Home</a>
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
     <h1 style="color: #1e3a8a;">🎛️ Master Recipe List</h1>
 
     <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
-        <a href="review.html" style="background: #7c3aed; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center;">📋 Review Recipes</a>
+        <a href="../review.html" style="background: #7c3aed; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center;">📋 Review Recipes</a>
         <button id="btn-sync" onclick="syncViewCounts()" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--primary); padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
         <button onclick="openStatsModal()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📊 Recipe Counts by Category</button>
         <button onclick="generateMegaIndex()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🌐 Update Homepage Index</button>
@@ -70,6 +70,6 @@
     </div>
 </div>
 
-<script type="module" src="scripts/dashboard.js?v=5"></script>
+<script type="module" src="../scripts/dashboard.js?v=5"></script>
 </body>
 </html>

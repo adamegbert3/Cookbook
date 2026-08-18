@@ -1,6 +1,6 @@
 // Bump this whenever ASSETS_TO_CACHE changes, otherwise the old cache stays
 // in charge and newly-listed files never get pre-cached for offline use.
-const CACHE_NAME = 'cookbook-v12-offline';
+const CACHE_NAME = 'cookbook-v13-offline';
 
 // Core app shell files to pre-cache on install so the site opens offline
 const ASSETS_TO_CACHE = [
@@ -10,21 +10,21 @@ const ASSETS_TO_CACHE = [
   '/recipe.html',
   '/edit-recipe.html',
   '/admin.html',
-  '/admin-approve.html',
-  '/admin-password-resets.html',
-  '/admin-suggestions.html',
-  '/admin-reports.html',
-  '/admin-invite.html',
-  '/admin-access.html',
-  '/admin-households.html',
-  '/admin-recipe-list.html',
-  '/admin-scan.html',
-  '/admin-import.html',
-  '/admin-upload.html',
-  '/admin-drive-sync.html',
-  '/admin-usage.html',
-  '/admin-popular.html',
-  '/admin-activity.html',
+  '/admin/approve.html',
+  '/admin/password-resets.html',
+  '/admin/suggestions.html',
+  '/admin/reports.html',
+  '/admin/invite.html',
+  '/admin/access.html',
+  '/admin/households.html',
+  '/admin/recipe-list.html',
+  '/admin/scan.html',
+  '/admin/import.html',
+  '/admin/upload.html',
+  '/admin/drive-sync.html',
+  '/admin/usage.html',
+  '/admin/popular.html',
+  '/admin/activity.html',
   '/leaderboard.html',
   '/print.html',
   '/shopping-list.html',

@@ -220,11 +220,11 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 .cat-yellow { background-color: #eab308; color: #111827 !important; } /* Dark text for yellow so it's readable */
 .cat-slate { background-color: #475569; }
 .cat-red { background-color: #ef4444; }
-.cat-gray { background-color: #9ca3af; }
+.cat-gray { background-color: #9ca3af; color: #111827 !important; } /* Same reasoning as yellow — too light for white text */
 .cat-teal { background-color: #14b8a6; }
 .cat-green { background-color: #10b981; }
 .cat-purple { background-color: #8b5cf6; }
-.cat-cyan { background-color: #06b6d4; }
+.cat-cyan { background-color: #06b6d4; color: #111827 !important; } /* Same reasoning as yellow — too light for white text */
 
 /* Hover & Active States */
 .folders button:hover {
