@@ -77,6 +77,9 @@ async function loadAdminDashboard() {
     loadAdminHouseholds();
     loadSuggestions();
     loadResetRequests();
+    loadTotalCooksCount();
+    loadAttentionSummary();
+    consumeUploadStationHandoff();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -86,22 +89,31 @@ async function loadAdminDashboard() {
     const savedOllamaModel = localStorage.getItem('ollamaModelName');
     if (ollamaModelInput && savedOllamaModel) ollamaModelInput.value = savedOllamaModel;
 
+    // The full recipes collection is only needed by the Master Recipe List
+    // (admin-recipe-list.html, #unified-list + #category-stats-list) and
+    // Most Popular (admin-popular.html, #leaderboard-list) — skip the read
+    // entirely on every other admin page now that they're split up.
+    const needsAllRecipes = document.getElementById('unified-list')
+        || document.getElementById('category-stats-list')
+        || document.getElementById('leaderboard-list');
+    if (!needsAllRecipes) return;
+
     try {
         console.log("⏳ [FIRESTORE] Querying 'recipes' collection...");
         const querySnapshot = await getDocs(collection(db, "recipes"));
-        
+
         console.log(`✅ [FIRESTORE SUCCESS] Snapshot received! Empty? ${querySnapshot.empty}`);
         console.log(`📊 [FIRESTORE COUNT] Found ${querySnapshot.size} documents.`);
 
-        allRecipeData = []; 
+        allRecipeData = [];
         querySnapshot.forEach(doc => {
             allRecipeData.push({ id: doc.id, ...doc.data() });
         });
-        
+
         console.log("🚀 [RENDER] Passing data to renderUnifiedManager...");
-        renderUnifiedManager(allRecipeData);      
-        renderDeepStats(allRecipeData);      
-        loadAnalytics(allRecipeData);   
+        renderUnifiedManager(allRecipeData);
+        renderDeepStats(allRecipeData);
+        loadAnalytics(allRecipeData);
 
         // Activating Search
         const searchInput = document.getElementById('manager-search');
@@ -782,16 +794,18 @@ function updateAttentionCounts(partial) {
                 </a>`;
     };
 
+    // Each area now lives on its own page (see the admin console split) —
+    // these are cross-page links now, not same-page anchors.
     const parts = [
-        chip('🛡️', 'Awaiting approval', attentionCounts.pending, '#pending-list',
+        chip('🛡️', 'Awaiting approval', attentionCounts.pending, 'admin-approve.html',
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
-        chip('📬', 'Suggested fixes', attentionCounts.suggestions, '#suggestions-list',
+        chip('📬', 'Suggested fixes', attentionCounts.suggestions, 'admin-suggestions.html',
              { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d' }),
-        chip('🔑', 'Password resets', attentionCounts.resetRequests, '#reset-requests-list',
+        chip('🔑', 'Password resets', attentionCounts.resetRequests, 'admin-password-resets.html',
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
-        chip('🙋', 'Review requests', attentionCounts.reviewRequests, '#reports-table-body',
+        chip('🙋', 'Review requests', attentionCounts.reviewRequests, 'admin-reports.html',
              { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74' }),
-        chip('🚩', 'Reported issues', attentionCounts.reports, '#reports-table-body',
+        chip('🚩', 'Reported issues', attentionCounts.reports, 'admin-reports.html',
              { bg: '#fee2e2', fg: '#b91c1c', border: '#fca5a5' })
     ].filter(Boolean);
 
@@ -807,6 +821,87 @@ function updateAttentionCounts(partial) {
         panel.querySelector('h3').innerHTML = '✅ All Caught Up';
         panel.querySelector('h3').style.color = '#15803d';
     }
+
+    // Small red count badges on the Dashboard's icon tiles (same data,
+    // second presentation — icon ids match these keys directly).
+    ['pending', 'suggestions', 'resetRequests', 'reports'].forEach(key => {
+        const badge = document.getElementById(`badge-${key}`);
+        if (!badge) return;
+        const count = attentionCounts[key];
+        if (count) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    });
+}
+
+// Independent lightweight counts for the Dashboard's "Needs Your Attention"
+// panel and icon badges. Deliberately separate from loadPendingRecipes /
+// loadSuggestions / loadResetRequests / loadReportedIssues, which now live
+// on their own pages and only run (and only call updateAttentionCounts)
+// when THEIR page is open — without this, the Dashboard's summary would
+// never populate at all since none of those loaders' target elements are
+// ever present there. Mirrors each page's own filtering exactly (recipe_suggestions
+// excludes status:'resolved', password_reset_requests only counts
+// status:'pending', recipe_reports splits on type:'review_request') so the
+// numbers here always match what you'll see after clicking through.
+async function loadAttentionSummary() {
+    if (!document.getElementById('attention-counts')) return;
+
+    try {
+        const [pendingSnap, suggestionsSnap, resetsSnap, reportsSnap] = await Promise.all([
+            getDocs(collection(db, "pending_recipes")),
+            getDocs(collection(db, "recipe_suggestions")),
+            getDocs(collection(db, "password_reset_requests")),
+            getDocs(collection(db, "recipe_reports"))
+        ]);
+
+        let suggestionsPending = 0;
+        suggestionsSnap.forEach(d => { if (d.data().status !== 'resolved') suggestionsPending++; });
+
+        let resetsPending = 0;
+        resetsSnap.forEach(d => { if (d.data().status === 'pending') resetsPending++; });
+
+        let reports = 0, reviewRequests = 0;
+        reportsSnap.forEach(d => { d.data().type === 'review_request' ? reviewRequests++ : reports++; });
+
+        updateAttentionCounts({
+            pending: pendingSnap.size,
+            suggestions: suggestionsPending,
+            resetRequests: resetsPending,
+            reports,
+            reviewRequests
+        });
+    } catch (e) {
+        console.error("Could not load attention summary:", e);
+    }
+}
+
+// ==========================================
+// CROSS-PAGE HANDOFF: Scan Photos / Import from Link → Speed Upload Station
+// Those three used to be widgets on the same page, so "Send to Speed Upload
+// Station" just wrote straight into the #bulk-input textarea next to it.
+// Now they're three separate pages — the sender stashes the JSON in
+// sessionStorage and navigates over; the Upload Station page picks it up
+// and clears it, so revisiting later doesn't re-apply stale data.
+// ==========================================
+const UPLOAD_HANDOFF_KEY = 'pendingUploadStationHandoff';
+
+function sendToUploadStation(jsonText) {
+    JSON.parse(jsonText); // throws if malformed, caught by the caller
+    sessionStorage.setItem(UPLOAD_HANDOFF_KEY, jsonText);
+    window.location.href = 'admin-upload.html';
+}
+
+function consumeUploadStationHandoff() {
+    const bulkInput = document.getElementById('bulk-input');
+    const pending = sessionStorage.getItem(UPLOAD_HANDOFF_KEY);
+    if (!bulkInput || !pending) return;
+    sessionStorage.removeItem(UPLOAD_HANDOFF_KEY);
+    bulkInput.value = pending;
+    bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ==========================================
@@ -1584,20 +1679,6 @@ window.uploadBulkRecipes = async function() {
 // ==========================================
 // IMPORT RECIPE FROM A LINK
 // ==========================================
-function mergeIntoUploadStation(jsonText) {
-    const bulkInput = document.getElementById('bulk-input');
-    const incoming = JSON.parse(jsonText);
-    let existing = [];
-    if (bulkInput.value.trim()) {
-        try {
-            existing = JSON.parse(bulkInput.value);
-            if (!Array.isArray(existing)) existing = [];
-        } catch (e) { existing = []; }
-    }
-    bulkInput.value = JSON.stringify([...existing, ...incoming], null, 2);
-    bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
 window.importRecipeFromUrl = async function() {
     const input = document.getElementById('import-recipe-url');
     const statusEl = document.getElementById('import-recipe-status');
@@ -1664,9 +1745,9 @@ window.importRecipeFromUrl = async function() {
 
 window.sendImportToUploadStation = function() {
     try {
-        mergeIntoUploadStation(document.getElementById('import-recipe-json').value);
+        sendToUploadStation(document.getElementById('import-recipe-json').value);
     } catch (e) {
-        alert("Could not merge into the upload box: " + e.message);
+        alert("Could not send to the Upload Station: " + e.message);
     }
 };
 
@@ -1693,9 +1774,18 @@ window.triggerDriveSync = async function() {
     }
     btn.disabled = false;
 };
-function renderDeepStats(recipes) {
+// Split out from renderDeepStats — this lives on the Dashboard page (admin.html)
+// now, a different page than the category breakdown below (admin-recipe-list.html),
+// so it needs to run on its own rather than as a side effect of a recipes fetch
+// the Dashboard page doesn't otherwise need.
+async function loadTotalCooksCount() {
     const cookCountEl = document.getElementById('total-cooks-count');
-    getDocs(collection(db, "global_cooks")).then(snap => { if(cookCountEl) cookCountEl.innerText = snap.size.toLocaleString(); });
+    if (!cookCountEl) return;
+    const snap = await getDocs(collection(db, "global_cooks"));
+    cookCountEl.innerText = snap.size.toLocaleString();
+}
+
+function renderDeepStats(recipes) {
     const catListEl = document.getElementById('category-stats-list');
     if(!catListEl) return;
 
@@ -2223,21 +2313,9 @@ window.scanRecipePhoto = async function() {
 };
 
 window.sendScanToUploadStation = function() {
-    const scanJson = document.getElementById('scan-photo-json').value;
-    const bulkInput = document.getElementById('bulk-input');
-
     try {
-        const scanned = JSON.parse(scanJson);
-        let existing = [];
-        if (bulkInput.value.trim()) {
-            try {
-                existing = JSON.parse(bulkInput.value);
-                if (!Array.isArray(existing)) existing = [];
-            } catch (e) { existing = []; }
-        }
-        bulkInput.value = JSON.stringify([...existing, ...scanned], null, 2);
-        bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        sendToUploadStation(document.getElementById('scan-photo-json').value);
     } catch (e) {
-        alert("Could not merge into the upload box: " + e.message);
+        alert("Could not send to the Upload Station: " + e.message);
     }
 };

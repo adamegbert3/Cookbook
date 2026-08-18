@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Google Drive Sync | Admin</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="stylesheet" href="styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #15803d;">☁️ Google Drive Sync</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        For family members without internet access. Mirrors every visible recipe into a shared Google Drive
+        folder as Google Docs. When you save, approve, or delete a recipe <strong>from this admin console while
+        <code>local-tools/scan-recipe/serve-locally.mjs</code> is running</strong>, this now kicks off automatically
+        in the background — no need to remember to run it. As a backup, it also runs on its own schedule (see
+        <code>local-tools/sync-to-drive/README.md</code>) so changes made from your phone still make it to Drive
+        within a few hours even if that helper isn't open.
+    </p>
+    <button id="drive-sync-btn" onclick="triggerDriveSync()" style="background:#15803d; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">☁️ Sync to Drive Now</button>
+    <div id="drive-sync-status" style="font-size:12px; color:#6b7280; margin-top:8px;"></div>
+</div>
+
+<script type="module" src="scripts/dashboard.js?v=5"></script>
+</body>
+</html>

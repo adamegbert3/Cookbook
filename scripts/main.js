@@ -299,7 +299,13 @@ onAuthStateChanged(auth, async (user) => {
     } else {
         // --- 🚨 UPGRADED GUEST HANDLING (The Bouncer) ---
         const currentPage = window.location.pathname.split('/').pop().toLowerCase();
-        const privatePages = ['profile.html', 'admin.html', 'submit.html', 'shopping-list.html', 'recipe.html'];
+        const privatePages = [
+            'profile.html', 'submit.html', 'shopping-list.html', 'recipe.html',
+            'admin.html', 'admin-approve.html', 'admin-password-resets.html', 'admin-suggestions.html',
+            'admin-reports.html', 'admin-invite.html', 'admin-access.html', 'admin-households.html',
+            'admin-recipe-list.html', 'admin-scan.html', 'admin-import.html', 'admin-upload.html',
+            'admin-drive-sync.html', 'admin-usage.html', 'admin-popular.html', 'admin-activity.html'
+        ];
         
         if (privatePages.includes(currentPage) || document.getElementById('chefNotes')) {
             window.location.href = "index.html"; 

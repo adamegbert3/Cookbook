@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Import Recipe from a Link | Admin</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="stylesheet" href="styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #0369a1;">🔗 Import Recipe from a Link</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        Paste a link to a recipe on another site and we'll pull out the title, ingredients, and instructions
+        automatically — most recipe sites publish this in a standard format for Google, and we read the same
+        data. Always review the result before sending it live; automatic parsing isn't perfect.
+    </p>
+    <p style="font-size: 12px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 12px; border-radius: 6px;">
+        ⚠️ A few sites allow this straight from this page. Most don't (browsers block reading another site's
+        page for privacy reasons) — for those, run <code>node local-tools/scan-recipe/serve-locally.mjs</code>
+        and use the <code>http://localhost:8080</code> link instead, same as scanning photos.
+    </p>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <input type="url" id="import-recipe-url" placeholder="https://example.com/some-recipe" style="flex:1; min-width:240px; padding:8px; border:1px solid #ccc; border-radius:6px;">
+        <button id="import-recipe-btn" onclick="importRecipeFromUrl()" style="background:#0369a1; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">🔗 Import</button>
+    </div>
+    <div id="import-recipe-status" style="font-size:12px; color:#6b7280; margin-top:8px;"></div>
+    <div id="import-recipe-result" style="display:none; margin-top:12px;">
+        <textarea id="import-recipe-json" rows="8" readonly style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-family:monospace; font-size:12px; background:#f0f9ff;"></textarea>
+        <button onclick="sendImportToUploadStation()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; font-size: 13px;">⬇️ Send to Speed Upload Station</button>
+    </div>
+</div>
+
+<script type="module" src="scripts/dashboard.js?v=5"></script>
+</body>
+</html>
