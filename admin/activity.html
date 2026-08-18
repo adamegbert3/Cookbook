@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Activity | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #1e3a8a;">🕵️‍♀️ Activity</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">Everyone who's signed in shows up here, even if they only browsed — tap anyone to see everything they've visited, viewed, and cooked.</p>
+    <div id="activity-list" style="max-height: 600px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
+
+    <div id="person-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1100;">
+        <div style="background: var(--bg-card); padding: 22px; border-radius: 10px; width: 420px; max-width: 92%; max-height: 82vh; display: flex; flex-direction: column;">
+            <h2 style="margin: 0 0 6px 0; font-size: 1.15rem;">🔗 Who does this belong to?</h2>
+            <p id="person-picker-summary" style="font-size: 12px; color: #6b7280; margin: 0 0 12px 0;"></p>
+            <div id="person-picker-list" style="overflow-y: auto; flex: 1; margin: 0 -4px; padding: 0 4px;"></div>
+            <button id="person-picker-cancel" style="margin-top: 14px; width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg-body); color: var(--primary); border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="person-activity-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 id="person-activity-title" style="margin: 0 0 15px 0;">🕵️‍♀️ Activity</h2>
+            <div id="person-activity-body" style="overflow-y: auto; flex: 1;"></div>
+            <button onclick="closePersonActivityModal()" style="margin-top:15px; width:100%; padding:10px;">Close</button>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="../scripts/dashboard.js?v=5"></script>
+</body>
+</html>

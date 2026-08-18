@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Scan Recipe Photos | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
+    <!-- pdf.js, used only by this page to turn PDF pages into images -->
+    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+    <script>
+        if (window['pdfjsLib']) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        }
+    </script>
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        Reads photos or PDFs using Ollama running on <strong>this same computer</strong> — nothing is uploaded anywhere.
+        Pick as many files as you want. One-time setup: install
+        <a href="https://ollama.com/download" target="_blank">Ollama</a>, run
+        <code>ollama pull llama3.2-vision</code>, then start it with
+        <code>OLLAMA_ORIGINS=* ollama serve</code> so it accepts requests from this page.
+    </p>
+    <p style="font-size: 12px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 12px; border-radius: 6px;">
+        ⚠️ <strong>Important:</strong> this only works while you're viewing this page over plain <code>http://</code>, not the secure live site — browsers permanently block a secure page from calling Ollama, with no setting to allow it. Run <code>node local-tools/scan-recipe/serve-locally.mjs</code> in the project folder and open the <code>http://localhost:8080</code> link it prints, then come back to this same page there.
+    </p>
+    <details style="margin-bottom: 12px;">
+        <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">📱 Scanning from your phone instead of the computer running Ollama?</summary>
+        <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
+            Enter your computer's address on your home WiFi instead of "localhost" (e.g. <code>http://192.168.1.42:11434</code>).
+            On the computer, find it under Wi-Fi settings, and start Ollama with
+            <code>OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS=* ollama serve</code> so it accepts connections from other devices.
+            This still requires viewing this page over <code>http://</code> (see the warning above) — see
+            <code>local-tools/scan-recipe/README.md</code> for the full walkthrough.
+        </p>
+        <input type="text" id="ollama-server-url" placeholder="http://localhost:11434" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
+    </details>
+    <details style="margin-bottom: 12px;">
+        <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">🧠 Model not loading? Change which Ollama model is used</summary>
+        <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
+            If scanning fails with something like <code>unknown model architecture</code>, your installed Ollama version can't run <code>llama3.2-vision</code> yet.
+            Try a different vision model instead — e.g. run <code>ollama pull llava</code> in Terminal, then type <code>llava</code> below.
+            See <code>local-tools/scan-recipe/README.md</code> for more options.
+        </p>
+        <input type="text" id="ollama-model-name" placeholder="llama3.2-vision" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
+    </details>
+    <input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple style="margin-bottom: 10px;">
+    <br>
+    <button id="scan-photo-btn" onclick="scanRecipePhoto()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">🔍 Scan File(s)</button>
+    <div id="scan-photo-status" style="font-size: 12px; color: #6b7280; margin-top: 8px;"></div>
+    <div id="scan-photo-result" style="display:none; margin-top: 12px;">
+        <textarea id="scan-photo-json" rows="8" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px; background: #faf5ff;"></textarea>
+        <button onclick="sendScanToUploadStation()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; font-size: 13px;">⬇️ Send to Speed Upload Station</button>
+    </div>
+</div>
+
+<script type="module" src="../scripts/dashboard.js?v=5"></script>
+</body>
+</html>

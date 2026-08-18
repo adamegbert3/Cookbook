@@ -77,6 +77,9 @@ async function loadAdminDashboard() {
     loadAdminHouseholds();
     loadSuggestions();
     loadResetRequests();
+    loadTotalCooksCount();
+    loadAttentionSummary();
+    consumeUploadStationHandoff();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -86,22 +89,34 @@ async function loadAdminDashboard() {
     const savedOllamaModel = localStorage.getItem('ollamaModelName');
     if (ollamaModelInput && savedOllamaModel) ollamaModelInput.value = savedOllamaModel;
 
+    // The full recipes collection is only needed by the Master Recipe List
+    // (admin/recipe-list.html, #unified-list + #category-stats-list), Most
+    // Popular (admin/popular.html, #leaderboard-list — loadAnalytics also
+    // renders the Activity roster as a side effect of the same call), and
+    // Activity itself (admin/activity.html, #activity-list) — skip the read
+    // entirely on every other admin page now that they're split up.
+    const needsAllRecipes = document.getElementById('unified-list')
+        || document.getElementById('category-stats-list')
+        || document.getElementById('leaderboard-list')
+        || document.getElementById('activity-list');
+    if (!needsAllRecipes) return;
+
     try {
         console.log("⏳ [FIRESTORE] Querying 'recipes' collection...");
         const querySnapshot = await getDocs(collection(db, "recipes"));
-        
+
         console.log(`✅ [FIRESTORE SUCCESS] Snapshot received! Empty? ${querySnapshot.empty}`);
         console.log(`📊 [FIRESTORE COUNT] Found ${querySnapshot.size} documents.`);
 
-        allRecipeData = []; 
+        allRecipeData = [];
         querySnapshot.forEach(doc => {
             allRecipeData.push({ id: doc.id, ...doc.data() });
         });
-        
+
         console.log("🚀 [RENDER] Passing data to renderUnifiedManager...");
-        renderUnifiedManager(allRecipeData);      
-        renderDeepStats(allRecipeData);      
-        loadAnalytics(allRecipeData);   
+        renderUnifiedManager(allRecipeData);
+        renderDeepStats(allRecipeData);
+        loadAnalytics(allRecipeData);
 
         // Activating Search
         const searchInput = document.getElementById('manager-search');
@@ -143,10 +158,10 @@ function buildRecipeRowHtml(r) {
     const isWhl = currentTags.includes("Wheeler Favorite");
 
     return `
-        <div class="recipe-manage-card">
+        <div class="recipe-manage-card" data-recipe-id="${r.id}">
+            ${badge}
             <div class="rmc-top">
                 <span class="rmc-name">${r.name || "Untitled"}</span>
-                ${badge}
             </div>
             <div class="rmc-meta">
                 👤 ${r.author || "Unknown"}<br>
@@ -171,7 +186,13 @@ function buildRecipeRowHtml(r) {
 
 const MASTER_LIST_BATCH_SIZE = 30;
 let masterListQueue = [];
+let masterListObserver = null;
 
+// Full rebuild — only for when the actual SET of cards changes (a new
+// filter/search, or the initial load). Toggling a single recipe's status
+// updates just that one card instead (see updateSingleRecipeCard) so
+// clicking a Hall of Fame star or Hide doesn't reset your scroll position
+// and yank you back to the top of a long list.
 function renderUnifiedManager(recipes) {
     const list = document.getElementById('unified-list');
     if(!list) return;
@@ -183,6 +204,8 @@ function renderUnifiedManager(recipes) {
         return (a.name || "").localeCompare(b.name || "");
     });
 
+    if (masterListObserver) { masterListObserver.disconnect(); masterListObserver = null; }
+
     if (recipes.length === 0) {
         list.innerHTML = "<div style='padding:20px; text-align:center'>No recipes found.</div>";
         return;
@@ -190,28 +213,48 @@ function renderUnifiedManager(recipes) {
 
     masterListQueue = recipes.slice();
 
-    list.innerHTML = `
-    <div class="recipe-manage-list" id="unified-cards"></div>
-    <div id="unified-load-more-wrap" style="text-align:center; margin-top:15px;"></div>
-    `;
+    list.innerHTML = `<div class="recipe-manage-list" id="unified-cards"></div>`;
 
     renderNextMasterBatch();
 }
 
-window.renderNextMasterBatch = function() {
+function renderNextMasterBatch() {
     const cardsEl = document.getElementById('unified-cards');
-    const wrap = document.getElementById('unified-load-more-wrap');
     if (!cardsEl) return;
 
     const batch = masterListQueue.splice(0, MASTER_LIST_BATCH_SIZE);
     cardsEl.insertAdjacentHTML('beforeend', batch.map(buildRecipeRowHtml).join(''));
 
-    if (masterListQueue.length > 0) {
-        wrap.innerHTML = `<button class="pill-btn btn-teal" onclick="renderNextMasterBatch()">Load ${Math.min(MASTER_LIST_BATCH_SIZE, masterListQueue.length)} More (${masterListQueue.length} remaining)</button>`;
-    } else {
-        wrap.innerHTML = '';
-    }
-};
+    const oldSentinel = document.getElementById('unified-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+
+    if (masterListQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'unified-sentinel';
+    sentinel.style.cssText = 'grid-column: 1 / -1; height: 1px;';
+    cardsEl.appendChild(sentinel);
+
+    masterListObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            masterListObserver.disconnect();
+            renderNextMasterBatch();
+        }
+    }, { rootMargin: '400px' });
+
+    masterListObserver.observe(sentinel);
+}
+
+// Replaces one card's DOM in place from the current allRecipeData, instead
+// of rebuilding the whole list — used by quickTag/toggleVisibility so nothing
+// else on screen moves. Silently no-ops if that card hasn't been rendered
+// yet (e.g. it's further down the lazy-load queue) — nothing to update yet.
+function updateSingleRecipeCard(id) {
+    const recipe = allRecipeData.find(r => r.id === id);
+    const cardEl = document.querySelector(`.recipe-manage-card[data-recipe-id="${CSS.escape(id)}"]`);
+    if (!recipe || !cardEl) return;
+    cardEl.outerHTML = buildRecipeRowHtml(recipe);
+}
 
 // ACTION FUNCTIONS
 window.deleteRecipe = async function(id, recipeName) {
@@ -219,7 +262,9 @@ window.deleteRecipe = async function(id, recipeName) {
     try {
         await deleteDoc(doc(db, "recipes", id));
         allRecipeData = allRecipeData.filter(r => r.id !== id);
-        applyAdminFilters();
+        // Deleted, so the card comes out entirely rather than being
+        // re-rendered — everything else on screen stays put.
+        document.querySelector(`.recipe-manage-card[data-recipe-id="${CSS.escape(id)}"]`)?.remove();
         triggerDriveSyncSilently();
     } catch (error) { alert("Error deleting: " + error.message); }
 };
@@ -231,7 +276,7 @@ window.toggleVisibility = async function(id, currentStatus) {
         await updateDoc(doc(db, "recipes", id), { isHidden: newStatus });
         const recipe = allRecipeData.find(r => r.id === id);
         if(recipe) recipe.isHidden = newStatus;
-        applyAdminFilters();
+        updateSingleRecipeCard(id);
         triggerDriveSyncSilently();
     } catch (error) { alert("Could not update visibility."); }
 };
@@ -260,12 +305,11 @@ window.quickTag = async function(id, tagString, currentlyHasTag) {
             }
         }
 
-        // 3. Re-render the table instantly to show the new button color —
-        // through applyAdminFilters() (not a raw renderUnifiedManager call)
-        // so an active search/category filter doesn't get silently dropped
-        // right when you click a tag (that's what made this feel like it
-        // "kicked you out" of the list).
-        applyAdminFilters();
+        // 3. Update just this one card in place — a full re-render (even
+        // through applyAdminFilters, which at least kept the active
+        // search/category filter) still rebuilt the whole list and reset
+        // your scroll position back to the top every time.
+        updateSingleRecipeCard(id);
 
     } catch (error) {
         console.error("Error updating tag:", error);
@@ -782,16 +826,18 @@ function updateAttentionCounts(partial) {
                 </a>`;
     };
 
+    // Each area now lives on its own page (see the admin console split) —
+    // these are cross-page links now, not same-page anchors.
     const parts = [
-        chip('🛡️', 'Awaiting approval', attentionCounts.pending, '#pending-list',
+        chip('🛡️', 'Awaiting approval', attentionCounts.pending, '/admin/approve.html',
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
-        chip('📬', 'Suggested fixes', attentionCounts.suggestions, '#suggestions-list',
+        chip('📬', 'Suggested fixes', attentionCounts.suggestions, '/admin/suggestions.html',
              { bg: '#fef3c7', fg: '#92400e', border: '#fcd34d' }),
-        chip('🔑', 'Password resets', attentionCounts.resetRequests, '#reset-requests-list',
+        chip('🔑', 'Password resets', attentionCounts.resetRequests, '/admin/password-resets.html',
              { bg: '#ede9fe', fg: '#5b21b6', border: '#c4b5fd' }),
-        chip('🙋', 'Review requests', attentionCounts.reviewRequests, '#reports-table-body',
+        chip('🙋', 'Review requests', attentionCounts.reviewRequests, '/admin/reports.html',
              { bg: '#ffedd5', fg: '#9a3412', border: '#fdba74' }),
-        chip('🚩', 'Reported issues', attentionCounts.reports, '#reports-table-body',
+        chip('🚩', 'Reported issues', attentionCounts.reports, '/admin/reports.html',
              { bg: '#fee2e2', fg: '#b91c1c', border: '#fca5a5' })
     ].filter(Boolean);
 
@@ -807,6 +853,87 @@ function updateAttentionCounts(partial) {
         panel.querySelector('h3').innerHTML = '✅ All Caught Up';
         panel.querySelector('h3').style.color = '#15803d';
     }
+
+    // Small red count badges on the Dashboard's icon tiles (same data,
+    // second presentation — icon ids match these keys directly).
+    ['pending', 'suggestions', 'resetRequests', 'reports'].forEach(key => {
+        const badge = document.getElementById(`badge-${key}`);
+        if (!badge) return;
+        const count = attentionCounts[key];
+        if (count) {
+            badge.textContent = count > 99 ? '99+' : String(count);
+            badge.style.display = 'inline-block';
+        } else {
+            badge.style.display = 'none';
+        }
+    });
+}
+
+// Independent lightweight counts for the Dashboard's "Needs Your Attention"
+// panel and icon badges. Deliberately separate from loadPendingRecipes /
+// loadSuggestions / loadResetRequests / loadReportedIssues, which now live
+// on their own pages and only run (and only call updateAttentionCounts)
+// when THEIR page is open — without this, the Dashboard's summary would
+// never populate at all since none of those loaders' target elements are
+// ever present there. Mirrors each page's own filtering exactly (recipe_suggestions
+// excludes status:'resolved', password_reset_requests only counts
+// status:'pending', recipe_reports splits on type:'review_request') so the
+// numbers here always match what you'll see after clicking through.
+async function loadAttentionSummary() {
+    if (!document.getElementById('attention-counts')) return;
+
+    try {
+        const [pendingSnap, suggestionsSnap, resetsSnap, reportsSnap] = await Promise.all([
+            getDocs(collection(db, "pending_recipes")),
+            getDocs(collection(db, "recipe_suggestions")),
+            getDocs(collection(db, "password_reset_requests")),
+            getDocs(collection(db, "recipe_reports"))
+        ]);
+
+        let suggestionsPending = 0;
+        suggestionsSnap.forEach(d => { if (d.data().status !== 'resolved') suggestionsPending++; });
+
+        let resetsPending = 0;
+        resetsSnap.forEach(d => { if (d.data().status === 'pending') resetsPending++; });
+
+        let reports = 0, reviewRequests = 0;
+        reportsSnap.forEach(d => { d.data().type === 'review_request' ? reviewRequests++ : reports++; });
+
+        updateAttentionCounts({
+            pending: pendingSnap.size,
+            suggestions: suggestionsPending,
+            resetRequests: resetsPending,
+            reports,
+            reviewRequests
+        });
+    } catch (e) {
+        console.error("Could not load attention summary:", e);
+    }
+}
+
+// ==========================================
+// CROSS-PAGE HANDOFF: Scan Photos / Import from Link → Speed Upload Station
+// Those three used to be widgets on the same page, so "Send to Speed Upload
+// Station" just wrote straight into the #bulk-input textarea next to it.
+// Now they're three separate pages — the sender stashes the JSON in
+// sessionStorage and navigates over; the Upload Station page picks it up
+// and clears it, so revisiting later doesn't re-apply stale data.
+// ==========================================
+const UPLOAD_HANDOFF_KEY = 'pendingUploadStationHandoff';
+
+function sendToUploadStation(jsonText) {
+    JSON.parse(jsonText); // throws if malformed, caught by the caller
+    sessionStorage.setItem(UPLOAD_HANDOFF_KEY, jsonText);
+    window.location.href = '/admin/upload.html';
+}
+
+function consumeUploadStationHandoff() {
+    const bulkInput = document.getElementById('bulk-input');
+    const pending = sessionStorage.getItem(UPLOAD_HANDOFF_KEY);
+    if (!bulkInput || !pending) return;
+    sessionStorage.removeItem(UPLOAD_HANDOFF_KEY);
+    bulkInput.value = pending;
+    bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 // ==========================================
@@ -1247,13 +1374,22 @@ window.loadAdminUsersList = async function() {
                 actionBtn = `<button onclick="promoteToAdmin('${u.uid}', '${label.replace(/'/g, "\\'")}')" style="background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; white-space:nowrap;">Promote to Admin</button>`;
             }
 
+            const family = u.family || 'Both';
+            const familyPicker = `
+                <select onchange="setUserFamilySide('${u.uid}', this.value)" title="Which side of the family leaderboard they show up on" style="font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--primary);">
+                    <option value="Both" ${family === 'Both' ? 'selected' : ''}>👪 Both sides</option>
+                    <option value="Egbert" ${family === 'Egbert' ? 'selected' : ''}>Egbert only</option>
+                    <option value="Wheeler" ${family === 'Wheeler' ? 'selected' : ''}>Wheeler only</option>
+                </select>`;
+
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
                     <div>
                         <div style="font-weight:600;">${label}</div>
                         ${u.email && u.Name ? `<div style="font-size:11px; color:#9ca3af;">${u.email}</div>` : ''}
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        ${familyPicker}
                         ${statusBadge}
                         ${actionBtn}
                     </div>
@@ -1286,6 +1422,22 @@ window.demoteToUser = async function(uid, label) {
     } catch (e) {
         console.error("🔥 [ADMIN ACCESS] Demote failed:", e);
         alert("Could not demote: " + e.message);
+    }
+};
+
+// Which side of the family leaderboard this person shows up on (leaderboard.html
+// filters to the viewer's own side, showing everyone whose family is theirs
+// or "Both" — same idea as the family field on recipes, just on a person
+// instead). Defaults to "Both" so nobody vanishes from the leaderboard just
+// because this was never set for them.
+window.setUserFamilySide = async function(uid, value) {
+    try {
+        await updateDoc(doc(db, "users", uid), { family: value });
+        console.log(`👪 [ADMIN ACCESS] Set ${uid}'s leaderboard side to ${value}.`);
+    } catch (e) {
+        console.error("🔥 [ADMIN ACCESS] Could not set family side:", e);
+        alert("Could not save that: " + e.message);
+        loadAdminUsersList(); // revert the dropdown to the real saved value
     }
 };
 
@@ -1584,20 +1736,6 @@ window.uploadBulkRecipes = async function() {
 // ==========================================
 // IMPORT RECIPE FROM A LINK
 // ==========================================
-function mergeIntoUploadStation(jsonText) {
-    const bulkInput = document.getElementById('bulk-input');
-    const incoming = JSON.parse(jsonText);
-    let existing = [];
-    if (bulkInput.value.trim()) {
-        try {
-            existing = JSON.parse(bulkInput.value);
-            if (!Array.isArray(existing)) existing = [];
-        } catch (e) { existing = []; }
-    }
-    bulkInput.value = JSON.stringify([...existing, ...incoming], null, 2);
-    bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
 window.importRecipeFromUrl = async function() {
     const input = document.getElementById('import-recipe-url');
     const statusEl = document.getElementById('import-recipe-status');
@@ -1664,9 +1802,9 @@ window.importRecipeFromUrl = async function() {
 
 window.sendImportToUploadStation = function() {
     try {
-        mergeIntoUploadStation(document.getElementById('import-recipe-json').value);
+        sendToUploadStation(document.getElementById('import-recipe-json').value);
     } catch (e) {
-        alert("Could not merge into the upload box: " + e.message);
+        alert("Could not send to the Upload Station: " + e.message);
     }
 };
 
@@ -1693,9 +1831,18 @@ window.triggerDriveSync = async function() {
     }
     btn.disabled = false;
 };
-function renderDeepStats(recipes) {
+// Split out from renderDeepStats — this lives on the Dashboard page (admin.html)
+// now, a different page than the category breakdown below (admin/recipe-list.html),
+// so it needs to run on its own rather than as a side effect of a recipes fetch
+// the Dashboard page doesn't otherwise need.
+async function loadTotalCooksCount() {
     const cookCountEl = document.getElementById('total-cooks-count');
-    getDocs(collection(db, "global_cooks")).then(snap => { if(cookCountEl) cookCountEl.innerText = snap.size.toLocaleString(); });
+    if (!cookCountEl) return;
+    const snap = await getDocs(collection(db, "global_cooks"));
+    cookCountEl.innerText = snap.size.toLocaleString();
+}
+
+function renderDeepStats(recipes) {
     const catListEl = document.getElementById('category-stats-list');
     if(!catListEl) return;
 
@@ -2223,21 +2370,9 @@ window.scanRecipePhoto = async function() {
 };
 
 window.sendScanToUploadStation = function() {
-    const scanJson = document.getElementById('scan-photo-json').value;
-    const bulkInput = document.getElementById('bulk-input');
-
     try {
-        const scanned = JSON.parse(scanJson);
-        let existing = [];
-        if (bulkInput.value.trim()) {
-            try {
-                existing = JSON.parse(bulkInput.value);
-                if (!Array.isArray(existing)) existing = [];
-            } catch (e) { existing = []; }
-        }
-        bulkInput.value = JSON.stringify([...existing, ...scanned], null, 2);
-        bulkInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        sendToUploadStation(document.getElementById('scan-photo-json').value);
     } catch (e) {
-        alert("Could not merge into the upload box: " + e.message);
+        alert("Could not send to the Upload Station: " + e.message);
     }
 };

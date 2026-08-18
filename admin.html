@@ -4,32 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Chef's Admin Panel</title>
-    <!-- This page never linked the shared stylesheet before — it had its own
-         parallel inline <style> block instead, which meant it never got the
-         site's universal box-sizing reset or the width:100% treatment every
-         other page's inputs get. That's what let raw <input> elements sit at
-         their native browser width inside two-column grids (e.g. the invite
-         form below) and force the whole page to scroll sideways on a phone.
-         It also meant no dark-mode variables reached this page at all.
-         Linked BEFORE the inline block below on purpose: same-specificity
-         class name collisions (just .status-badge) resolve in document
-         order, so admin's own rule (appearing later) still wins here. -->
     <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="stylesheet" href="styles/admin.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     <link rel="manifest" href="offline_features/manifest.json">
-    <!-- pdf.js, used only by the Scan Recipe Photo widget to turn PDF pages into images -->
-    <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
     <script>
-        if (window['pdfjsLib']) {
-            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-        }
-    </script>
-    <script>
-        // Same pre-paint theme/font-size application every other page does,
-        // so dark mode and font size actually apply here too, with no flash
-        // of the wrong theme.
         const settings = JSON.parse(localStorage.getItem('userSettings'));
         if (settings) {
             const html = document.documentElement;
@@ -40,475 +21,79 @@
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>
-
-<style>
-    /* --- BASE SETTINGS --- */
-    body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--primary); margin: 0; padding: 0; }
-    .admin-container { max-width: 1000px; margin: 30px auto; padding: 20px; } /* Made wider for desktop */
-
-    /* WIDGETS */
-    .pending-card, .widget-card {
-        background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-        padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm);
-    }
-
-    /* APPROVAL QUEUE CARD (full recipe preview) */
-    .pending-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px; }
-    .pending-header h2 { margin: 0; font-size: 1.3rem; color: var(--primary); }
-    .pending-header span { font-size: 12px; color: var(--primary); opacity: 0.6; font-weight: 600; }
-    .pending-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .pending-col h4 { margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #8b5cf6; }
-    .pending-col ul, .pending-col ol { margin: 0; padding-left: 20px; font-size: 13px; color: var(--primary); opacity: 0.85; }
-    .pending-col li { margin-bottom: 4px; }
-    .pending-empty { font-size: 12px; color: #9ca3af; font-style: italic; margin: 0; }
-    .pending-notes { margin-top: 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #92400e; }
-    .pending-actions { display: flex; gap: 10px; margin-top: 16px; }
-    .btn-approve, .btn-reject { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
-    .btn-approve { background: #d1fae5; color: #065f46; }
-    .btn-approve:hover { background: #a7f3d0; }
-    .btn-reject { background: #fee2e2; color: #991b1b; }
-    .btn-reject:hover { background: #fecaca; }
-
-    @media only screen and (max-width: 700px) {
-        .pending-body { grid-template-columns: 1fr; }
-    }
-
-    /* BADGES */
-    .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
-    .status-live { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
-    .status-review { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
-    .status-hidden { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-
-    /* BUTTONS */
-    .btn-action {
-        text-decoration: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
-        display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
-        cursor: pointer; border: none; transition: background 0.2s;
-    }
-    .btn-edit { background: #2563eb; color: white; }
-    .btn-edit:hover { background: #1d4ed8; }
-
-    .btn-toggle { background: var(--bg-body); color: var(--primary); border: 1px solid var(--border); }
-    .btn-toggle:hover { border-color: var(--accent-teal); }
-
-    .btn-delete { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
-    .btn-delete:hover { background: #fecaca; }
-
-    /* FLOATING BACK BUTTON (so you don't have to scroll past the whole
-       Master Recipe List to get back to the cookbook) */
-    #floating-back-btn {
-        position: fixed; bottom: 20px; left: 20px; z-index: 500;
-        background: #111827; color: white; text-decoration: none;
-        padding: 10px 16px; border-radius: 30px; font-size: 13px; font-weight: 700;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.25); display: inline-flex; align-items: center; gap: 6px;
-    }
-    #floating-back-btn:hover { background: #1f2937; }
-
-    /* USAGE CHART RANGE TOGGLE */
-    .usage-range-btn { opacity: 0.6; }
-    .usage-range-btn.active-filter { opacity: 1; background: #059669 !important; color: white !important; }
-
-    /* --- MASTER RECIPE LIST: a plain responsive card grid, same structure
-       at every screen size (no table-to-card CSS transforms, which kept
-       breaking) --- */
-    .recipe-manage-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    @media (min-width: 700px) {
-        .recipe-manage-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
-    }
-    .recipe-manage-card {
-        background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
-        padding: 15px; box-shadow: var(--shadow-sm);
-        display: flex; flex-direction: column;
-    }
-    .rmc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
-    .rmc-name { font-size: 16px; font-weight: 800; color: var(--primary); }
-    .rmc-meta { font-size: 12px; color: var(--primary); opacity: 0.65; margin-bottom: 14px; line-height: 1.7; }
-    .rmc-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; margin-top: auto; }
-    .rmc-favorites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .rmc-actions .btn-action, .rmc-favorites .btn-action { width: 100%; padding: 8px; }
-    /* --- REPORTS TABLE STYLES --- */
-    .reports-table th { background: var(--bg-card); padding: 12px; text-align: left; font-size: 13px; color: #991b1b; border-bottom: 2px solid var(--border); white-space: nowrap; }
-    .reports-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--primary); opacity: 0.9; word-wrap: break-word; }
-
-    /* Reports Table Mobile View */
-    @media only screen and (max-width: 850px) {
-        .reports-table thead { display: none !important; }
-        .reports-table, .reports-table tbody, .reports-table tr, .reports-table td {
-            display: block !important; width: 100% !important; box-sizing: border-box;
-        }
-        .reports-table tr {
-            background: var(--bg-card); margin-bottom: 15px; border: 1px solid var(--border);
-            border-radius: 8px; padding: 15px; box-shadow: var(--shadow-sm);
-        }
-        .reports-table td { padding: 6px 0 !important; border: none !important; text-align: left; }
-        
-        /* Add labels before the data on mobile — skipped on the "No reported
-           issues!" empty-state row (.reports-empty-row) since it's a single
-           full-width cell, not actual date/reporter/recipe/issue data */
-        .reports-table tr:not(.reports-empty-row) td:nth-child(1):before { content: "📅 Date: "; font-weight: bold; color: #6b7280; }
-        .reports-table tr:not(.reports-empty-row) td:nth-child(2):before { content: "👤 Reporter: "; font-weight: bold; color: #6b7280; }
-        .reports-table tr:not(.reports-empty-row) td:nth-child(3):before { content: "🍲 Recipe: "; font-weight: bold; color: #6b7280; }
-        .reports-table tr:not(.reports-empty-row) td:nth-child(4):before { content: "🚩 Issue: "; font-weight: bold; color: #6b7280; display: block; margin-bottom: 4px; }
-        
-        /* Action Button Container */
-        .reports-table td:nth-child(5) {
-            margin-top: 10px; padding-top: 15px !important;
-            border-top: 1px solid var(--border) !important; text-align: right;
-        }
-    }
-</style>
 </head>
 <body>
 
 <div class="admin-container">
     <h1>👨‍🍳 Chef's Admin Panel</h1>
     <p>Review submissions and track stats.</p>
-    
-    <div class="dashboard-widgets" style="display: flex; flex-direction: column; gap: 20px; max-width: 1000px; margin: 0 auto;">
 
-        <!-- Live counts so nothing new can slip by unnoticed. Populated by
-             updateAttentionCounts() in scripts/dashboard.js. -->
-        <div id="attention-panel" class="pending-card widget-card" style="border-left: 5px solid #dc2626;">
-            <h3 style="margin-top:0; color:#b91c1c;">🔔 Needs Your Attention</h3>
-            <div id="attention-counts" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-                <span style="color:#9ca3af; font-size:13px;">Checking…</span>
-            </div>
+    <!-- Live counts so nothing new can slip by unnoticed. Populated by
+         loadAttentionSummary() in scripts/dashboard.js — independent of
+         the full loaders on each tool page, since this panel needs to show
+         something even before you ever visit those pages. -->
+    <div id="attention-panel" class="pending-card widget-card" style="border-left: 5px solid #dc2626;">
+        <h3 style="margin-top:0; color:#b91c1c;">🔔 Needs Your Attention</h3>
+        <div id="attention-counts" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <span style="color:#9ca3af; font-size:13px;">Checking…</span>
         </div>
+    </div>
 
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #7c3aed; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <div>
-                <h3 style="margin: 0 0 4px 0; color: #5b21b6;">📋 Recipe Review</h3>
-                <p style="margin: 0; font-size: 12px; color: #6b7280;">Go through every unreviewed recipe one at a time — no more opening the editor for each one separately.</p>
-            </div>
-            <a href="review.html" style="background: #7c3aed; color: white; padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: bold; text-decoration: none; white-space: nowrap;">Start Reviewing →</a>
+    <div class="pending-card widget-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
+        <h3 style="margin-top:0; color: white; opacity: 0.9;">🔥 Total Meals Cooked</h3>
+        <div style="text-align: center; padding: 10px;">
+            <span id="total-cooks-count" style="font-size: 3.5rem; font-weight: 800; line-height: 1;">...</span>
+            <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Family dishes served</p>
         </div>
+    </div>
 
-        <div class="pending-card widget-card" style="border-left: 5px solid #8b5cf6;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: #5b21b6;">🛡️ Recipe Approval Queue</h3>
-                <span style="font-size: 12px; background: #ede9fe; color: #5b21b6; padding: 2px 8px; border-radius: 10px;">Priority</span>
-            </div>
-            <div id="loading" style="margin-top: 15px; color: #666; font-style: italic;">Checking for new recipes...</div>
-            <div id="pending-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+    <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">
+        <h3 style="margin-top:0; color: #0369a1;">📢 Post Announcement</h3>
+        <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <input type="text" id="announce-input" placeholder="e.g., Thanksgiving is at 5pm!" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+            <button onclick="postAnnouncement()" style="background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">Post</button>
         </div>
+    </div>
 
-        <div class="pending-card widget-card" style="border-left: 5px solid #7c3aed;">
-            <h3 style="margin-top:0; color: #5b21b6;">🔑 Password Reset Requests</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Nothing is emailed until you approve. <strong>Check with the person directly first</strong> —
-                a text or a call — then approve, and Firebase sends the reset link to their own inbox.
-            </p>
-            <div id="reset-requests-list" style="margin-top: 10px;">
-                <p style="color:#9ca3af; font-size: 13px;">Loading…</p>
-            </div>
-        </div>
+    <div class="icon-grid-section-title">📥 Review & Approve</div>
+    <div class="icon-grid">
+        <a class="icon-tile" href="review.html"><span class="icon-emoji">📋</span><span class="icon-label">Recipe Review</span></a>
+        <a class="icon-tile" href="admin/approve.html"><span class="icon-emoji">🛡️</span><span class="icon-label">Approve Recipes</span><span class="icon-badge" id="badge-pending" style="display:none;"></span></a>
+        <a class="icon-tile" href="admin/password-resets.html"><span class="icon-emoji">🔑</span><span class="icon-label">Password Resets</span><span class="icon-badge" id="badge-resetRequests" style="display:none;"></span></a>
+        <a class="icon-tile" href="admin/suggestions.html"><span class="icon-emoji">📬</span><span class="icon-label">Suggested Fixes</span><span class="icon-badge" id="badge-suggestions" style="display:none;"></span></a>
+        <a class="icon-tile" href="admin/reports.html"><span class="icon-emoji">🚩</span><span class="icon-label">Reported Issues</span><span class="icon-badge" id="badge-reports" style="display:none;"></span></a>
+    </div>
 
-        <div class="pending-card widget-card" style="border-left: 5px solid #f59e0b;">
-            <h3 style="margin-top:0; color: #b45309;">📬 Suggested Fixes</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Corrections family members proposed from the recipe page. Applying one overwrites
-                the shared recipe (the previous version is kept in its history).
-            </p>
-            <div id="suggestions-list" style="margin-top: 10px;">
-                <p style="color:#9ca3af; font-size: 13px;">Loading…</p>
-            </div>
-        </div>
+    <div class="icon-grid-section-title">👪 People</div>
+    <div class="icon-grid">
+        <a class="icon-tile" href="admin/invite.html"><span class="icon-emoji">👪</span><span class="icon-label">Invite Family</span></a>
+        <a class="icon-tile" href="admin/access.html"><span class="icon-emoji">👑</span><span class="icon-label">Manage Admin</span></a>
+        <a class="icon-tile" href="admin/households.html"><span class="icon-emoji">🏠</span><span class="icon-label">Households</span></a>
+    </div>
 
-        <div class="pending-card widget-card" style="border-left: 5px solid #16a34a;">
-            <h3 style="margin-top:0; color: #166534;">👪 Invite a Family Member</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Works from anywhere, including your phone. You give them a temporary code; the first time
-                they sign in with it, they pick their own password. Their account is created at that moment,
-                so no password ever passes through you and nothing with admin access touches this page.
-                Always creates a regular account — use "Manage Admin Access" below if they need Admin too.
-            </p>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
-                <input type="text" id="invite-name" placeholder="Full name (e.g. Aunt Sally)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                <input type="email" id="invite-email" placeholder="Email address" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-            </div>
-            <input type="text" id="invite-code" placeholder="Temporary code (leave blank and I'll make one up)" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; text-transform: uppercase;">
-            <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite</button>
+    <div class="icon-grid-section-title">📖 Recipes</div>
+    <div class="icon-grid">
+        <a class="icon-tile" href="admin/recipe-list.html"><span class="icon-emoji">🎛️</span><span class="icon-label">Master Recipe List</span></a>
+        <a class="icon-tile" href="admin/scan.html"><span class="icon-emoji">📷</span><span class="icon-label">Scan Photos</span></a>
+        <a class="icon-tile" href="admin/import.html"><span class="icon-emoji">🔗</span><span class="icon-label">Import from Link</span></a>
+        <a class="icon-tile" href="admin/upload.html"><span class="icon-emoji">🚀</span><span class="icon-label">Speed Upload</span></a>
+        <a class="icon-tile" href="admin/drive-sync.html"><span class="icon-emoji">☁️</span><span class="icon-label">Drive Sync</span></a>
+    </div>
 
-            <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 12px;">
-                <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Give them this code and their email address:</p>
-                <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
-                    <span id="invite-code-output" style="font-family: monospace; font-size: 1.5rem; font-weight: 800; letter-spacing: 3px; color:#166534;"></span>
-                    <button onclick="copyInviteCode()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy Code</button>
-                </div>
-                <p style="font-size: 11px; margin: 0 0 4px 0; color: #6b7280;">They enter it at the login page under "First time here?". Or send this direct link instead:</p>
-                <div style="display:flex; gap:6px;">
-                    <input type="text" id="invite-link-output" readonly style="flex:1; padding: 6px; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 12px; font-family: monospace;">
-                    <button onclick="copyInviteLink()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy</button>
-                </div>
-            </div>
-            <div id="pending-invites-list" style="margin-top: 15px;"></div>
-        </div>
+    <div class="icon-grid-section-title">📊 Stats & Activity</div>
+    <div class="icon-grid">
+        <a class="icon-tile" href="admin/usage.html"><span class="icon-emoji">📈</span><span class="icon-label">Site Usage</span></a>
+        <a class="icon-tile" href="admin/popular.html"><span class="icon-emoji">🏆</span><span class="icon-label">Most Popular</span></a>
+        <a class="icon-tile" href="admin/activity.html"><span class="icon-emoji">🕵️‍♀️</span><span class="icon-label">Activity</span></a>
+    </div>
 
-        <div class="pending-card widget-card" style="border-left: 5px solid #4f46e5;">
-            <h3 style="margin-top:0; color: #3730a3;">👑 Manage Admin Access</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Promote or demote anyone with one click — takes effect immediately, no code changes or redeploy needed.
-                The 3 built-in admins are set in code and can't be changed here.
-            </p>
-            <div id="admin-users-list" style="max-height: 320px; overflow-y: auto; margin-top: 10px;"></div>
-
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #f3f4f6;">
-                <button onclick="repairUserDocs()" style="background: #4f46e5; color: white; border: none; padding: 7px 14px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 12px;">🩺 Check User Documents</button>
-                <p style="font-size: 11px; color: #6b7280; margin: 6px 0 0 0;">
-                    Finds profiles with missing or wrong-typed fields — the usual cause is adding fields
-                    by hand in the Firebase console, which saves everything as text (so <code>favorites</code>
-                    ends up as <code>""</code> instead of a list).
-                </p>
-                <div id="user-repair-status" style="margin-top: 10px; font-size: 12px;"></div>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #0891b2;">
-            <h3 style="margin-top:0; color: #0e7490;">🏠 Households</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                People in a household share one weekly menu and shopping list. They can set this up
-                themselves in Settings with a join code — this is here for anyone who'd rather you just did it for them.
-            </p>
-            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
-                <input type="text" id="new-household-name" placeholder="New household name (e.g. The Wheelers)" style="flex: 1; min-width: 200px; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                <button onclick="adminCreateHousehold()" style="background: #0891b2; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">Create</button>
-            </div>
-            <div id="admin-households-list" style="margin-top: 15px;"></div>
-        </div>
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #0ea5e9;">
-            <h3 style="margin-top:0; color: #0369a1;">📢 Post Announcement</h3>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <input type="text" id="announce-input" placeholder="e.g., Thanksgiving is at 5pm!" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
-                <button onclick="postAnnouncement()" style="background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold;">Post</button>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white;">
-            <h3 style="margin-top:0; color: white; opacity: 0.9;">🔥 Total Meals Cooked</h3>
-            <div style="text-align: center; padding: 10px;">
-                <span id="total-cooks-count" style="font-size: 3.5rem; font-weight: 800; line-height: 1;">...</span>
-                <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Family dishes served</p>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #10b981;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <h3 style="margin: 0; color: #065f46;">📈 Site Usage</h3>
-                <div style="display: flex; gap: 6px;">
-                    <button class="pill-btn usage-range-btn btn-slate active-filter" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('day', this)">Daily</button>
-                    <button class="pill-btn usage-range-btn btn-slate" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('week', this)">Weekly</button>
-                    <button class="pill-btn usage-range-btn btn-slate" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('month', this)">Monthly</button>
-                </div>
-            </div>
-            <p style="font-size: 12px; color: #6b7280; margin: 8px 0 15px 0;">A raw count of signed-in visits per day (same person on 2 devices counts twice) — free, no Firebase billing plan needed. For who specifically visited, see Activity below.</p>
-            <div style="overflow-x: auto; padding-bottom: 4px;">
-                <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px;">
-                    <p style="color:#9ca3af; font-size: 13px;">Loading usage stats...</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="pending-card widget-card" style="border-left: 5px solid #ef4444;">
-            <h3 style="margin-top: 0; color: #b91c1c;">🚩 Reported Issues</h3>
-            <div style="overflow-x: auto;">
-                <table class="reports-table" style="width: 100%; text-align: left; border-collapse: collapse;">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Reporter</th> 
-                            <th>Recipe</th>
-                            <th>Issue</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reports-table-body">
-                        <tr class="reports-empty-row"><td colspan="5" style="text-align: center; padding: 15px; color: #6b7280;">Loading reports...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <details class="pending-card widget-card" style="border-left: 5px solid #2563eb;">
-            <summary style="cursor: pointer; outline: none; list-style-position: inside;">
-                <h3 style="margin:0; color: #1e3a8a; display: inline-block;">🎛️ Master Recipe List (Click to Expand)</h3>
-            </summary>
-            
-            <div style="display: flex; gap: 8px; margin-top: 15px; flex-wrap: wrap;">
-                <a href="review.html" style="background: #7c3aed; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; text-decoration: none; display: inline-flex; align-items: center;">📋 Review Recipes</a>
-                <button id="btn-sync" onclick="syncViewCounts()" style="background: var(--bg-card); border: 1px solid var(--border); color: var(--primary); padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer;">🔄 Sync Counts</button>
-                <button onclick="openStatsModal()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📊 Recipe Counts by Category</button>
-                <button onclick="generateMegaIndex()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🌐 Update Homepage Index</button>
-                <button onclick="exportRecipes()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">💾 Backup Recipes</button>
-            </div>
-            
-            <!-- Keep this list in sync with submit.html's #category, edit-recipe.html's
-                 #e-category, SCAN_CATEGORIES in scripts/dashboard.js, and the folder
-                 buttons in homepage.html. -->
-            <div id="admin-filters" style="display: flex; flex-wrap: wrap; gap: 5px; margin-top: 15px;">
-                <button onclick="filterAdmin('All')" class="pill-btn btn-dark" style="padding: 4px 10px; font-size: 11px;">All</button>
-                <button onclick="filterAdmin('Appetizers')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Appetizers</button>
-                <button onclick="filterAdmin('Beverages')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Beverages</button>
-                <button onclick="filterAdmin('Breads')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Breads</button>
-                <button onclick="filterAdmin('Breakfast')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Breakfast</button>
-                <button onclick="filterAdmin('Desserts')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Desserts</button>
-                <button onclick="filterAdmin('Dutch')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Dutch Oven</button>
-                <button onclick="filterAdmin('Main')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Mains</button>
-                <button onclick="filterAdmin('Misc')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Misc</button>
-                <button onclick="filterAdmin('Sauces')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Sauces</button>
-                <button onclick="filterAdmin('Sides')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Sides & Veggies</button>
-                <button onclick="filterAdmin('Soups')" class="pill-btn btn-slate" style="padding: 4px 10px; font-size: 11px;">Soups</button>
-            </div>
-
-            <input type="text" id="manager-search" placeholder="🔍 Search recipes..." style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
-
-            <div id="unified-list" style="overflow-x: auto;">
-                <p>Loading list...</p>
-            </div>
-        </details>
-
-        <div class="pending-card widget-card"><h3 style="margin-top:0; color: #b45309;">🏆 Most Popular</h3><table style="width: 100%; margin-top: 10px;"><tbody id="leaderboard-list"><tr><td>Loading...</td></tr></tbody></table></div>
-        
-        <div class="pending-card widget-card">
-            <h3 style="margin-top:0; color: #1e3a8a;">🕵️‍♀️ Activity</h3>
-            <p style="font-size: 12px; color: #6b7280; margin: -8px 0 10px 0;">Everyone who's signed in shows up here, even if they only browsed — tap anyone to see everything they've visited, viewed, and cooked.</p>
-            <div id="activity-list" style="max-height: 350px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;"></div>
-        </div>
-
-        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #7c3aed;">
-            <h3 style="margin-top: 0; color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Reads photos or PDFs using Ollama running on <strong>this same computer</strong> — nothing is uploaded anywhere.
-                Pick as many files as you want. One-time setup: install
-                <a href="https://ollama.com/download" target="_blank">Ollama</a>, run
-                <code>ollama pull llama3.2-vision</code>, then start it with
-                <code>OLLAMA_ORIGINS=* ollama serve</code> so it accepts requests from this page.
-            </p>
-            <p style="font-size: 12px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 12px; border-radius: 6px;">
-                ⚠️ <strong>Important:</strong> this only works while you're viewing this page over plain <code>http://</code>, not the secure live site — browsers permanently block a secure page from calling Ollama, with no setting to allow it. Run <code>node local-tools/scan-recipe/serve-locally.mjs</code> in the project folder and open the <code>http://localhost:8080</code> link it prints, then come back to this same widget there.
-            </p>
-            <details style="margin-bottom: 12px;">
-                <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">📱 Scanning from your phone instead of the computer running Ollama?</summary>
-                <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
-                    Enter your computer's address on your home WiFi instead of "localhost" (e.g. <code>http://192.168.1.42:11434</code>).
-                    On the computer, find it under Wi-Fi settings, and start Ollama with
-                    <code>OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS=* ollama serve</code> so it accepts connections from other devices.
-                    This still requires viewing this page over <code>http://</code> (see the warning above) — see
-                    <code>local-tools/scan-recipe/README.md</code> for the full walkthrough.
-                </p>
-                <input type="text" id="ollama-server-url" placeholder="http://localhost:11434" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
-            </details>
-            <details style="margin-bottom: 12px;">
-                <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">🧠 Model not loading? Change which Ollama model is used</summary>
-                <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
-                    If scanning fails with something like <code>unknown model architecture</code>, your installed Ollama version can't run <code>llama3.2-vision</code> yet.
-                    Try a different vision model instead — e.g. run <code>ollama pull llava</code> in Terminal, then type <code>llava</code> below.
-                    See <code>local-tools/scan-recipe/README.md</code> for more options.
-                </p>
-                <input type="text" id="ollama-model-name" placeholder="llama3.2-vision" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
-            </details>
-            <input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple style="margin-bottom: 10px;">
-            <br>
-            <button id="scan-photo-btn" onclick="scanRecipePhoto()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">🔍 Scan File(s)</button>
-            <div id="scan-photo-status" style="font-size: 12px; color: #6b7280; margin-top: 8px;"></div>
-            <div id="scan-photo-result" style="display:none; margin-top: 12px;">
-                <textarea id="scan-photo-json" rows="8" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px; background: #faf5ff;"></textarea>
-                <button onclick="sendScanToUploadStation()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; font-size: 13px;">⬇️ Send to Speed Upload Station</button>
-            </div>
-        </div>
-
-        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0369a1;">
-            <h3 style="margin-top: 0; color: #0369a1;">🔗 Import Recipe from a Link</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Paste a link to a recipe on another site and we'll pull out the title, ingredients, and instructions
-                automatically — most recipe sites publish this in a standard format for Google, and we read the same
-                data. Always review the result before sending it live; automatic parsing isn't perfect.
-            </p>
-            <p style="font-size: 12px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 12px; border-radius: 6px;">
-                ⚠️ A few sites allow this straight from this page. Most don't (browsers block reading another site's
-                page for privacy reasons) — for those, run <code>node local-tools/scan-recipe/serve-locally.mjs</code>
-                and use the <code>http://localhost:8080</code> link instead, same as scanning photos above.
-            </p>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <input type="url" id="import-recipe-url" placeholder="https://example.com/some-recipe" style="flex:1; min-width:240px; padding:8px; border:1px solid #ccc; border-radius:6px;">
-                <button id="import-recipe-btn" onclick="importRecipeFromUrl()" style="background:#0369a1; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">🔗 Import</button>
-            </div>
-            <div id="import-recipe-status" style="font-size:12px; color:#6b7280; margin-top:8px;"></div>
-            <div id="import-recipe-result" style="display:none; margin-top:12px;">
-                <textarea id="import-recipe-json" rows="8" readonly style="width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; font-family:monospace; font-size:12px; background:#f0f9ff;"></textarea>
-                <button onclick="sendImportToUploadStation()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; font-size: 13px;">⬇️ Send to Speed Upload Station</button>
-            </div>
-        </div>
-
-        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #0a4d74;">
-            <h3 style="margin-top: 0; color: #0a4d74;">🚀 Speed Upload Station</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">Paste an array of recipes in this exact shape — it's the same shape "Send to Speed Upload Station" above produces.</p>
-            <textarea id="bulk-input" rows="12" placeholder='[
-  {
-    "name": "Mom&#39;s Spaghetti",
-    "author": "Mom",
-    "tags": ["Main Dishes"],
-    "ingredients": ["1 lb ground beef", "1 jar marinara sauce", "1 lb spaghetti noodles"],
-    "instructions": ["Brown the beef.", "Add sauce and simmer 10 min.", "Boil noodles and combine."],
-    "notes": "Great with garlic bread."
-  }
-]' style="width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 16px; box-sizing: border-box;"></textarea>
-            <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-size:13px; color:#9a3412; cursor:pointer;">
-                <input type="checkbox" id="bulk-upload-as-draft" style="width:18px; height:18px; margin:0;">
-                🍳 Add to my Testing Kitchen instead of publishing live (only you can see it until you release it)
-            </label>
-            <button onclick="uploadBulkRecipes()" style="background: #0a4d74; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; margin-top: 10px; font-weight: bold; width: 100%;">🚀 Launch Recipes</button>
-        </div>
-
-        <div style="background: var(--bg-card); padding: 20px; border-radius: 12px; margin-top: 20px; border: 2px dashed #15803d;">
-            <h3 style="margin-top: 0; color: #15803d;">☁️ Google Drive Sync (for family members without internet access)</h3>
-            <p style="font-size: 12px; color: #6b7280; margin-top: -5px;">
-                Mirrors every visible recipe into a shared Google Drive folder as Google Docs. When you save, approve,
-                or delete a recipe <strong>from this page while <code>local-tools/scan-recipe/serve-locally.mjs</code>
-                is running</strong>, this now kicks off automatically in the background — no need to remember to run it.
-                As a backup, it also runs on its own schedule (see <code>local-tools/sync-to-drive/README.md</code>) so
-                changes made from your phone still make it to Drive within a few hours even if that helper isn't open.
-            </p>
-            <button id="drive-sync-btn" onclick="triggerDriveSync()" style="background:#15803d; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">☁️ Sync to Drive Now</button>
-            <div id="drive-sync-status" style="font-size:12px; color:#6b7280; margin-top:8px;"></div>
-        </div>
-
-    </div> 
-    
     <div style="margin-top: 40px; text-align: center;">
         <a href="index.html" style="color: #666; text-decoration: none;">← Back to Cookbook</a>
     </div>
 
     <a href="index.html" id="floating-back-btn">← Cookbook</a>
-
-    <div id="person-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1100;">
-        <div style="background: var(--bg-card); padding: 22px; border-radius: 10px; width: 420px; max-width: 92%; max-height: 82vh; display: flex; flex-direction: column;">
-            <h2 style="margin: 0 0 6px 0; font-size: 1.15rem;">🔗 Who does this belong to?</h2>
-            <p id="person-picker-summary" style="font-size: 12px; color: #6b7280; margin: 0 0 12px 0;"></p>
-            <div id="person-picker-list" style="overflow-y: auto; flex: 1; margin: 0 -4px; padding: 0 4px;"></div>
-            <button id="person-picker-cancel" style="margin-top: 14px; width: 100%; padding: 10px; border: 1px solid var(--border); background: var(--bg-body); color: var(--primary); border-radius: 6px; cursor: pointer; font-weight: bold;">Cancel</button>
-        </div>
-    </div>
-
-    <div id="person-activity-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 450px; max-width: 90%; max-height: 80vh; display: flex; flex-direction: column;">
-            <h2 id="person-activity-title" style="margin: 0 0 15px 0;">🕵️‍♀️ Activity</h2>
-            <div id="person-activity-body" style="overflow-y: auto; flex: 1;"></div>
-            <button onclick="closePersonActivityModal()" style="margin-top:15px; width:100%; padding:10px;">Close</button>
-        </div>
-    </div>
-
-    <div id="stats-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
-        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 400px; max-width: 90%;">
-            <h2 style="margin: 0 0 5px 0;">📊 Recipe Counts by Category</h2>
-            <p id="stats-total-count" style="margin: 0 0 15px 0; color: #6b7280; font-size: 13px;"></p>
-            <div id="category-stats-list"></div>
-            <button onclick="closeStatsModal()" style="margin-top:20px; width:100%; padding:10px;">Close</button>
-        </div>
-    </div>
 </div>
 
-<script type="module" src="scripts/dashboard.js?v=4"></script>
+<script type="module" src="scripts/dashboard.js?v=5"></script>
 </body>
 </html>

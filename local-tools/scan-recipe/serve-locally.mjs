@@ -61,7 +61,8 @@ createServer(async (req, res) => {
 }).listen(PORT, () => {
     console.log(`\nServing the Cookbook locally at:\n`);
     console.log(`  http://localhost:${PORT}/index.html   <-- 1. log in here first (this is a separate login session from the live site)`);
-    console.log(`  http://localhost:${PORT}/admin.html   <-- 2. then open this to scan, import, or sync recipes`);
+    console.log(`  http://localhost:${PORT}/admin.html   <-- 2. then open this — the Scan Photos, Import from Link, and`);
+    console.log(`                                                   Drive Sync icons all need this local server running`);
     console.log(`\nLeave this running while you work. Press Ctrl+C to stop.\n`);
 });
 

@@ -298,8 +298,20 @@ onAuthStateChanged(auth, async (user) => {
 
     } else {
         // --- 🚨 UPGRADED GUEST HANDLING (The Bouncer) ---
+        // Only the filename (not the full path) is checked below, so the
+        // admin/*.html tool pages appear here by their bare name — EXCEPT
+        // admin/invite.html, deliberately left out: its bare name collides
+        // with the top-level invite.html (the public self-signup page
+        // someone without an account yet lands on), and that one must never
+        // be gated behind being already logged in.
         const currentPage = window.location.pathname.split('/').pop().toLowerCase();
-        const privatePages = ['profile.html', 'admin.html', 'submit.html', 'shopping-list.html', 'recipe.html'];
+        const privatePages = [
+            'profile.html', 'submit.html', 'shopping-list.html', 'recipe.html',
+            'admin.html', 'approve.html', 'password-resets.html', 'suggestions.html',
+            'reports.html', 'access.html', 'households.html',
+            'recipe-list.html', 'scan.html', 'import.html', 'upload.html',
+            'drive-sync.html', 'usage.html', 'popular.html', 'activity.html'
+        ];
         
         if (privatePages.includes(currentPage) || document.getElementById('chefNotes')) {
             window.location.href = "index.html"; 

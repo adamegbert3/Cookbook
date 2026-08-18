@@ -1,0 +1,159 @@
+/* ==========================================================================
+   ADMIN CONSOLE — shared across admin.html (the icon-grid Dashboard) and
+   every admin-*.html tool page. Extracted from what used to be a single
+   inline <style> block duplicated nowhere else, so it now updates once
+   instead of per-page. Loaded AFTER styles/recipes.css everywhere it's
+   used, so it wins the one real overlap (.status-badge) on specificity-tie
+   source order.
+   ========================================================================== */
+
+/* --- BASE SETTINGS --- */
+body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(--primary); margin: 0; padding: 0; }
+.admin-container { max-width: 1000px; margin: 30px auto; padding: 20px; }
+
+/* Back-to-Dashboard link at the top of every tool page */
+.admin-back-link {
+    display: inline-flex; align-items: center; gap: 4px; text-decoration: none;
+    color: var(--primary); opacity: 0.65; font-size: 13px; font-weight: 700; margin-bottom: 14px;
+}
+.admin-back-link:hover { opacity: 1; }
+
+/* --- ICON-GRID DASHBOARD (admin.html) --- */
+.icon-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+    gap: 14px; margin: 24px 0;
+}
+.icon-tile {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-decoration: none; color: var(--primary); text-align: center;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 18px;
+    padding: 16px 8px; gap: 8px; box-shadow: var(--shadow-sm);
+    transition: transform 0.15s; position: relative;
+}
+.icon-tile:hover { transform: translateY(-2px); }
+.icon-tile .icon-emoji { font-size: 2.1rem; line-height: 1; }
+.icon-tile .icon-label { font-size: 0.76rem; font-weight: 700; line-height: 1.25; }
+.icon-tile .icon-badge {
+    position: absolute; top: 6px; right: 6px; background: #dc2626; color: white;
+    font-size: 0.65rem; font-weight: 800; padding: 2px 6px; border-radius: 10px; min-width: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.icon-grid-section-title {
+    font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--primary); opacity: 0.55; margin: 26px 0 10px 0;
+}
+
+/* WIDGETS */
+.pending-card, .widget-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm);
+}
+
+/* APPROVAL QUEUE CARD (full recipe preview) */
+.pending-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 12px; }
+.pending-header h2 { margin: 0; font-size: 1.3rem; color: var(--primary); }
+.pending-header span { font-size: 12px; color: var(--primary); opacity: 0.6; font-weight: 600; }
+.pending-body { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.pending-col h4 { margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; color: #8b5cf6; }
+.pending-col ul, .pending-col ol { margin: 0; padding-left: 20px; font-size: 13px; color: var(--primary); opacity: 0.85; }
+.pending-col li { margin-bottom: 4px; }
+.pending-empty { font-size: 12px; color: #9ca3af; font-style: italic; margin: 0; }
+.pending-notes { margin-top: 14px; background: #fffbeb; border: 1px solid #fcd34d; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #92400e; }
+.pending-actions { display: flex; gap: 10px; margin-top: 16px; }
+.btn-approve, .btn-reject { flex: 1; border: none; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; }
+.btn-approve { background: #d1fae5; color: #065f46; }
+.btn-approve:hover { background: #a7f3d0; }
+.btn-reject { background: #fee2e2; color: #991b1b; }
+.btn-reject:hover { background: #fecaca; }
+
+@media only screen and (max-width: 700px) {
+    .pending-body { grid-template-columns: 1fr; }
+}
+
+/* BADGES */
+.status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; white-space: nowrap; }
+.status-live { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+.status-review { background: #fef3c7; color: #b45309; border: 1px solid #fcd34d; }
+.status-hidden { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+/* BUTTONS */
+.btn-action {
+    text-decoration: none; padding: 6px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 4px; white-space: nowrap;
+    cursor: pointer; border: none; transition: background 0.2s;
+}
+.btn-edit { background: #2563eb; color: white; }
+.btn-edit:hover { background: #1d4ed8; }
+
+.btn-toggle { background: var(--bg-body); color: var(--primary); border: 1px solid var(--border); }
+.btn-toggle:hover { border-color: var(--accent-teal); }
+
+.btn-delete { background: #fee2e2; color: #b91c1c; border: 1px solid #fca5a5; }
+.btn-delete:hover { background: #fecaca; }
+
+/* FLOATING BACK BUTTON (so you don't have to scroll past a long list to
+   get back to the cookbook) */
+#floating-back-btn {
+    position: fixed; bottom: 20px; left: 20px; z-index: 500;
+    background: #111827; color: white; text-decoration: none;
+    padding: 10px 16px; border-radius: 30px; font-size: 13px; font-weight: 700;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25); display: inline-flex; align-items: center; gap: 6px;
+}
+#floating-back-btn:hover { background: #1f2937; }
+
+/* USAGE CHART RANGE TOGGLE */
+.usage-range-btn { opacity: 0.6; }
+.usage-range-btn.active-filter { opacity: 1; background: #059669 !important; color: white !important; }
+
+/* --- MASTER RECIPE LIST: a plain responsive card grid, same structure
+   at every screen size (no table-to-card CSS transforms, which kept
+   breaking) --- */
+.recipe-manage-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 700px) {
+    .recipe-manage-list { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+}
+.recipe-manage-card {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+    padding: 15px; padding-top: 34px; box-shadow: var(--shadow-sm);
+    display: flex; flex-direction: column; position: relative;
+}
+/* The badge is a corner ribbon, not part of the flex flow — top padding
+   above makes room for it so it never overlaps the recipe name. */
+.recipe-manage-card > .status-badge { position: absolute; top: 10px; left: 10px; }
+.rmc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
+.rmc-name { font-size: 16px; font-weight: 800; color: var(--primary); }
+.rmc-meta { font-size: 12px; color: var(--primary); opacity: 0.65; margin-bottom: 14px; line-height: 1.7; }
+.rmc-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; margin-top: auto; }
+.rmc-favorites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.rmc-actions .btn-action, .rmc-favorites .btn-action { width: 100%; padding: 8px; }
+
+/* --- REPORTS TABLE STYLES --- */
+.reports-table th { background: var(--bg-card); padding: 12px; text-align: left; font-size: 13px; color: #991b1b; border-bottom: 2px solid var(--border); white-space: nowrap; }
+.reports-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--primary); opacity: 0.9; word-wrap: break-word; }
+
+/* Reports Table Mobile View */
+@media only screen and (max-width: 850px) {
+    .reports-table thead { display: none !important; }
+    .reports-table, .reports-table tbody, .reports-table tr, .reports-table td {
+        display: block !important; width: 100% !important; box-sizing: border-box;
+    }
+    .reports-table tr {
+        background: var(--bg-card); margin-bottom: 15px; border: 1px solid var(--border);
+        border-radius: 8px; padding: 15px; box-shadow: var(--shadow-sm);
+    }
+    .reports-table td { padding: 6px 0 !important; border: none !important; text-align: left; }
+
+    /* Add labels before the data on mobile — skipped on the "No reported
+       issues!" empty-state row (.reports-empty-row) since it's a single
+       full-width cell, not actual date/reporter/recipe/issue data */
+    .reports-table tr:not(.reports-empty-row) td:nth-child(1):before { content: "📅 Date: "; font-weight: bold; color: #6b7280; }
+    .reports-table tr:not(.reports-empty-row) td:nth-child(2):before { content: "👤 Reporter: "; font-weight: bold; color: #6b7280; }
+    .reports-table tr:not(.reports-empty-row) td:nth-child(3):before { content: "🍲 Recipe: "; font-weight: bold; color: #6b7280; }
+    .reports-table tr:not(.reports-empty-row) td:nth-child(4):before { content: "🚩 Issue: "; font-weight: bold; color: #6b7280; display: block; margin-bottom: 4px; }
+
+    /* Action Button Container */
+    .reports-table td:nth-child(5) {
+        margin-top: 10px; padding-top: 15px !important;
+        border-top: 1px solid var(--border) !important; text-align: right;
+    }
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Invite a Family Member | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #166534;">👪 Invite a Family Member</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        Works from anywhere, including your phone. You give them a temporary code; the first time
+        they sign in with it, they pick their own password. Their account is created at that moment,
+        so no password ever passes through you and nothing with admin access touches this page.
+        Always creates a regular account — use "Manage Admin Access" if they need Admin too.
+    </p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <input type="text" id="invite-name" placeholder="Full name (e.g. Aunt Sally)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+        <input type="email" id="invite-email" placeholder="Email address" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+    </div>
+    <input type="text" id="invite-code" placeholder="Temporary code (leave blank and I'll make one up)" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; text-transform: uppercase;">
+    <button onclick="createInvite()" style="background: #16a34a; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 10px;">Create Invite</button>
+
+    <div id="invite-result" style="display:none; margin-top: 10px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius: 6px; padding: 12px;">
+        <p style="font-size: 12px; margin: 0 0 6px 0; color: #166534;">Give them this code and their email address:</p>
+        <div style="display:flex; gap:8px; align-items:center; margin-bottom:12px;">
+            <span id="invite-code-output" style="font-family: monospace; font-size: 1.5rem; font-weight: 800; letter-spacing: 3px; color:#166534;"></span>
+            <button onclick="copyInviteCode()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy Code</button>
+        </div>
+        <p style="font-size: 11px; margin: 0 0 4px 0; color: #6b7280;">They enter it at the login page under "First time here?". Or send this direct link instead:</p>
+        <div style="display:flex; gap:6px;">
+            <input type="text" id="invite-link-output" readonly style="flex:1; padding: 6px; border: 1px solid #bbf7d0; border-radius: 4px; font-size: 12px; font-family: monospace;">
+            <button onclick="copyInviteLink()" style="background: #16a34a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Copy</button>
+        </div>
+    </div>
+    <div id="pending-invites-list" style="margin-top: 15px;"></div>
+</div>
+
+<script type="module" src="../scripts/dashboard.js?v=5"></script>
+</body>
+</html>

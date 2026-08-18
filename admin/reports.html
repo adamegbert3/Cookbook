@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Reported Issues | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #b91c1c;">🚩 Reported Issues</h1>
+    <div style="overflow-x: auto;">
+        <table class="reports-table" style="width: 100%; text-align: left; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Reporter</th>
+                    <th>Recipe</th>
+                    <th>Issue</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="reports-table-body">
+                <tr class="reports-empty-row"><td colspan="5" style="text-align: center; padding: 15px; color: #6b7280;">Loading reports...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script type="module" src="../scripts/dashboard.js?v=5"></script>
+</body>
+</html>
