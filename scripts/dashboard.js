@@ -1374,13 +1374,22 @@ window.loadAdminUsersList = async function() {
                 actionBtn = `<button onclick="promoteToAdmin('${u.uid}', '${label.replace(/'/g, "\\'")}')" style="background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; white-space:nowrap;">Promote to Admin</button>`;
             }
 
+            const family = u.family || 'Both';
+            const familyPicker = `
+                <select onchange="setUserFamilySide('${u.uid}', this.value)" title="Which side of the family leaderboard they show up on" style="font-size:11px; padding:3px 6px; border-radius:4px; border:1px solid var(--border); background:var(--bg-card); color:var(--primary);">
+                    <option value="Both" ${family === 'Both' ? 'selected' : ''}>👪 Both sides</option>
+                    <option value="Egbert" ${family === 'Egbert' ? 'selected' : ''}>Egbert only</option>
+                    <option value="Wheeler" ${family === 'Wheeler' ? 'selected' : ''}>Wheeler only</option>
+                </select>`;
+
             return `
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
                     <div>
                         <div style="font-weight:600;">${label}</div>
                         ${u.email && u.Name ? `<div style="font-size:11px; color:#9ca3af;">${u.email}</div>` : ''}
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        ${familyPicker}
                         ${statusBadge}
                         ${actionBtn}
                     </div>
@@ -1413,6 +1422,22 @@ window.demoteToUser = async function(uid, label) {
     } catch (e) {
         console.error("🔥 [ADMIN ACCESS] Demote failed:", e);
         alert("Could not demote: " + e.message);
+    }
+};
+
+// Which side of the family leaderboard this person shows up on (leaderboard.html
+// filters to the viewer's own side, showing everyone whose family is theirs
+// or "Both" — same idea as the family field on recipes, just on a person
+// instead). Defaults to "Both" so nobody vanishes from the leaderboard just
+// because this was never set for them.
+window.setUserFamilySide = async function(uid, value) {
+    try {
+        await updateDoc(doc(db, "users", uid), { family: value });
+        console.log(`👪 [ADMIN ACCESS] Set ${uid}'s leaderboard side to ${value}.`);
+    } catch (e) {
+        console.error("🔥 [ADMIN ACCESS] Could not set family side:", e);
+        alert("Could not save that: " + e.message);
+        loadAdminUsersList(); // revert the dropdown to the real saved value
     }
 };
 
