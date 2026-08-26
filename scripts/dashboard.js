@@ -11,6 +11,13 @@ import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
 import qrcode from './vendor/qrcode.mjs';
 
+// TEMPORARY — diagnosing a "print does nothing, no console error" report on
+// the recipe-card feature. Confirms whether the browser's own print engine
+// engages at all when window.print() is called. Safe to leave in briefly;
+// remove once the card-printing bug is confirmed fixed.
+window.addEventListener('beforeprint', () => console.log('🖨️ [PRINT DEBUG] beforeprint event fired — the browser IS entering print mode.'));
+window.addEventListener('afterprint', () => console.log('🖨️ [PRINT DEBUG] afterprint event fired.'));
+
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
 // missing or corrupted. Keep in sync with firestore.rules and the
@@ -511,9 +518,13 @@ window.printAllCards = function() {
 
     if (!cardsHtml) return alert("Add at least one ingredient first.");
 
+    console.log(`🖨️ [PRINT DEBUG] Built ${textareas.length} card(s), about to populate #card-print-output.`);
     document.getElementById('card-print-output').innerHTML = cardsHtml;
+    console.log(`🖨️ [PRINT DEBUG] #card-print-output now has ${document.getElementById('card-print-output').children.length} child element(s).`);
     closeCardsReviewModal();
+    console.log('🖨️ [PRINT DEBUG] Calling window.print() now...');
     window.print();
+    console.log('🖨️ [PRINT DEBUG] window.print() call returned (this always logs — it does not mean the dialog appeared).');
 };
 
 // ==========================================
