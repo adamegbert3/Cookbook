@@ -351,10 +351,10 @@ let cardsPickerObserver = null;
 function buildCardsPickerRowHtml(r) {
     const checked = cardsPickerSelected.has(r.id) ? 'checked' : '';
     return `
-        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer;">
-            <input type="checkbox" ${checked} onchange="toggleCardsPickerRecipe('${r.id}', this.checked)">
-            <span style="flex:1;">${r.name || "Untitled"}</span>
-            ${r.public ? '<span style="font-size:10px; color:#a16207;">already public</span>' : ''}
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; width:100%; box-sizing:border-box;">
+            <input type="checkbox" ${checked} onchange="toggleCardsPickerRecipe('${r.id}', this.checked)" style="flex:0 0 auto; width:16px; height:16px; margin:0;">
+            <span style="flex:1 1 0%; min-width:0; text-align:left;">${r.name || "Untitled"}</span>
+            ${r.public ? '<span style="flex:0 0 auto; font-size:10px; color:#a16207;">already public</span>' : ''}
         </label>`;
 }
 
@@ -1669,10 +1669,10 @@ function buildGuestPickerRowHtml(r) {
     if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
     else if (r.category) cat = r.category;
     return `
-        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer;">
-            <input type="checkbox" ${checked} onchange="toggleGuestPickerRecipe('${r.id}', this.checked)">
-            <span style="flex:1;">${r.name || "Untitled"}</span>
-            <span style="font-size:11px; color:#9ca3af;">${cat}</span>
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; width:100%; box-sizing:border-box;">
+            <input type="checkbox" ${checked} onchange="toggleGuestPickerRecipe('${r.id}', this.checked)" style="flex:0 0 auto; width:16px; height:16px; margin:0;">
+            <span style="flex:1 1 0%; min-width:0; text-align:left;">${r.name || "Untitled"}</span>
+            <span style="flex:0 0 auto; font-size:11px; color:#9ca3af;">${cat}</span>
         </label>`;
 }
 
