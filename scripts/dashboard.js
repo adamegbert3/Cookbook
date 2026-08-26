@@ -326,13 +326,30 @@ function stripIngredientToName(line) {
 
 let cardPreviewRecipeId = null;
 
-window.generateRecipeCard = function(id) {
+window.generateRecipeCard = async function(id) {
     const recipe = allRecipeData.find(r => r.id === id);
     if (!recipe) return alert("Recipe not found.");
 
     if (!recipe.public && !confirm(
         `This makes "${recipe.name}" permanently viewable by anyone who has the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`
     )) return;
+
+    // Done here, on the FIRST click, rather than in confirmPrintRecipeCard —
+    // that function needs to stay fully synchronous straight through to
+    // window.print(). Some browsers (Safari in particular) silently refuse
+    // to open the print dialog — no error, it just does nothing — once
+    // enough time has passed since the actual click, and an awaited
+    // Firestore write is easily enough of a gap to trigger that.
+    if (!recipe.public) {
+        try {
+            await updateDoc(doc(db, "recipes", id), { public: true });
+            recipe.public = true;
+            updateSingleRecipeCard(id);
+        } catch (e) {
+            console.error("🔥 [CARD] Could not make recipe public:", e);
+            return alert("Could not make this recipe public: " + e.message);
+        }
+    }
 
     cardPreviewRecipeId = id;
     const rawIng = recipe.ingredients || recipe.recipeIngredient || [];
@@ -349,7 +366,9 @@ window.closeCardPreviewModal = function() {
     cardPreviewRecipeId = null;
 };
 
-window.confirmPrintRecipeCard = async function() {
+// Fully synchronous, deliberately — see the comment on generateRecipeCard
+// above for why nothing here can be an awaited/async operation.
+window.confirmPrintRecipeCard = function() {
     const id = cardPreviewRecipeId;
     const recipe = allRecipeData.find(r => r.id === id);
     if (!id || !recipe) return;
@@ -357,17 +376,6 @@ window.confirmPrintRecipeCard = async function() {
     const ingredientNames = document.getElementById('card-ingredients-textarea').value
         .split('\n').map(s => s.trim()).filter(Boolean);
     if (ingredientNames.length === 0) return alert("Add at least one ingredient first.");
-
-    if (!recipe.public) {
-        try {
-            await updateDoc(doc(db, "recipes", id), { public: true });
-            recipe.public = true;
-            updateSingleRecipeCard(id);
-        } catch (e) {
-            console.error("🔥 [CARD] Could not make recipe public:", e);
-            return alert("Could not make this recipe public: " + e.message);
-        }
-    }
 
     const shareUrl = `${location.origin}${siteRootPath()}share.html?id=${id}`;
     const qr = qrcode(0, 'M');
@@ -391,7 +399,10 @@ window.confirmPrintRecipeCard = async function() {
         </div>`;
 
     closeCardPreviewModal();
-    requestAnimationFrame(() => window.print());
+    // Called directly, no requestAnimationFrame/setTimeout wrapper — even a
+    // one-frame deferral is one more thing that can push this past a
+    // browser's "was this really a direct response to the click?" cutoff.
+    window.print();
 };
 
 // ==========================================
