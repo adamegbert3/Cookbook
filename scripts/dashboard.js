@@ -9,6 +9,7 @@ import { getSections, hasRealSections, getEditableText, buildRecipeFields } from
 import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } from './household.js';
 import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
+import qrcode from './vendor/qrcode.mjs';
 
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
@@ -181,6 +182,7 @@ function buildRecipeRowHtml(r) {
                 <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
                 <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
                 <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️ Delete</button>
+                <button onclick="generateRecipeCard('${r.id}')" class="btn-action" style="background:#fef3c7; color:#92400e;" title="${r.public ? 'Already shareable — print another card' : 'Make this recipe public and print a QR card'}">📇 ${r.public ? 'Card (Public)' : 'Card'}</button>
             </div>
             <div class="rmc-favorites">
                 <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" style="background: ${isEgb ? '#0284c7' : '#f0f9ff'}; color: ${isEgb ? '#ffffff' : '#0369a1'}; border: 1px solid #bae6fd; font-weight: 800;" title="Toggle Egbert Favorite">
@@ -289,6 +291,109 @@ window.toggleVisibility = async function(id, currentStatus) {
         triggerDriveSyncSilently();
     } catch (error) { alert("Could not update visibility."); }
 };
+
+// ==========================================
+// PRINTABLE RECIPE CARD (QR code, admin/recipe-list.html)
+//
+// Marks a recipe `public: true` (the one deliberately-public case in
+// firestore.rules — see its comment on /recipes) and prints an index-card
+// -sized page: logo, name, a plain ingredient-NAME list (no measurements,
+// "like a nutrition label" — this is for reading at a glance whether a dish
+// is safe to eat, not for recreating it), and a QR code linking to
+// share.html, which works for anyone, no login or code, forever.
+// ==========================================
+
+// Best-effort strip of a leading amount/unit so what's left is just the
+// ingredient's name. Deliberately not trusted outright — recipes are typed
+// by hand so phrasing varies a lot — generateRecipeCard shows this in an
+// editable box before anything gets printed, since this list is meant to
+// flag allergens and a parsing miss should never go to print unreviewed.
+function stripIngredientToName(line) {
+    let s = String(line || '').trim();
+    if (!s) return '';
+    const UNITS = 'cups?|tbsp\\.?|tablespoons?|tsp\\.?|teaspoons?|oz\\.?|ounces?|lbs?\\.?|pounds?|grams?|g|kg|ml|liters?|l|cloves?|cans?|packages?|pkgs?|pinch(?:es)?|dash(?:es)?|slices?|sticks?|bunch(?:es)?|heads?|stalks?|jars?|bags?';
+    // Leading amount: digits/fractions/decimals/ranges — "2", "1/2", "1 1/2", "¼", "2-3"
+    s = s.replace(/^[\d¼½¾⅓⅔⅛⅜⅝⅞.\/\-–\s]+/, '').trim();
+    // A leading parenthetical size note — "(15 oz) can black beans"
+    s = s.replace(/^\([^)]*\)\s*/, '').trim();
+    // A leading unit word, optionally followed by "of"
+    s = s.replace(new RegExp(`^(?:${UNITS})\\.?\\s+(?:of\\s+)?`, 'i'), '').trim();
+    // A trailing prep note after the first comma — ", softened" / ", to taste"
+    s = s.replace(/,.*$/, '').trim();
+    if (!s) return String(line || '').trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+let cardPreviewRecipeId = null;
+
+window.generateRecipeCard = function(id) {
+    const recipe = allRecipeData.find(r => r.id === id);
+    if (!recipe) return alert("Recipe not found.");
+
+    if (!recipe.public && !confirm(
+        `This makes "${recipe.name}" permanently viewable by anyone who has the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`
+    )) return;
+
+    cardPreviewRecipeId = id;
+    const rawIng = recipe.ingredients || recipe.recipeIngredient || [];
+    const list = Array.isArray(rawIng) ? rawIng : [rawIng];
+    const names = list.map(stripIngredientToName).filter(Boolean);
+
+    document.getElementById('card-preview-title').textContent = `📇 Recipe Card — ${recipe.name}`;
+    document.getElementById('card-ingredients-textarea').value = names.join('\n');
+    document.getElementById('card-preview-modal').style.display = 'flex';
+};
+
+window.closeCardPreviewModal = function() {
+    document.getElementById('card-preview-modal').style.display = 'none';
+    cardPreviewRecipeId = null;
+};
+
+window.confirmPrintRecipeCard = async function() {
+    const id = cardPreviewRecipeId;
+    const recipe = allRecipeData.find(r => r.id === id);
+    if (!id || !recipe) return;
+
+    const ingredientNames = document.getElementById('card-ingredients-textarea').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
+    if (ingredientNames.length === 0) return alert("Add at least one ingredient first.");
+
+    if (!recipe.public) {
+        try {
+            await updateDoc(doc(db, "recipes", id), { public: true });
+            recipe.public = true;
+            updateSingleRecipeCard(id);
+        } catch (e) {
+            console.error("🔥 [CARD] Could not make recipe public:", e);
+            return alert("Could not make this recipe public: " + e.message);
+        }
+    }
+
+    const shareUrl = `${location.origin}${siteRootPath()}share.html?id=${id}`;
+    const qr = qrcode(0, 'M');
+    qr.addData(shareUrl);
+    qr.make();
+    const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4 });
+
+    const outputEl = document.getElementById('card-print-output');
+    outputEl.innerHTML = `
+        <div style="text-align:center; font-family: 'Inter', sans-serif;">
+            <img src="../images/logo.jpg" style="width:56px; height:56px; object-fit:cover; border-radius:50%; margin-bottom:4px;">
+            <h1 style="font-family: 'Amatic SC', cursive; font-size: 2rem; margin: 0 0 2px 0; color:#000;">${recipe.name || "Untitled"}</h1>
+            <p style="font-size:10px; color:#333; margin:0 0 10px 0;">From: ${recipe.author || "Family"}</p>
+        </div>
+        <div style="font-size:10px; line-height:1.5; color:#000;">
+            <strong>Ingredients:</strong> ${ingredientNames.join(', ')}
+        </div>
+        <div style="text-align:center; margin-top:12px;">
+            ${qrSvg}
+            <p style="font-size:8px; color:#555; margin-top:2px;">Scan for the full recipe</p>
+        </div>`;
+
+    closeCardPreviewModal();
+    requestAnimationFrame(() => window.print());
+};
+
 // ==========================================
 // QUICK-TAG HALL OF FAME TOGGLE
 // ==========================================
