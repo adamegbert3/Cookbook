@@ -112,12 +112,13 @@
     @media print {
         .admin-container { display: none !important; }
         #card-print-output {
-            display: grid !important;
-            grid-template-columns: repeat(auto-fit, 4in);
+            display: flex !important;
+            flex-wrap: wrap;
             gap: 0.3in;
             justify-content: center;
         }
         .print-card {
+            flex: 0 0 auto;
             width: 4in;
             min-height: 6in;
             border: 2px dashed #000;
@@ -138,6 +139,6 @@
     }
 </style>
 
-<script type="module" src="../scripts/dashboard.js?v=10"></script>
+<script type="module" src="../scripts/dashboard.js?v=11"></script>
 </body>
 </html>
