@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Recipes | Family Cookbook</title>
+    <link rel="stylesheet" href="styles/recipes.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+    <div class="header-container">
+        <div class="logo-area">
+            <img src="images/logo.jpg" alt="Logo" class="logo-img">
+            <div class="header-title">
+                <h1>🎟️ Shared Recipes</h1>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <p id="guest-banner" style="display:none; text-align:center; font-weight:600; color: var(--accent-teal); margin-bottom: 20px;"></p>
+        <p id="guest-status" style="text-align:center; color: var(--primary); opacity: 0.8; max-width: 420px; margin: 40px auto;">Loading your shared recipes...</p>
+
+        <div id="recipes"></div>
+    </main>
+
+    <div style="text-align: center; margin-top: 30px;">
+        <a href="terms.html" style="color: #64748b; font-size: 13px; text-decoration: underline;">Terms of Use & Privacy Policy</a>
+    </div>
+
+    <script type="module" src="scripts/guest.js"></script>
+</body>
+</html>
