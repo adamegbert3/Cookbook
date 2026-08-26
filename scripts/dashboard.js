@@ -80,6 +80,7 @@ async function loadAdminDashboard() {
     loadTotalCooksCount();
     loadAttentionSummary();
     consumeUploadStationHandoff();
+    loadGuestCodes();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -92,13 +93,15 @@ async function loadAdminDashboard() {
     // The full recipes collection is only needed by the Master Recipe List
     // (admin/recipe-list.html, #unified-list + #category-stats-list), Most
     // Popular (admin/popular.html, #leaderboard-list — loadAnalytics also
-    // renders the Activity roster as a side effect of the same call), and
-    // Activity itself (admin/activity.html, #activity-list) — skip the read
-    // entirely on every other admin page now that they're split up.
+    // renders the Activity roster as a side effect of the same call),
+    // Activity itself (admin/activity.html, #activity-list), and the Guest
+    // Codes recipe picker (admin/guests.html, #guest-picker-list) — skip the
+    // read entirely on every other admin page now that they're split up.
     const needsAllRecipes = document.getElementById('unified-list')
         || document.getElementById('category-stats-list')
         || document.getElementById('leaderboard-list')
-        || document.getElementById('activity-list');
+        || document.getElementById('activity-list')
+        || document.getElementById('guest-picker-list');
     if (!needsAllRecipes) return;
 
     try {
@@ -117,6 +120,7 @@ async function loadAdminDashboard() {
         renderUnifiedManager(allRecipeData);
         renderDeepStats(allRecipeData);
         loadAnalytics(allRecipeData);
+        renderGuestPicker(allRecipeData);
 
         // Activating Search
         const searchInput = document.getElementById('manager-search');
@@ -124,6 +128,11 @@ async function loadAdminDashboard() {
             searchInput.addEventListener('input', (e) => {
                 applyAdminFilters();
             });
+        }
+
+        const guestPickerSearch = document.getElementById('guest-picker-search');
+        if (guestPickerSearch) {
+            guestPickerSearch.addEventListener('input', applyGuestPickerFilter);
         }
     } catch (error) {
         console.error("🔥 [DASHBOARD CRITICAL ERROR]:", error);
@@ -1273,9 +1282,8 @@ window.createInvite = async function() {
             createdAt: serverTimestamp()
         });
 
-        const basePath = location.pathname.replace(/admin\.html$/, '');
         document.getElementById('invite-code-output').innerText = code;
-        document.getElementById('invite-link-output').value = `${location.origin}${basePath}invite.html?id=${code}`;
+        document.getElementById('invite-link-output').value = `${location.origin}${siteRootPath()}invite.html?id=${code}`;
         document.getElementById('invite-result').style.display = 'block';
 
         console.log("✅ [INVITE] Created with code:", code);
@@ -1333,6 +1341,283 @@ window.revokeInvite = async function(id) {
     } catch (e) { alert("Could not revoke: " + e.message); }
 };
 
+// Whichever admin/*.html page called this, strip it back to the site's
+// root so a link built on top of it is correct regardless of folder depth
+// (every admin tool now lives at admin/<name>.html, one level deep).
+function siteRootPath() {
+    return location.pathname.replace(/admin\/[^/]+\.html$|admin\.html$/, '');
+}
+
+// ==========================================
+// GUEST CODES (admin/guests.html, plus a shared list on admin/access.html)
+//
+// One code = one specific named person, created by an admin (never
+// self-served by the guest — see the plan/firestore.rules comments for why:
+// self-typed names on a shared code were rejected as too easy to get wrong).
+// A guest signs in with Firebase Anonymous Auth and reads exactly the
+// recipeIds on their code — see firestore.rules' isAnonymous()/
+// guestAllowedRecipeIds() for the actual security boundary; everything here
+// is just admin-side CRUD on top of that.
+// ==========================================
+let guestPickerSelected = new Set();
+const GUEST_PICKER_BATCH_SIZE = 30;
+let guestPickerQueue = [];
+let guestPickerObserver = null;
+
+function buildGuestPickerRowHtml(r) {
+    const checked = guestPickerSelected.has(r.id) ? 'checked' : '';
+    let cat = "Misc";
+    if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
+    else if (r.category) cat = r.category;
+    return `
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer;">
+            <input type="checkbox" ${checked} onchange="toggleGuestPickerRecipe('${r.id}', this.checked)">
+            <span style="flex:1;">${r.name || "Untitled"}</span>
+            <span style="font-size:11px; color:#9ca3af;">${cat}</span>
+        </label>`;
+}
+
+function renderGuestPickerSummary() {
+    const el = document.getElementById('guest-picker-summary');
+    if (!el) return;
+    el.textContent = guestPickerSelected.size === 0
+        ? "No recipes selected yet."
+        : `${guestPickerSelected.size} recipe${guestPickerSelected.size === 1 ? '' : 's'} selected.`;
+}
+
+// Full rebuild, same lazy-batch approach as the Master Recipe List
+// (renderUnifiedManager/renderNextMasterBatch) — separate queue/observer
+// variables so the two pickers never interfere with each other.
+function renderGuestPicker(recipes) {
+    const list = document.getElementById('guest-picker-list');
+    if (!list) return;
+
+    if (guestPickerObserver) { guestPickerObserver.disconnect(); guestPickerObserver = null; }
+
+    if (recipes.length === 0) {
+        list.innerHTML = "<p style='padding:10px; color:#9ca3af; font-size:13px;'>No recipes match.</p>";
+        return;
+    }
+
+    guestPickerQueue = recipes.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    list.innerHTML = '';
+    renderNextGuestPickerBatch();
+}
+
+function renderNextGuestPickerBatch() {
+    const list = document.getElementById('guest-picker-list');
+    if (!list) return;
+
+    const batch = guestPickerQueue.splice(0, GUEST_PICKER_BATCH_SIZE);
+    list.insertAdjacentHTML('beforeend', batch.map(buildGuestPickerRowHtml).join(''));
+
+    const oldSentinel = document.getElementById('guest-picker-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+    if (guestPickerQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'guest-picker-sentinel';
+    sentinel.style.cssText = 'height: 1px;';
+    list.appendChild(sentinel);
+
+    guestPickerObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            guestPickerObserver.disconnect();
+            renderNextGuestPickerBatch();
+        }
+    }, { rootMargin: '400px' });
+    guestPickerObserver.observe(sentinel);
+}
+
+window.toggleGuestPickerRecipe = function(id, isChecked) {
+    if (isChecked) guestPickerSelected.add(id); else guestPickerSelected.delete(id);
+    renderGuestPickerSummary();
+};
+
+window.applyGuestPickerFilter = function() {
+    const term = (document.getElementById('guest-picker-search')?.value || '').toLowerCase();
+    const filtered = !term ? allRecipeData : allRecipeData.filter(r => (r.name || '').toLowerCase().includes(term));
+    renderGuestPicker(filtered);
+};
+
+window.createGuestCode = async function() {
+    const nameInput = document.getElementById('guest-name');
+    const emailInput = document.getElementById('guest-email');
+    const noteInput = document.getElementById('guest-note');
+    const codeInput = document.getElementById('guest-code');
+
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim().toLowerCase();
+    const note = noteInput.value.trim();
+    if (!name) return alert("A name is required — that's what shows up in Activity and on their welcome banner.");
+    if (guestPickerSelected.size === 0) return alert("Pick at least one recipe to share with them first.");
+
+    // Same code shape/rules as invites — see generateInviteCode() above.
+    const typed = codeInput.value.trim().toUpperCase().replace(/\s+/g, '');
+    const code = typed || generateInviteCode();
+    if (typed && typed.length < 4) return alert("Give the code at least 4 characters.");
+
+    try {
+        const existing = await getDoc(doc(db, "guest_codes", code));
+        if (existing.exists()) return alert(`The code ${code} is already in use. Pick another.`);
+
+        await setDoc(doc(db, "guest_codes", code), {
+            name,
+            email: email || '',
+            note: note || '',
+            recipeIds: Array.from(guestPickerSelected),
+            active: true,
+            createdAt: serverTimestamp(),
+            createdBy: auth.currentUser.uid
+        });
+
+        const link = `${location.origin}${siteRootPath()}guest.html?code=${code}`;
+        await navigator.clipboard.writeText(link).catch(() => {});
+        alert(`Guest link created and copied to your clipboard:\n\n${link}\n\nSend that to ${name}.`);
+
+        nameInput.value = ""; emailInput.value = ""; noteInput.value = ""; codeInput.value = "";
+        guestPickerSelected = new Set();
+        renderGuestPickerSummary();
+        applyGuestPickerFilter();
+        loadGuestCodes();
+    } catch (e) {
+        console.error("🔥 [GUEST CODE] Could not create:", e);
+        alert("Could not create guest code: " + e.message);
+    }
+};
+
+window.toggleGuestCodeActive = async function(code, currentlyActive) {
+    try {
+        await updateDoc(doc(db, "guest_codes", code), { active: !currentlyActive });
+        loadGuestCodes();
+    } catch (e) { alert("Could not update: " + e.message); }
+};
+
+window.copyGuestLink = function(code) {
+    const link = `${location.origin}${siteRootPath()}guest.html?code=${code}`;
+    navigator.clipboard.writeText(link).then(() => alert("Link copied!"));
+};
+
+window.deleteGuestCode = async function(code, name) {
+    if (!confirm(`Delete the guest code for ${name}? Their link will stop working immediately. This does not delete anything they've already cooked.`)) return;
+    try {
+        await deleteDoc(doc(db, "guest_codes", code));
+        loadGuestCodes();
+    } catch (e) { alert("Could not delete: " + e.message); }
+};
+
+// "Start Transfer" creates a real invite (same doc shape createInvite makes,
+// literally reusing the invites collection) pre-filled with whatever name/
+// email is already on file for this guest — nothing to retype. Finishing the
+// transfer (moving their old guest activity onto the new real account) is a
+// separate action on the Activity page, since it needs the brand-new uid
+// that doesn't exist until that person actually finishes signing up.
+window.startGuestTransfer = async function(code, name, email) {
+    try {
+        const guestSnap = await getDoc(doc(db, "guest_codes", code));
+        if (!guestSnap.exists()) return alert("That guest code no longer exists.");
+        const guestData = guestSnap.data();
+
+        if (guestData.transferInviteCode) {
+            const existingInvite = await getDoc(doc(db, "invites", guestData.transferInviteCode));
+            if (existingInvite.exists() && !existingInvite.data().used) {
+                const link = `${location.origin}${siteRootPath()}invite.html?id=${guestData.transferInviteCode}`;
+                await navigator.clipboard.writeText(link).catch(() => {});
+                return alert(`A transfer invite is already pending for ${name}. Link copied again:\n\n${link}`);
+            }
+            // Otherwise (used or deleted some other way) fall through and make a new one.
+        }
+
+        let finalEmail = email;
+        if (!finalEmail) {
+            finalEmail = (prompt(`${name} doesn't have an email on file. Enter one to send them a signup invite:`) || '').trim().toLowerCase();
+            if (!finalEmail) return;
+        }
+
+        const inviteCode = generateInviteCode();
+        const existingInviteDoc = await getDoc(doc(db, "invites", inviteCode));
+        if (existingInviteDoc.exists()) return alert("Could not generate a unique invite code — try again.");
+
+        await setDoc(doc(db, "invites", inviteCode), {
+            name,
+            email: finalEmail,
+            used: false,
+            createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, "guest_codes", code), { transferInviteCode: inviteCode, email: finalEmail });
+
+        const link = `${location.origin}${siteRootPath()}invite.html?id=${inviteCode}`;
+        await navigator.clipboard.writeText(link).catch(() => {});
+        alert(`Signup invite created for ${name} and copied to your clipboard:\n\n${link}\n\nOnce they finish signing up, come back to the Activity page to move their guest history onto the new account.`);
+        loadGuestCodes();
+    } catch (e) {
+        console.error("🔥 [GUEST TRANSFER] Could not start transfer:", e);
+        alert("Could not start transfer: " + e.message);
+    }
+};
+
+function buildGuestRowHtml(g) {
+    const cookCount = typeof g.cookCount === 'number' ? g.cookCount : 0;
+    const safeName = (g.name || '').replace(/'/g, "\\'");
+    const safeEmail = (g.email || '').replace(/'/g, "\\'");
+    const activeBadge = g.active
+        ? `<span style="background:#d1fae5; color:#065f46; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;">🟢 Active</span>`
+        : `<span style="background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;">⏸️ Inactive</span>`;
+    const transferBtn = g.transferInviteCode
+        ? `<button onclick="startGuestTransfer('${g.id}', '${safeName}', '${safeEmail}')" style="background:#e0e7ff; color:#3730a3; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; white-space:nowrap;">🔗 Invite Pending</button>`
+        : `<button onclick="startGuestTransfer('${g.id}', '${safeName}', '${safeEmail}')" style="background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; white-space:nowrap;">Start Transfer</button>`;
+
+    return `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
+            <div>
+                <div style="font-weight:600;">🎟️ ${g.name}${g.email ? ` <span style="font-weight:400; color:#9ca3af; font-size:11px;">(${g.email})</span>` : ''}</div>
+                <div style="font-size:11px; color:#9ca3af;">${(g.recipeIds || []).length} recipe${(g.recipeIds || []).length === 1 ? '' : 's'} shared · ${cookCount} made · code <span style="font-family:monospace;">${g.id}</span></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                ${activeBadge}
+                <button onclick="toggleGuestCodeActive('${g.id}', ${g.active})" style="background:var(--bg-card); border:1px solid var(--border); color:var(--primary); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">${g.active ? 'Deactivate' : 'Reactivate'}</button>
+                <button onclick="copyGuestLink('${g.id}')" style="background:var(--bg-card); border:1px solid var(--border); color:var(--primary); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Copy Link</button>
+                ${transferBtn}
+                <button onclick="deleteGuestCode('${g.id}', '${safeName}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Delete</button>
+            </div>
+        </div>`;
+}
+
+window.loadGuestCodes = async function() {
+    const listEl = document.getElementById('guest-codes-list');
+    if (!listEl) return;
+    listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>Loading guest codes...</p>";
+
+    try {
+        const snap = await getDocs(query(collection(db, "guest_codes"), orderBy("createdAt", "desc")));
+        const codes = [];
+        snap.forEach(d => codes.push({ id: d.id, ...d.data() }));
+
+        if (codes.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>No guest codes yet.</p>";
+            return;
+        }
+
+        // One query for every guest-claimed account, rather than one query
+        // per code, so this page doesn't fire N Firestore reads for N codes.
+        const guestUsersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "guest")));
+        const uidByCode = {};
+        guestUsersSnap.forEach(d => { const gc = d.data().guestCode; if (gc) uidByCode[gc] = d.id; });
+
+        await Promise.all(codes.map(async (g) => {
+            const uid = uidByCode[g.id];
+            if (!uid) { g.cookCount = 0; return; }
+            const cooksSnap = await getDocs(query(collection(db, "global_cooks"), where("uid", "==", uid)));
+            g.cookCount = cooksSnap.size;
+        }));
+
+        listEl.innerHTML = codes.map(buildGuestRowHtml).join('');
+    } catch (e) {
+        console.error("🔥 [GUEST CODES] Could not load:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load guest codes: " + e.message + "</p>";
+    }
+};
+
 // ==========================================
 // MANAGE ADMIN ACCESS — promote/demote anyone straight from the console,
 // no code edits or redeploy needed (unlike the original 3 ADMIN_UIDS, which
@@ -1347,7 +1632,15 @@ window.loadAdminUsersList = async function() {
     try {
         const snap = await getDocs(collection(db, "users"));
         const users = [];
-        snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
+        // Guests (and guests already transferred to a real account) have
+        // their own row on the same page — see the "🎟️ Guests" section /
+        // loadGuestCodes() — so they're left out of the real-member table
+        // here rather than cluttering role/family-side management.
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.role === 'guest' || data.role === 'transferred') return;
+            users.push({ uid: d.id, ...data });
+        });
         users.sort((a, b) => (a.Name || a.email || "").localeCompare(b.Name || b.email || ""));
 
         console.log(`👑 [ADMIN ACCESS] Loaded ${users.length} user(s).`);

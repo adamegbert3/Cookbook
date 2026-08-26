@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>Guest Codes | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css">
+    <link rel="stylesheet" href="../styles/admin.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/png" href="../images/favicon.png">
+    <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
+    <link rel="manifest" href="../offline_features/manifest.json">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+</head>
+<body>
+
+<div class="admin-container">
+    <a href="../admin.html" class="admin-back-link">← Admin Home</a>
+    <h1 style="color: #a16207;">🎟️ Guest Codes</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        Give someone outside the family a link to a few recipes — no account needed. Each code is
+        for one specific person (their name and, optionally, email) and only unlocks the recipes
+        you pick below. They get full recipe features (comments, favorites, cook mode, "I made
+        this!") for just that handful of recipes.
+    </p>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+        <input type="text" id="guest-name" placeholder="Their name (e.g. Neighbor Jane)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+        <input type="email" id="guest-email" placeholder="Email (optional — for transferring them later)" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px;">
+    </div>
+    <input type="text" id="guest-note" placeholder="Note to yourself (optional, e.g. 'Thanksgiving 2026')" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 6px;">
+    <input type="text" id="guest-code" placeholder="Custom code (leave blank and I'll make one up)" style="width: 100%; padding: 8px; margin-top: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: monospace; text-transform: uppercase;">
+
+    <div style="margin-top: 15px;">
+        <input type="text" id="guest-picker-search" placeholder="🔍 Search recipes to share..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+        <p id="guest-picker-summary" style="font-size: 12px; color: var(--primary); opacity: 0.7; margin: 8px 0;">No recipes selected yet.</p>
+        <div id="guest-picker-list" style="max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px;">
+            <p style="padding:10px; color:#9ca3af; font-size:13px;">Loading recipes...</p>
+        </div>
+    </div>
+
+    <button onclick="createGuestCode()" style="background: #a16207; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 12px;">Create Guest Code</button>
+
+    <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border);">
+        <h2 style="font-size: 1.1rem; margin: 0 0 8px 0;">Existing Guest Codes</h2>
+        <div id="guest-codes-list"></div>
+    </div>
+</div>
+
+<script type="module" src="../scripts/dashboard.js?v=6"></script>
+</body>
+</html>
