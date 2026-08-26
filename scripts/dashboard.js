@@ -431,7 +431,7 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         const usersSnap = await getDocs(collection(db, "users"));
         usersSnap.forEach(u => {
             const data = u.data();
-            knownUsers.push({ uid: u.id, name: data.Name || (data.email || '').split('@')[0] || u.id });
+            knownUsers.push({ uid: u.id, name: data.Name || (data.email || '').split('@')[0] || u.id, role: data.role || 'user' });
         });
         knownUsers.sort((a, b) => a.name.localeCompare(b.name));
     } catch (e) { console.error("Could not load profiles for the activity roster:", e); }
@@ -469,7 +469,7 @@ async function renderActivityRoster(viewDocs, allRecipes) {
 
     // Seed with every account first
     knownUsers.forEach(u => {
-        people[u.uid] = { key: u.uid, name: u.name, views: [], cooks: [], visits: [], unlinked: [] };
+        people[u.uid] = { key: u.uid, name: u.name, role: u.role, views: [], cooks: [], visits: [], unlinked: [] };
     });
 
     const addRecord = (bucket, record, uid, name, collectionPath, nameField) => {
@@ -576,15 +576,30 @@ async function renderActivityRoster(viewDocs, allRecipes) {
                 </button>`;
         }
 
+        // A guest's records already carry their own (anonymous) uid, so they
+        // never hit the unlinked/orphan branches above — this is a separate,
+        // always-available action for moving their whole history onto a
+        // brand-new real account once one exists (see admin/guests.html's
+        // "Start Transfer", which creates that real account's invite).
+        const guestBadge = p.role === 'guest'
+            ? ` <span style="background:#fef3c7; color:#92400e; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">🎟️ Guest</span>`
+            : '';
+        const guestActionsHtml = p.role === 'guest'
+            ? `<button onclick="transferGuestToUser('${safeKey}')"
+                        style="margin-top:8px; margin-left: ${actionsHtml ? '6px' : '0'}; background:#a16207; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                    🎟️ Finish Transfer to Real Account
+                </button>`
+            : '';
+
         return `
             <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; ${isIdle ? 'opacity:0.6;' : ''}">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">
-                    <strong style="${legacy ? 'color:#6b7280; font-style:italic;' : ''}">${displayName}${isOrphan && !legacy ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}</strong>
+                    <strong style="${legacy ? 'color:#6b7280; font-style:italic;' : ''}">${displayName}${isOrphan && !legacy ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}${guestBadge}</strong>
                     <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'} · ${p.visits.length} visit${p.visits.length === 1 ? '' : 's'}</span>
                 </div>
                 <div style="color: #6b7280; margin-top: 2px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">${lastActivityText}</div>
                 ${timeStr ? `<div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>` : ''}
-                ${actionsHtml}
+                ${actionsHtml}${guestActionsHtml}
             </div>`;
     }).join('')}`;
 }
@@ -676,6 +691,60 @@ window.reassignActivity = async function(key) {
     loadAdminDashboard();
 };
 
+// Finishing half of the guest transfer flow — the other half, "Start
+// Transfer" in admin/guests.html, creates the real signup invite. This
+// moves ALL of a guest's activity (not just unlinked records — a guest's
+// records already carry their own real anonymous uid) onto a real account
+// once that person has actually finished signing up through that invite.
+window.transferGuestToUser = async function(guestUid) {
+    const person = personActivityMap[guestUid];
+    if (!person) return;
+
+    const target = await pickPerson(person);
+    if (!target) return;
+    if (target.uid === guestUid) return alert("Pick the NEW real account, not the guest itself.");
+
+    const total = person.views.length + person.cooks.length + person.visits.length;
+    if (!confirm(`Move all ${total} record(s) from ${person.name} (guest) onto ${target.name}?`)) return;
+
+    const allRecords = [
+        ...person.views.map(r => ({ id: r.id, collectionPath: 'recipe_views', nameField: 'viewer' })),
+        ...person.cooks.map(r => ({ id: r.id, collectionPath: 'global_cooks', nameField: 'chef' })),
+        ...person.visits.map(r => ({ id: r.id, collectionPath: 'site_visits_log', nameField: 'viewerName' }))
+    ];
+
+    let done = 0, failed = 0;
+    for (const rec of allRecords) {
+        try {
+            await updateDoc(doc(db, rec.collectionPath, rec.id), { uid: target.uid, [rec.nameField]: target.name });
+            done++;
+        } catch (e) {
+            failed++;
+            console.error(`Could not update ${rec.collectionPath}/${rec.id}:`, e.message);
+        }
+    }
+
+    // Tombstone rather than delete: deleting users/{guestUid} wouldn't touch
+    // the still-alive Anonymous Auth session or its subcollections, and the
+    // guest could otherwise revisit their old link and silently regenerate a
+    // fresh guest identity under the same uid. Clearing guestCode also
+    // revokes their old recipe access under the new Firestore rules with no
+    // extra rule needed — guestAllowedRecipeIds() needs a non-empty
+    // guestCode pointing at an active guest_codes doc.
+    try {
+        await updateDoc(doc(db, "users", guestUid), { role: 'transferred', guestCode: '' });
+    } catch (e) {
+        console.error("Could not tombstone the guest account:", e.message);
+    }
+
+    console.log(`✅ [GUEST TRANSFER] Moved ${done} record(s) from guest ${guestUid} to ${target.name} (${target.uid})${failed ? `, ${failed} failed` : ''}.`);
+    alert(failed
+        ? `Moved ${done} record(s) to ${target.name}. ${failed} couldn't be updated — check the console.`
+        : `Done — ${target.name} now has ${person.name}'s guest history.`);
+
+    loadAdminDashboard();
+};
+
 // Scrollable picker. Replaces a prompt(), which silently truncated the list
 // after about nine names — so most of the family simply wasn't offered.
 function pickPerson(person) {
@@ -687,7 +756,10 @@ function pickPerson(person) {
         const total = person.views.length + person.cooks.length + person.visits.length;
         titleEl.innerHTML = `<strong>"${escapeAttr(person.name)}"</strong> — ${person.cooks.length} cooks, ${person.views.length} views, ${person.visits.length} visits (${total} records)`;
 
-        listEl.innerHTML = knownUsers.map(u => `
+        // Guests/already-transferred guests are never a valid target here —
+        // you never want to link legacy records or a transferred guest's
+        // history onto a temporary guest account.
+        listEl.innerHTML = knownUsers.filter(u => u.role !== 'guest' && u.role !== 'transferred').map(u => `
             <button class="person-picker-option" data-uid="${escapeAttr(u.uid)}" data-name="${escapeAttr(u.name)}"
                     style="display:block; width:100%; text-align:left; background:white; border:1px solid #e5e7eb;
                            border-radius:6px; padding:10px 12px; margin-bottom:6px; cursor:pointer; font-size:13px;">
