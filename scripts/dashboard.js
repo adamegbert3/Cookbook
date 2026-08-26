@@ -293,19 +293,26 @@ window.toggleVisibility = async function(id, currentStatus) {
 };
 
 // ==========================================
-// PRINTABLE RECIPE CARD (QR code, admin/recipe-list.html)
+// PRINTABLE RECIPE CARDS (QR code, admin/recipe-list.html)
 //
 // Marks a recipe `public: true` (the one deliberately-public case in
-// firestore.rules — see its comment on /recipes) and prints an index-card
-// -sized page: logo, name, a plain ingredient-NAME list (no measurements,
-// "like a nutrition label" — this is for reading at a glance whether a dish
-// is safe to eat, not for recreating it), and a QR code linking to
-// share.html, which works for anyone, no login or code, forever.
+// firestore.rules — see its comment on /recipes) and prints a bordered,
+// card-shaped block per recipe: logo, name, a plain ingredient-NAME list
+// (no measurements, "like a nutrition label" — this is for reading at a
+// glance whether a dish is safe to eat, not for recreating it), and a QR
+// code linking to share.html, which works for anyone, no login or code,
+// forever. One recipe (the row's own "📇 Card" button) or several at once
+// (the page's "🎴 Print Multiple Cards" button) both go through the same
+// pipeline below — printing 2-up on normal paper, not a special page size
+// (browsers don't reliably honor a CSS @page size — the first version of
+// this feature tried that and it silently printed full-page instead — so
+// instead the .print-card class itself draws a fixed-size, bordered card
+// shape that stays correct regardless of what paper size the printer uses).
 // ==========================================
 
 // Best-effort strip of a leading amount/unit so what's left is just the
 // ingredient's name. Deliberately not trusted outright — recipes are typed
-// by hand so phrasing varies a lot — generateRecipeCard shows this in an
+// by hand so phrasing varies a lot — the review step shows this in an
 // editable box before anything gets printed, since this list is meant to
 // flag allergens and a parsing miss should never go to print unreviewed.
 function stripIngredientToName(line) {
@@ -324,84 +331,188 @@ function stripIngredientToName(line) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-let cardPreviewRecipeId = null;
+let cardReviewRecipes = [];
 
-window.generateRecipeCard = async function(id) {
-    const recipe = allRecipeData.find(r => r.id === id);
-    if (!recipe) return alert("Recipe not found.");
+// Entry point for the single-recipe row button — just hands one id to the
+// same pipeline the multi-select picker uses below.
+window.generateRecipeCard = function(id) {
+    proceedToCardReview([id]);
+};
 
-    if (!recipe.public && !confirm(
-        `This makes "${recipe.name}" permanently viewable by anyone who has the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`
-    )) return;
+// Recipe picker for printing several cards at once (search + checkboxes),
+// same structure as the guest-code recipe picker earlier in this file, but
+// its own separate state — this selection has nothing to do with guest
+// codes, just happens to need the same kind of UI.
+let cardsPickerSelected = new Set();
+const CARDS_PICKER_BATCH_SIZE = 30;
+let cardsPickerQueue = [];
+let cardsPickerObserver = null;
 
-    // Done here, on the FIRST click, rather than in confirmPrintRecipeCard —
-    // that function needs to stay fully synchronous straight through to
-    // window.print(). Some browsers (Safari in particular) silently refuse
-    // to open the print dialog — no error, it just does nothing — once
-    // enough time has passed since the actual click, and an awaited
-    // Firestore write is easily enough of a gap to trigger that.
-    if (!recipe.public) {
-        try {
-            await updateDoc(doc(db, "recipes", id), { public: true });
-            recipe.public = true;
-            updateSingleRecipeCard(id);
-        } catch (e) {
-            console.error("🔥 [CARD] Could not make recipe public:", e);
-            return alert("Could not make this recipe public: " + e.message);
+function buildCardsPickerRowHtml(r) {
+    const checked = cardsPickerSelected.has(r.id) ? 'checked' : '';
+    return `
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer;">
+            <input type="checkbox" ${checked} onchange="toggleCardsPickerRecipe('${r.id}', this.checked)">
+            <span style="flex:1;">${r.name || "Untitled"}</span>
+            ${r.public ? '<span style="font-size:10px; color:#a16207;">already public</span>' : ''}
+        </label>`;
+}
+
+function renderCardsPickerSummary() {
+    const el = document.getElementById('cards-picker-summary');
+    if (!el) return;
+    el.textContent = cardsPickerSelected.size === 0
+        ? "No recipes selected yet."
+        : `${cardsPickerSelected.size} recipe${cardsPickerSelected.size === 1 ? '' : 's'} selected.`;
+}
+
+function renderCardsPicker(recipes) {
+    const list = document.getElementById('cards-picker-list');
+    if (!list) return;
+    if (cardsPickerObserver) { cardsPickerObserver.disconnect(); cardsPickerObserver = null; }
+
+    if (recipes.length === 0) {
+        list.innerHTML = "<p style='padding:10px; color:#9ca3af; font-size:13px;'>No recipes match.</p>";
+        return;
+    }
+
+    cardsPickerQueue = recipes.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    list.innerHTML = '';
+    renderNextCardsPickerBatch();
+}
+
+function renderNextCardsPickerBatch() {
+    const list = document.getElementById('cards-picker-list');
+    if (!list) return;
+
+    const batch = cardsPickerQueue.splice(0, CARDS_PICKER_BATCH_SIZE);
+    list.insertAdjacentHTML('beforeend', batch.map(buildCardsPickerRowHtml).join(''));
+
+    const oldSentinel = document.getElementById('cards-picker-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+    if (cardsPickerQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'cards-picker-sentinel';
+    sentinel.style.cssText = 'height: 1px;';
+    list.appendChild(sentinel);
+
+    cardsPickerObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            cardsPickerObserver.disconnect();
+            renderNextCardsPickerBatch();
+        }
+    }, { rootMargin: '400px' });
+    cardsPickerObserver.observe(sentinel);
+}
+
+window.toggleCardsPickerRecipe = function(id, isChecked) {
+    if (isChecked) cardsPickerSelected.add(id); else cardsPickerSelected.delete(id);
+    renderCardsPickerSummary();
+};
+
+window.applyCardsPickerFilter = function() {
+    const term = (document.getElementById('cards-picker-search')?.value || '').toLowerCase();
+    const filtered = !term ? allRecipeData : allRecipeData.filter(r => (r.name || '').toLowerCase().includes(term));
+    renderCardsPicker(filtered);
+};
+
+window.openCardsPickerModal = function() {
+    cardsPickerSelected = new Set();
+    renderCardsPickerSummary();
+    renderCardsPicker(allRecipeData);
+    document.getElementById('cards-picker-modal').style.display = 'flex';
+};
+
+window.closeCardsPickerModal = function() {
+    document.getElementById('cards-picker-modal').style.display = 'none';
+};
+
+window.confirmCardsPickerSelection = function() {
+    if (cardsPickerSelected.size === 0) return alert("Pick at least one recipe first.");
+    proceedToCardReview(Array.from(cardsPickerSelected));
+};
+
+// Shared by both entry points above: confirms + marks public (batched, one
+// confirm for the whole set) whatever isn't already, then opens one review
+// screen with an editable ingredient-name box per recipe.
+async function proceedToCardReview(ids) {
+    const recipes = ids.map(id => allRecipeData.find(r => r.id === id)).filter(Boolean);
+    if (recipes.length === 0) return;
+
+    const needsPublic = recipes.filter(r => !r.public);
+    if (needsPublic.length > 0) {
+        const subject = needsPublic.length === 1 ? `"${needsPublic[0].name}"` : `${needsPublic.length} recipes`;
+        if (!confirm(`This makes ${subject} permanently viewable by anyone with the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`)) return;
+
+        for (const r of needsPublic) {
+            try {
+                await updateDoc(doc(db, "recipes", r.id), { public: true });
+                r.public = true;
+                updateSingleRecipeCard(r.id);
+            } catch (e) {
+                console.error(`🔥 [CARD] Could not make "${r.name}" public:`, e);
+                alert(`Could not make "${r.name}" public: ${e.message}`);
+            }
         }
     }
 
-    cardPreviewRecipeId = id;
-    const rawIng = recipe.ingredients || recipe.recipeIngredient || [];
-    const list = Array.isArray(rawIng) ? rawIng : [rawIng];
-    const names = list.map(stripIngredientToName).filter(Boolean);
+    cardReviewRecipes = recipes;
+    document.getElementById('cards-review-body').innerHTML = recipes.map(r => {
+        const rawIng = r.ingredients || r.recipeIngredient || [];
+        const list = Array.isArray(rawIng) ? rawIng : [rawIng];
+        const names = list.map(stripIngredientToName).filter(Boolean);
+        return `
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600; font-size:13px;">${r.name || "Untitled"}</label>
+                <textarea data-recipe-id="${r.id}" class="card-review-textarea" style="width:100%; min-height:80px; padding:8px; margin-top:4px; border:1px solid #ddd; border-radius:6px; font-size:12px;">${names.join('\n')}</textarea>
+            </div>`;
+    }).join('');
 
-    document.getElementById('card-preview-title').textContent = `📇 Recipe Card — ${recipe.name}`;
-    document.getElementById('card-ingredients-textarea').value = names.join('\n');
-    document.getElementById('card-preview-modal').style.display = 'flex';
+    closeCardsPickerModal();
+    document.getElementById('cards-review-modal').style.display = 'flex';
+}
+
+window.closeCardsReviewModal = function() {
+    document.getElementById('cards-review-modal').style.display = 'none';
+    cardReviewRecipes = [];
 };
 
-window.closeCardPreviewModal = function() {
-    document.getElementById('card-preview-modal').style.display = 'none';
-    cardPreviewRecipeId = null;
-};
+// Fully synchronous, deliberately — Safari (and possibly others) silently
+// refuses to open the print dialog at all, no error thrown, if window.print()
+// runs too long after the click that triggered it. The Firestore writes
+// already happened back in proceedToCardReview, so there's nothing to await
+// here — just building strings and setting innerHTML.
+window.printAllCards = function() {
+    const textareas = document.querySelectorAll('.card-review-textarea');
+    const cardsHtml = Array.from(textareas).map(ta => {
+        const id = ta.dataset.recipeId;
+        const recipe = cardReviewRecipes.find(r => r.id === id);
+        if (!recipe) return '';
+        const ingredientNames = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+        if (ingredientNames.length === 0) return '';
 
-// Fully synchronous, deliberately — see the comment on generateRecipeCard
-// above for why nothing here can be an awaited/async operation.
-window.confirmPrintRecipeCard = function() {
-    const id = cardPreviewRecipeId;
-    const recipe = allRecipeData.find(r => r.id === id);
-    if (!id || !recipe) return;
+        const shareUrl = `${location.origin}${siteRootPath()}share.html?id=${id}`;
+        const qr = qrcode(0, 'M');
+        qr.addData(shareUrl);
+        qr.make();
+        const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4 });
 
-    const ingredientNames = document.getElementById('card-ingredients-textarea').value
-        .split('\n').map(s => s.trim()).filter(Boolean);
-    if (ingredientNames.length === 0) return alert("Add at least one ingredient first.");
+        return `
+            <div class="print-card">
+                <img src="../images/logo.jpg" class="print-card-logo">
+                <h1 class="print-card-title">${recipe.name || "Untitled"}</h1>
+                <p class="print-card-author">From: ${recipe.author || "Family"}</p>
+                <p class="print-card-ingredients"><strong>Ingredients:</strong> ${ingredientNames.join(', ')}</p>
+                <div class="print-card-qr">${qrSvg}</div>
+                <p class="print-card-scan">Scan for the full recipe</p>
+            </div>`;
+    }).join('');
 
-    const shareUrl = `${location.origin}${siteRootPath()}share.html?id=${id}`;
-    const qr = qrcode(0, 'M');
-    qr.addData(shareUrl);
-    qr.make();
-    const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4 });
+    if (!cardsHtml) return alert("Add at least one ingredient first.");
 
-    const outputEl = document.getElementById('card-print-output');
-    outputEl.innerHTML = `
-        <div style="text-align:center; font-family: 'Inter', sans-serif;">
-            <img src="../images/logo.jpg" style="width:56px; height:56px; object-fit:cover; border-radius:50%; margin-bottom:4px;">
-            <h1 style="font-family: 'Amatic SC', cursive; font-size: 2rem; margin: 0 0 2px 0; color:#000;">${recipe.name || "Untitled"}</h1>
-            <p style="font-size:10px; color:#333; margin:0 0 10px 0;">From: ${recipe.author || "Family"}</p>
-        </div>
-        <div style="font-size:10px; line-height:1.5; color:#000;">
-            <strong>Ingredients:</strong> ${ingredientNames.join(', ')}
-        </div>
-        <div style="text-align:center; margin-top:12px;">
-            ${qrSvg}
-            <p style="font-size:8px; color:#555; margin-top:2px;">Scan for the full recipe</p>
-        </div>`;
-
-    closeCardPreviewModal();
-    // Called directly, no requestAnimationFrame/setTimeout wrapper — even a
-    // one-frame deferral is one more thing that can push this past a
-    // browser's "was this really a direct response to the click?" cutoff.
+    document.getElementById('card-print-output').innerHTML = cardsHtml;
+    closeCardsReviewModal();
     window.print();
 };
 
