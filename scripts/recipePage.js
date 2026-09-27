@@ -7,6 +7,7 @@ import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecip
          isTestModeOn, canUseTestMode, updateTestModeUi, checkIsAdmin } from './main.js';
 import { getSections, hasRealSections, flattenSections, getRecipeFamily, getDietaryTags, prettyFractions } from './recipe-model.js';
 import { getPlanPath } from './household.js';
+import qrcode from './vendor/qrcode.mjs';
 
 const urlParams = new URLSearchParams(window.location.search);
 const recipeId = urlParams.get('id');
@@ -1626,6 +1627,119 @@ window.closeShareModal = function() {
     document.getElementById('share-modal').classList.add('hidden');
 };
 
+// Same idea as admin/recipe-list.html's "📇 Card" action (see dashboard.js),
+// duplicated here in trimmed single-recipe form rather than imported —
+// dashboard.js isn't loaded on this page, and this is small enough that
+// sharing it isn't worth the coupling. Adam-only (see canUseTestMode above).
+function stripIngredientToNameForCard(line) {
+    let s = String(line || '').trim();
+    if (!s) return '';
+    const UNITS = 'cups?|tbsp\\.?|tablespoons?|tsp\\.?|teaspoons?|oz\\.?|ounces?|lbs?\\.?|pounds?|grams?|g|kg|ml|liters?|l|cloves?|cans?|packages?|pkgs?|pinch(?:es)?|dash(?:es)?|slices?|sticks?|bunch(?:es)?|heads?|stalks?|jars?|bags?';
+    s = s.replace(/^[\d¼½¾⅓⅔⅛⅜⅝⅞.\/\-–\s]+/, '').trim();
+    s = s.replace(/^\([^)]*\)\s*/, '').trim();
+    s = s.replace(new RegExp(`^(?:${UNITS})\\.?\\s+(?:of\\s+)?`, 'i'), '').trim();
+    s = s.replace(/,.*$/, '').trim();
+    if (!s) return String(line || '').trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+window.printThisRecipeCard = async function() {
+    const recipe = lastRenderedRecipe;
+    if (!recipe || !recipe.id) return alert("Recipe not loaded yet — try again in a moment.");
+
+    if (!recipe.public && !confirm(
+        `This makes "${recipe.name}" permanently viewable by anyone with the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`
+    )) return;
+
+    if (!recipe.public) {
+        try {
+            await updateDoc(doc(db, "recipes", recipe.id), { public: true });
+            recipe.public = true;
+        } catch (e) {
+            console.error("🔥 [CARD] Could not make recipe public:", e);
+            return alert("Could not make this recipe public: " + e.message);
+        }
+    }
+
+    const rawIng = recipe.ingredients || recipe.recipeIngredient || [];
+    const list = Array.isArray(rawIng) ? rawIng : [rawIng];
+    const names = list.map(stripIngredientToNameForCard).filter(Boolean);
+
+    const edited = prompt(
+        "Ingredient list for the card — just names, like a nutrition label, no measurements. One per line; fix anything that looks wrong (this list is meant to flag allergens):",
+        names.join('\n')
+    );
+    if (edited === null) return; // cancelled
+    const ingredientNames = edited.split('\n').map(s => s.trim()).filter(Boolean);
+    if (ingredientNames.length === 0) return alert("Add at least one ingredient first.");
+
+    const shareUrl = `${location.origin}${location.pathname.replace(/recipe\.html$/, '')}share.html?id=${recipe.id}`;
+    const qr = qrcode(0, 'M');
+    qr.addData(shareUrl);
+    qr.make();
+    const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4 });
+    const logoUrl = `${location.origin}${location.pathname.replace(/recipe\.html$/, '')}images/logo.jpg`;
+
+    const cardHtml = `
+        <div class="print-card">
+            <img src="${logoUrl}" class="print-card-logo">
+            <h1 class="print-card-title">${recipe.name || "Untitled"}</h1>
+            <p class="print-card-author">From: ${recipe.author || "Family"}</p>
+            <p class="print-card-ingredients"><strong>Ingredients:</strong> ${ingredientNames.join(', ')}</p>
+            <div class="print-card-qr">${qrSvg}</div>
+            <p class="print-card-scan">Scan for the full recipe</p>
+        </div>`;
+
+    closeShareModal();
+    printHtmlViaIframeForCard(cardHtml);
+};
+
+// Same isolated-hidden-iframe approach as dashboard.js's printHtmlViaIframe —
+// see that file's comment for why: printing the current page directly after
+// hiding/showing content proved unreliable in testing (silently did nothing,
+// no console error), so this builds a fresh document instead.
+function printHtmlViaIframeForCard(bodyHtml) {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const doc2 = iframe.contentWindow.document;
+    doc2.open();
+    doc2.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Print</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0.2in; display: flex; flex-wrap: wrap; gap: 0.3in; justify-content: center; }
+    .print-card {
+        flex: 0 0 auto; width: 4in; min-height: 6in; border: 2px dashed #000; border-radius: 12px;
+        padding: 0.3in; text-align: center; font-family: 'Inter', sans-serif; color: #000;
+        page-break-inside: avoid;
+    }
+    .print-card-logo { width: 56px; height: 56px; object-fit: cover; border-radius: 50%; margin-bottom: 4px; }
+    .print-card-title { font-family: 'Amatic SC', cursive; font-size: 2rem; margin: 0 0 2px 0; }
+    .print-card-author { font-size: 10px; color: #333; margin: 0 0 12px 0; }
+    .print-card-ingredients { font-size: 10px; line-height: 1.5; text-align: center; margin: 0 0 14px 0; }
+    .print-card-qr svg { display: block; margin: 0 auto; }
+    .print-card-scan { font-size: 8px; color: #555; margin-top: 4px; }
+</style>
+</head>
+<body>${bodyHtml}</body>
+</html>`);
+    doc2.close();
+
+    iframe.onload = () => {
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            setTimeout(() => iframe.remove(), 2000);
+        }, 250);
+    };
+}
+
 window.copyRecipeLink = function() {
     const url = window.location.href;
     navigator.clipboard.writeText(url).then(() => {
@@ -1899,6 +2013,7 @@ window.closeMobileToolsModal = function() {
 onAuthStateChanged(auth, (user) => {
     if (!canUseTestMode(user)) return;
     document.getElementById('admin-tools-slot')?.classList.remove('hidden');
+    document.getElementById('share-card-slot')?.classList.remove('hidden');
     updateTestModeUi();
 });
 
