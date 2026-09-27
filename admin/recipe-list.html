@@ -100,45 +100,10 @@
     </div>
 </div>
 
-<!-- Printed only — everything above is hidden and these cards become the
-     whole page when printAllCards() calls window.print(). Each .print-card
-     is a fixed-size bordered box rather than relying on a special @page
-     size (browsers don't reliably honor that — an earlier version of this
-     tried it and it silently printed full-page instead), laid out 2-up so
-     several cards share a sheet instead of wasting a whole page each. -->
-<div id="card-print-output"></div>
-<style>
-    #card-print-output { display: none; }
-    @media print {
-        .admin-container { display: none !important; }
-        #card-print-output {
-            display: flex !important;
-            flex-wrap: wrap;
-            gap: 0.3in;
-            justify-content: center;
-        }
-        .print-card {
-            flex: 0 0 auto;
-            width: 4in;
-            min-height: 6in;
-            border: 2px dashed #000;
-            border-radius: 12px;
-            padding: 0.3in;
-            box-sizing: border-box;
-            text-align: center;
-            font-family: 'Inter', sans-serif;
-            color: #000;
-            page-break-inside: avoid;
-        }
-        .print-card-logo { width: 56px; height: 56px; object-fit: cover; border-radius: 50%; margin-bottom: 4px; }
-        .print-card-title { font-family: 'Amatic SC', cursive; font-size: 2rem; margin: 0 0 2px 0; }
-        .print-card-author { font-size: 10px; color: #333; margin: 0 0 12px 0; }
-        .print-card-ingredients { font-size: 10px; line-height: 1.5; text-align: center; margin: 0 0 14px 0; }
-        .print-card-qr svg { display: block; margin: 0 auto; }
-        .print-card-scan { font-size: 8px; color: #555; margin-top: 4px; }
-    }
-</style>
+<!-- Printing now happens via a hidden iframe with its own document, built
+     entirely in dashboard.js's printHtmlViaIframe() — no page elements or
+     print-specific CSS needed here at all. -->
 
-<script type="module" src="../scripts/dashboard.js?v=12"></script>
+<script type="module" src="../scripts/dashboard.js?v=13"></script>
 </body>
 </html>

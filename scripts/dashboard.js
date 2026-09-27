@@ -11,13 +11,6 @@ import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
 import qrcode from './vendor/qrcode.mjs';
 
-// TEMPORARY — diagnosing a "print does nothing, no console error" report on
-// the recipe-card feature. Confirms whether the browser's own print engine
-// engages at all when window.print() is called. Safe to leave in briefly;
-// remove once the card-printing bug is confirmed fixed.
-window.addEventListener('beforeprint', () => console.log('🖨️ [PRINT DEBUG] beforeprint event fired — the browser IS entering print mode.'));
-window.addEventListener('afterprint', () => console.log('🖨️ [PRINT DEBUG] afterprint event fired.'));
-
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
 // missing or corrupted. Keep in sync with firestore.rules and the
@@ -485,11 +478,59 @@ window.closeCardsReviewModal = function() {
     cardReviewRecipes = [];
 };
 
-// Fully synchronous, deliberately — Safari (and possibly others) silently
-// refuses to open the print dialog at all, no error thrown, if window.print()
-// runs too long after the click that triggered it. The Firestore writes
-// already happened back in proceedToCardReview, so there's nothing to await
-// here — just building strings and setting innerHTML.
+// Prints via a hidden iframe with its own isolated document, rather than
+// hiding/showing content on the CURRENT page and calling window.print() on
+// it. That direct approach was tried first (simpler) but reliably failed
+// silently in testing — no console error, no beforeprint event ever fired,
+// even right after a full page reload — with no clear cause found after
+// several rounds of narrowing it down. Printing an isolated iframe's own
+// document is a much more broadly reliable pattern for exactly this kind
+// of "print this specific generated content, not the current page" need.
+function printHtmlViaIframe(bodyHtml) {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Print</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0.2in; display: flex; flex-wrap: wrap; gap: 0.3in; justify-content: center; }
+    .print-card {
+        flex: 0 0 auto; width: 4in; min-height: 6in; border: 2px dashed #000; border-radius: 12px;
+        padding: 0.3in; box-sizing: border-box; text-align: center; font-family: 'Inter', sans-serif;
+        color: #000; page-break-inside: avoid;
+    }
+    .print-card-logo { width: 56px; height: 56px; object-fit: cover; border-radius: 50%; margin-bottom: 4px; }
+    .print-card-title { font-family: 'Amatic SC', cursive; font-size: 2rem; margin: 0 0 2px 0; }
+    .print-card-author { font-size: 10px; color: #333; margin: 0 0 12px 0; }
+    .print-card-ingredients { font-size: 10px; line-height: 1.5; text-align: center; margin: 0 0 14px 0; }
+    .print-card-qr svg { display: block; margin: 0 auto; }
+    .print-card-scan { font-size: 8px; color: #555; margin-top: 4px; }
+</style>
+</head>
+<body>${bodyHtml}</body>
+</html>`);
+    doc.close();
+
+    iframe.onload = () => {
+        // A brief delay so the just-loaded Google Font has a moment to
+        // apply — if it hasn't landed yet the card falls back to a system
+        // font, which is a minor cosmetic miss, not worth blocking print on.
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            setTimeout(() => iframe.remove(), 2000);
+        }, 250);
+    };
+}
+
 window.printAllCards = function() {
     const textareas = document.querySelectorAll('.card-review-textarea');
     const cardsHtml = Array.from(textareas).map(ta => {
@@ -505,9 +546,14 @@ window.printAllCards = function() {
         qr.make();
         const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4 });
 
+        // Absolute URL, not "../images/logo.jpg" — this markup is printed
+        // inside a fresh iframe document with no relation to this page's
+        // location, so a relative path wouldn't resolve to anything.
+        const logoUrl = `${location.origin}${siteRootPath()}images/logo.jpg`;
+
         return `
             <div class="print-card">
-                <img src="../images/logo.jpg" class="print-card-logo">
+                <img src="${logoUrl}" class="print-card-logo">
                 <h1 class="print-card-title">${recipe.name || "Untitled"}</h1>
                 <p class="print-card-author">From: ${recipe.author || "Family"}</p>
                 <p class="print-card-ingredients"><strong>Ingredients:</strong> ${ingredientNames.join(', ')}</p>
@@ -518,13 +564,8 @@ window.printAllCards = function() {
 
     if (!cardsHtml) return alert("Add at least one ingredient first.");
 
-    console.log(`🖨️ [PRINT DEBUG] Built ${textareas.length} card(s), about to populate #card-print-output.`);
-    document.getElementById('card-print-output').innerHTML = cardsHtml;
-    console.log(`🖨️ [PRINT DEBUG] #card-print-output now has ${document.getElementById('card-print-output').children.length} child element(s).`);
     closeCardsReviewModal();
-    console.log('🖨️ [PRINT DEBUG] Calling window.print() now...');
-    window.print();
-    console.log('🖨️ [PRINT DEBUG] window.print() call returned (this always logs — it does not mean the dialog appeared).');
+    printHtmlViaIframe(cardsHtml);
 };
 
 // ==========================================
