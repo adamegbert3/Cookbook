@@ -243,8 +243,13 @@
             </button>
         </div>
 
+        <div style="text-align:center; margin-bottom:12px; display:flex; gap:8px; justify-content:center;">
+            <button id="view-grid-btn" onclick="setRecipeViewMode('grid')" class="pill-btn btn-slate" style="padding:6px 14px; font-size:0.8rem;">🔲 Grid</button>
+            <button id="view-list-btn" onclick="setRecipeViewMode('list')" class="pill-btn btn-slate" style="padding:6px 14px; font-size:0.8rem;">☰ List</button>
+        </div>
+
         <div id="recipes"></div>
-        
+
         <p id="notsigned" class="hidden" style="text-align:center; color:red; display:none;">Please sign in to view recipes.</p>
     </main>
 

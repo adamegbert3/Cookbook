@@ -14,6 +14,28 @@ let allRecipes = [];
 let userFavorites = [];
 let isAdmin = false; // <-- ADD THIS
 
+// Grid (cards) vs. list (compact rows) — remembered across visits. Both
+// views share the same data/filter/lazy-load pipeline; only the per-item
+// template (buildRecipeCardHtml vs. buildRecipeListRowHtml) and the
+// container's CSS class change.
+let recipeViewMode = localStorage.getItem('recipeViewMode') === 'list' ? 'list' : 'grid';
+
+window.setRecipeViewMode = function(mode) {
+    recipeViewMode = mode === 'list' ? 'list' : 'grid';
+    localStorage.setItem('recipeViewMode', recipeViewMode);
+    updateViewToggleButtons();
+    const container = document.getElementById('recipes');
+    if (container) container.classList.toggle('list-view', recipeViewMode === 'list');
+    if (typeof applyHomepageFilters === 'function') applyHomepageFilters();
+};
+
+function updateViewToggleButtons() {
+    const gridBtn = document.getElementById('view-grid-btn');
+    const listBtn = document.getElementById('view-list-btn');
+    if (gridBtn) gridBtn.classList.toggle('view-toggle-active', recipeViewMode === 'grid');
+    if (listBtn) listBtn.classList.toggle('view-toggle-active', recipeViewMode === 'list');
+}
+
 // Firebase Auth's displayName is essentially never set for these email/
 // password accounts, so `user.displayName || user.email.split('@')[0]`
 // (used in a few places) reliably shows the part of someone's email before
@@ -672,6 +694,34 @@ function buildRecipeCardHtml(item) {
         </div>`;
 }
 
+// Compact single-line alternative to buildRecipeCardHtml, for list view.
+// Keeps the same data-recipe-id/data-recipe-name/data-heart-id attributes so
+// the existing delegated click handler (setupRecipeCardClicks) works
+// completely unchanged for both views.
+function buildRecipeListRowHtml(item) {
+    const isHidden = item.h === true || item.isHidden === true;
+    const recName = item.n || item.name || "Untitled Recipe";
+    const recAuth = item.a || item.author || "Family";
+    const recId = item.id;
+
+    let recTags = item.t || item.tags || [];
+    if (!Array.isArray(recTags)) recTags = [String(recTags)];
+    const cat = recTags.find(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite") || item.c || "Misc";
+
+    const isFav = userFavorites.includes(recId);
+    const heartIcon = isFav ? "❤️" : "🤍";
+    const dimStyle = isHidden ? "opacity: 0.6;" : "";
+
+    return `
+        <div class="recipe-list-row" style="${dimStyle}"
+             data-recipe-id="${escapeHtml(recId)}" data-recipe-name="${escapeHtml(recName)}">
+            <button class="card-heart list-row-heart" data-heart-id="${escapeHtml(recId)}">${heartIcon}</button>
+            <span class="list-row-name">${escapeHtml(recName)}</span>
+            <span class="list-row-meta">${escapeHtml(recAuth)} · ${escapeHtml(cat)}</span>
+            ${isHidden ? `<span title="Hidden from public">👁️</span>` : ""}
+        </div>`;
+}
+
 // --- Lazy-loaded / paginated rendering (renders a batch at a time as the user scrolls) ---
 const RECIPE_BATCH_SIZE = 24;
 let lazyRenderQueue = [];
@@ -680,6 +730,9 @@ let lazyRenderObserver = null;
 function renderLocalList(list) {
     const container = document.getElementById('recipes');
     if(!container) return;
+
+    container.classList.toggle('list-view', recipeViewMode === 'list');
+    updateViewToggleButtons();
 
     offlineChecklist = getOfflineRecipeIds();
 
@@ -719,7 +772,8 @@ function renderLocalList(list) {
 
 function renderNextRecipeBatch(container) {
     const batch = lazyRenderQueue.splice(0, RECIPE_BATCH_SIZE);
-    container.insertAdjacentHTML('beforeend', batch.map(buildRecipeCardHtml).join(''));
+    const buildFn = recipeViewMode === 'list' ? buildRecipeListRowHtml : buildRecipeCardHtml;
+    container.insertAdjacentHTML('beforeend', batch.map(buildFn).join(''));
 
     const oldSentinel = document.getElementById('recipes-sentinel');
     if (oldSentinel) oldSentinel.remove();
@@ -728,7 +782,7 @@ function renderNextRecipeBatch(container) {
 
     const sentinel = document.createElement('div');
     sentinel.id = 'recipes-sentinel';
-    sentinel.style.cssText = 'grid-column: 1 / -1; height: 1px;';
+    sentinel.style.cssText = recipeViewMode === 'list' ? 'height: 1px;' : 'grid-column: 1 / -1; height: 1px;';
     container.appendChild(sentinel);
 
     lazyRenderObserver = new IntersectionObserver((entries) => {

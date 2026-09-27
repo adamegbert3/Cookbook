@@ -127,6 +127,11 @@ body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(
 .rmc-favorites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .rmc-actions .btn-action, .rmc-favorites .btn-action { width: 100%; padding: 8px; }
 
+/* Compact list view for the Master Recipe List — see buildRecipeManageListRowHtml
+   in dashboard.js. Same actions as the card view, just icon-sized. */
+.rmc-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.rmc-row-actions .btn-action { padding: 5px 8px; background: var(--bg-body); border: 1px solid var(--border); color: var(--primary); }
+
 /* --- REPORTS TABLE STYLES --- */
 .reports-table th { background: var(--bg-card); padding: 12px; text-align: left; font-size: 13px; color: #991b1b; border-bottom: 2px solid var(--border); white-space: nowrap; }
 .reports-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--primary); opacity: 0.9; word-wrap: break-word; }

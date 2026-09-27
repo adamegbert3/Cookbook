@@ -56,6 +56,11 @@
 
     <input type="text" id="manager-search" placeholder="🔍 Search recipes..." style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
 
+    <div style="display:flex; gap:8px; margin-bottom: 10px;">
+        <button id="admin-view-grid-btn" onclick="setAdminRecipeViewMode('grid')" class="pill-btn btn-slate" style="padding:6px 14px; font-size:0.8rem;">🔲 Grid</button>
+        <button id="admin-view-list-btn" onclick="setAdminRecipeViewMode('list')" class="pill-btn btn-slate" style="padding:6px 14px; font-size:0.8rem;">☰ List</button>
+    </div>
+
     <div id="unified-list" style="overflow-x: auto;">
         <p>Loading list...</p>
     </div>

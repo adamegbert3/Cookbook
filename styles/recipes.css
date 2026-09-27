@@ -173,6 +173,33 @@ main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
 }
 .card-heart:hover { transform: scale(1.2); }
 
+/* Compact list view — an alternative to the card grid above, toggled by
+   adding .list-view to #recipes (see setRecipeViewMode in scripts/main.js).
+   Reused on the Master Recipe List admin page too. */
+#recipes.list-view, .recipe-manage-list.list-view {
+    display: flex; flex-direction: column; gap: 0;
+}
+.recipe-list-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 12px; border-bottom: 1px solid var(--border);
+    cursor: pointer; background: var(--bg-card);
+}
+.recipe-list-row:hover { background: var(--bg-body); }
+.recipe-list-row .list-row-heart {
+    position: static; flex-shrink: 0; font-size: 1rem;
+}
+.list-row-name { font-weight: 700; flex: 1 1 auto; min-width: 0; }
+.list-row-meta {
+    font-size: 0.75rem; color: #64748b; flex-shrink: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%;
+}
+
+/* Grid/List toggle buttons */
+.view-toggle-active {
+    background: var(--accent-teal) !important; color: white !important;
+    border-color: var(--accent-teal) !important;
+}
+
 /* Card Colors - Mapped to Categories */
 .border-red { border-left-color: #ef4444 !important; }       /* Main Dishes */
 .border-yellow { border-left-color: #eab308 !important; }    /* Desserts */
