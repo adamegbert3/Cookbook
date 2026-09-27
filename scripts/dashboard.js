@@ -5,7 +5,7 @@ import {
     arrayUnion, arrayRemove, deleteField
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { getSections, hasRealSections, getEditableText, buildRecipeFields } from './recipe-model.js';
+import { getSections, hasRealSections, getEditableText, buildRecipeFields, flattenSections } from './recipe-model.js';
 import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } from './household.js';
 import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
@@ -2357,14 +2357,28 @@ window.uploadBulkRecipes = async function() {
             : `Upload ${recipes.length}?`;
         if(confirm(confirmMsg)) {
             for(const r of recipes) {
-                const ingredients = r.recipeIngredient || r.ingredients || [];
-                const instructions = r.recipeInstructions || r.instructions || [];
+                const rawIngredients = r.recipeIngredient || r.ingredients || [];
+                const rawInstructions = r.recipeInstructions || r.instructions || [];
+
+                // Sections work two ways here, same as everywhere else sections
+                // are read (see recipe-model.js): given explicitly as
+                // ingredientSections/instructionSections (the exact Firestore
+                // shape — {title, items}[]), or marked inline with a "## Title"
+                // line right in the flat ingredients/instructions array, same
+                // as typing "## Crust" in the recipe editors' textareas. Explicit
+                // sections win if present; otherwise inline markers are
+                // auto-split. A recipe with neither is unaffected either way.
+                const ingFields = (Array.isArray(r.ingredientSections) && r.ingredientSections.length)
+                    ? { ingredients: flattenSections(r.ingredientSections), recipeIngredient: flattenSections(r.ingredientSections), ingredientSections: r.ingredientSections }
+                    : buildRecipeFields(rawIngredients.join('\n'), 'ingredients');
+                const instFields = (Array.isArray(r.instructionSections) && r.instructionSections.length)
+                    ? { instructions: flattenSections(r.instructionSections), recipeInstructions: flattenSections(r.instructionSections), instructionSections: r.instructionSections }
+                    : buildRecipeFields(rawInstructions.join('\n'), 'instructions');
+
                 await addDoc(collection(db, "recipes"), {
                     name: r.name, author: r.author, tags: r.tags,
-                    ingredients, recipeIngredient: ingredients,
-                    instructions, recipeInstructions: instructions,
-                    ingredientSections: r.ingredientSections || [],
-                    instructionSections: r.instructionSections || [],
+                    ...ingFields,
+                    ...instFields,
                     notes: r.notes || "",
                     sourceUrl: r.sourceUrl || "",
                     isDraft: asDraft,
