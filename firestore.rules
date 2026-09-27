@@ -33,6 +33,43 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // --- GUEST MODE ---
+    // Guests (people with a code but no account — see admin/guests.html)
+    // sign in with Firebase ANONYMOUS AUTH instead of email/password. That
+    // makes request.auth non-null, same as a real member, which is exactly
+    // why isLoggedIn() alone is no longer enough to gate anything a guest
+    // shouldn't reach: every `isLoggedIn()`-only rule below now ALSO needs
+    // an explicit decision about whether an anonymous session should pass.
+    //
+    // isAnonymous() reads the AUTH TOKEN's sign_in_provider, not a Firestore
+    // field. This matters: an earlier draft of this rule checked "does
+    // users/{uid} have role:'guest'" instead, which sounds equivalent but
+    // isn't — anyone can open devtools and call signInAnonymously() directly
+    // without ever visiting guest.html, which never creates that users/{uid}
+    // doc at all. Under the doc-based check that caller would have read as
+    // "not a guest" and fallen through to full-member access, permanently,
+    // for every recipe in the cookbook. Checking the token instead fails
+    // CLOSED: a bare anonymous sign-in with no guest_codes doc behind it is
+    // anonymous but not associated with any recipes, so guestAllowedRecipeIds()
+    // below returns an empty list and every guest-gated read is denied.
+    function isAnonymous() {
+      return isLoggedIn() && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
+
+    // A guest's users/{uid} doc (written by guest.html on first visit, using
+    // the name the admin typed when creating the code — never typed by the
+    // guest) carries which code they came in on. This looks that code up and
+    // returns the specific recipe IDs the admin picked for it, or an empty
+    // list if anything along the way is missing — a half-signed-up guest (no
+    // users/{uid} doc yet) or a code that's been deactivated/deleted both
+    // resolve to "can't read anything" rather than erroring.
+    function guestAllowedRecipeIds() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let code = exists(userPath) ? get(userPath).data.get('guestCode', '') : '';
+      let codePath = /databases/$(database)/documents/guest_codes/$(code);
+      return (code != '' && exists(codePath)) ? get(codePath).data.get('recipeIds', []) : [];
+    }
+
     // =========================================================
     // COLLECTION RULES
     //
@@ -51,42 +88,79 @@ service cloud.firestore {
     // ROLLBACK: if anything fails to load with "Missing or insufficient
     // permissions", set the four `read` rules below back to `if true` and
     // redeploy — that restores the previous, working-but-public behaviour.
+    //
+    // GUEST MODE, added later: enabling Anonymous Auth (see isAnonymous()
+    // above) meant re-checking every one of these `isLoggedIn()`-only rules,
+    // since an anonymous session now satisfies isLoggedIn() too. The rule
+    // followed throughout: guests can CONSUME (read what's shared with them,
+    // comment/favorite/cook it, same as a member) but not CONTRIBUTE (no
+    // submitting, suggesting, or reporting) and can't see other families'
+    // data (no households, no other members' cook history, no announcements,
+    // no reading the sitewide recipe index). Anywhere it was unclear, the
+    // answer chosen was to block the guest session, not allow it.
     // =========================================================
 
     // --- RECIPES (the shared, canonical copy everyone sees) ---
     match /recipes/{recipeId} {
-      allow read: if isLoggedIn();
+      // Three ways in:
+      //   1. A real member (logged in, not anonymous) — sees everything,
+      //      same as always.
+      //   2. A guest (anonymous) — sees ONLY the specific recipe IDs on
+      //      their code, per guestAllowedRecipeIds() above.
+      //   3. Anyone at all, no login required — ONLY if an admin has
+      //      explicitly flipped `public: true` on this exact recipe (the
+      //      printable QR recipe card feature, admin/recipe-list.html's
+      //      "📇 Card" action). This is the one deliberately-public case in
+      //      this whole file: it's opt-in per recipe, admin-only to set,
+      //      and by design (so a printed card's QR code works for literally
+      //      anyone who scans it, forever, with no code and no account).
+      allow read: if (isLoggedIn() && !isAnonymous())
+                  || (isAnonymous() && recipeId in guestAllowedRecipeIds())
+                  || resource.data.get('public', false) == true;
       allow create, update, delete: if isAdmin();
 
       match /comments/{commentId} {
-        allow read, write: if isLoggedIn();
+        // Same three-way split as the recipe itself, minus the public/QR
+        // case — a stranger scanning a recipe card reads share.html, which
+        // never touches comments at all, so there's no legitimate anonymous
+        // caller here who ISN'T a guest with this recipe on their code.
+        allow read, write: if isLoggedIn()
+                           && (!isAnonymous() || recipeId in guestAllowedRecipeIds());
       }
 
-      // Version history snapshots written before each admin edit
+      // Version history snapshots written before each admin edit. Guests
+      // never need this — it's an editing/audit tool, not part of viewing
+      // or cooking a recipe — so anonymous sessions are blocked outright
+      // rather than scoped to their recipe list.
       match /history/{versionId} {
-        allow read: if isLoggedIn();
+        allow read: if isLoggedIn() && !isAnonymous();
         allow create: if isAdmin();
       }
     }
 
     // --- SUBMISSION QUEUE ---
+    // Guests consume the cookbook, they don't contribute to it — a guest
+    // is a visitor Adam hasn't vetted as a family cook, so letting one
+    // submit a new recipe (which lands in the same review queue as a real
+    // member's submission) isn't wanted. Real members unaffected.
     match /pending_recipes/{docId} {
-      allow create: if isLoggedIn();
+      allow create: if isLoggedIn() && !isAnonymous();
       allow read, write: if isAdmin();
     }
 
-    // --- ISSUE REPORTS ---
+    // --- ISSUE REPORTS --- (same reasoning as pending_recipes above)
     match /recipe_reports/{reportId} {
-      allow create: if isLoggedIn();
+      allow create: if isLoggedIn() && !isAnonymous();
       allow read, write: if isAdmin();
     }
 
     // --- SUGGESTED RECIPE FIXES ---
-    // Anyone signed in can propose a corrected version of a recipe from the
-    // recipe page; only an admin can read the queue or act on it. Writers
-    // can't read others' suggestions back, same as recipe_reports.
+    // Anyone signed in (except a guest — same reasoning as pending_recipes
+    // above) can propose a corrected version of a recipe from the recipe
+    // page; only an admin can read the queue or act on it. Writers can't
+    // read others' suggestions back, same as recipe_reports.
     match /recipe_suggestions/{suggestionId} {
-      allow create: if isLoggedIn();
+      allow create: if isLoggedIn() && !isAnonymous();
       allow read, update, delete: if isAdmin();
     }
 
@@ -125,25 +199,42 @@ service cloud.firestore {
     // The leaderboard could have been wiped or stuffed by a stranger.
     // Now: you may only record a cook as yourself, and only delete your own
     // (which is what the "Undo" on I Made This does).
+    //
+    // GUEST MODE: `create` is deliberately left open to anonymous sessions
+    // too — that's the ONLY way a guest's "I made this!" gets recorded
+    // (recipePage.js's recordCook writes here as request.auth.uid, same
+    // code path a member uses, no special-casing needed). `read` is now
+    // real-members-only: this collection holds every real member's full
+    // cook history, and a guest has no reason to browse who-cooked-what for
+    // people outside their own visit — this was a genuine gap opened up the
+    // moment Anonymous Auth got turned on (any isLoggedIn() reader, guest or
+    // not, could previously read the whole collection).
     match /global_cooks/{docId} {
-      allow read: if isLoggedIn();
+      allow read: if isLoggedIn() && !isAnonymous();
       allow create: if isLoggedIn() && request.resource.data.uid == request.auth.uid;
       allow delete: if isLoggedIn() && (resource.data.uid == request.auth.uid || isAdmin());
       allow update: if isAdmin();
     }
 
     // --- ANNOUNCEMENTS ---
+    // Family-internal news — a guest here to look at a handful of shared
+    // recipes has no reason to read announcements meant for the family.
     match /announcements/{docId} {
-      allow read: if isLoggedIn();
+      allow read: if isLoggedIn() && !isAnonymous();
       allow write: if isAdmin();
     }
 
     // --- HOMEPAGE INDEX / STATIC ASSETS ---
     // This one doc holds every recipe name plus all their ingredients, so
     // leaving it public exposed the whole cookbook regardless of the
-    // /recipes rule above.
+    // /recipes rule above. Same reasoning now blocks guests specifically:
+    // guest.html never reads this doc (it fetches only the exact recipe IDs
+    // on the guest's code, one at a time) — if a guest session ever DID
+    // reach it (e.g. manually navigating to homepage.html), reading it would
+    // leak the name + full ingredient list of every recipe in the whole
+    // cookbook, not just the handful actually shared with them.
     match /static_assets/{docId} {
-      allow read: if isLoggedIn();
+      allow read: if isLoggedIn() && !isAnonymous();
       allow write: if isAdmin();
     }
 
@@ -187,30 +278,56 @@ service cloud.firestore {
                     && resource.data.used == false;
     }
 
+    // --- GUEST CODES (admin/guests.html) ---
+    // Same "the document ID IS the secret" shape as invites above, and for
+    // the same reason: `get` (read ONE code you already know) has to be
+    // open with no login at all, because guest.html reads this doc BEFORE
+    // the guest has signed in anonymously (it needs the code to be valid
+    // before bothering to create a session or a users/{uid} doc). `list`
+    // stays admin-only so a stranger can't enumerate every guest code that
+    // exists. Unlike invites, there's no guest-side `update` at all — a
+    // guest never writes to their own guest_codes doc, only reads it once
+    // to find their name + recipeIds (see guestAllowedRecipeIds() above).
+    // Doc shape: { name, email, note, recipeIds: [...], active, createdAt,
+    // createdBy, transferInviteCode }. `name`/`email` are always typed by
+    // an admin at creation, never by the guest.
+    match /guest_codes/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     // --- HOUSEHOLDS (shared weekly menu + shopping list) ---
     // A household is a couple or family who plan meals together. Members
     // share the weekly_plan and shopping list stored underneath it.
     //
-    // Read is open to any signed-in user on purpose: joining by code
+    // Read is open to any signed-in REAL user on purpose: joining by code
     // requires querying households by their `code` field, which can't work
     // if you must already be a member to read. The documents hold nothing
     // sensitive (a name, a join code, and a list of uids), and knowing a
     // code is what grants entry — same as the invite links above.
+    //
+    // GUEST MODE: anonymous sessions are blocked outright on all of read/
+    // create/update below. A guest has no legitimate reason to read another
+    // family's join code, weekly plan, or shopping list — this was a real
+    // gap opened up the moment Anonymous Auth got turned on, not something
+    // that was already scoped correctly.
     match /households/{householdId} {
-      allow read: if isLoggedIn();
-      allow create: if isLoggedIn() && request.auth.uid in request.resource.data.members;
-      // Members can update their own household; anyone signed in may add
-      // THEMSELVES (that's joining by code) but not rewrite the rest.
-      allow update: if isLoggedIn() && (
+      allow read: if isLoggedIn() && !isAnonymous();
+      allow create: if isLoggedIn() && !isAnonymous() && request.auth.uid in request.resource.data.members;
+      // Members can update their own household; anyone signed in (except a
+      // guest) may add THEMSELVES (that's joining by code) but not rewrite
+      // the rest.
+      allow update: if isLoggedIn() && !isAnonymous() && (
         request.auth.uid in resource.data.members
         || request.resource.data.members.hasOnly(resource.data.members.concat([request.auth.uid]))
         || isAdmin()
       );
       allow delete: if isAdmin();
 
-      // Shared meal plan + shopping state — members only.
+      // Shared meal plan + shopping state — members only, guests never.
       match /{document=**} {
-        allow read, write: if isLoggedIn() && (
+        allow read, write: if isLoggedIn() && !isAnonymous() && (
           request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members
           || isAdmin()
         );

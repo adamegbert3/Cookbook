@@ -123,7 +123,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg-body); color: var(
 .rmc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 8px; }
 .rmc-name { font-size: 16px; font-weight: 800; color: var(--primary); }
 .rmc-meta { font-size: 12px; color: var(--primary); opacity: 0.65; margin-bottom: 14px; line-height: 1.7; }
-.rmc-actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; margin-top: auto; }
+.rmc-actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; margin-top: auto; }
 .rmc-favorites { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .rmc-actions .btn-action, .rmc-favorites .btn-action { width: 100%; padding: 8px; }
 

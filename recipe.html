@@ -188,7 +188,7 @@
         </div>
     </div>
 
-    <script type="module" src="scripts/recipePage.js"></script>
+    <script type="module" src="scripts/recipePage.js?v=2"></script>
     <script type="module" src="scripts/main.js"></script>
     
     <script>
@@ -238,6 +238,14 @@
             🖨️ Print / Save as PDF
         </a>
         <p style="font-size: 11px; color: #94a3b8; margin: -12px 0 20px 0;">Opens the print page with this recipe already ticked — you can add more there.</p>
+
+        <!-- Adam-only (see canUseTestMode in main.js) — revealed by scripts/recipePage.js -->
+        <div id="share-card-slot" class="hidden" style="margin-bottom: 20px;">
+            <button onclick="printThisRecipeCard()" class="pill-btn btn-orange" style="width: 100%; justify-content: center;">
+                📇 Print Recipe Card (QR)
+            </button>
+            <p style="font-size: 11px; color: #94a3b8; margin: 6px 0 0 0;">Makes this recipe permanently public via a scannable link — for potluck-style printed cards.</p>
+        </div>
 
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
         

@@ -34,6 +34,7 @@
         <button onclick="openStatsModal()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">📊 Recipe Counts by Category</button>
         <button onclick="generateMegaIndex()" style="background: #10b981; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🌐 Update Homepage Index</button>
         <button onclick="exportRecipes()" style="background: #8b5cf6; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">💾 Backup Recipes</button>
+        <button onclick="openCardsPickerModal()" style="background: #a16207; border: none; color: white; padding: 5px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">🎴 Print Multiple Cards</button>
     </div>
 
     <!-- Keep this list in sync with submit.html's #category, edit-recipe.html's
@@ -68,8 +69,41 @@
             <button onclick="closeStatsModal()" style="margin-top:20px; width:100%; padding:10px;">Close</button>
         </div>
     </div>
+
+    <div id="cards-picker-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 420px; max-width: 90%; max-height: 85vh; display:flex; flex-direction:column;">
+            <h2 style="margin: 0 0 5px 0;">🎴 Print Multiple Cards</h2>
+            <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 13px;">Pick every recipe you want a card for — they'll all print together on shared sheets.</p>
+            <input type="text" id="cards-picker-search" oninput="applyCardsPickerFilter()" placeholder="🔍 Search recipes..." style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px;">
+            <p id="cards-picker-summary" style="font-size: 12px; color: var(--primary); opacity: 0.7; margin: 8px 0;">No recipes selected yet.</p>
+            <div id="cards-picker-list" style="flex:1; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; min-height: 200px;"></div>
+            <div style="display:flex; gap:8px; margin-top: 15px;">
+                <button onclick="closeCardsPickerModal()" style="flex:1; padding:10px; background:#f3f4f6; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
+                <button onclick="confirmCardsPickerSelection()" style="flex:1; padding:10px; background:#a16207; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Continue</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="cards-review-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: var(--bg-card); padding: 25px; border-radius: 8px; width: 460px; max-width: 90%; max-height: 85vh; overflow-y: auto;">
+            <h2 style="margin: 0 0 5px 0;">📇 Review Ingredient Lists</h2>
+            <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 13px;">
+                Just names, like a nutrition label, no measurements — one per line. Fix anything the auto-strip
+                got wrong before printing; this list is meant to flag allergens.
+            </p>
+            <div id="cards-review-body"></div>
+            <div style="display:flex; gap:8px; margin-top: 10px;">
+                <button onclick="closeCardsReviewModal()" style="flex:1; padding:10px; background:#f3f4f6; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
+                <button onclick="printAllCards()" style="flex:1; padding:10px; background:#a16207; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🖨️ Print Card(s)</button>
+            </div>
+        </div>
+    </div>
 </div>
 
-<script type="module" src="../scripts/dashboard.js?v=5"></script>
+<!-- Printing now happens via a hidden iframe with its own document, built
+     entirely in dashboard.js's printHtmlViaIframe() — no page elements or
+     print-specific CSS needed here at all. -->
+
+<script type="module" src="../scripts/dashboard.js?v=14"></script>
 </body>
 </html>

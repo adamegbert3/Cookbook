@@ -5,10 +5,11 @@ import {
     arrayUnion, arrayRemove, deleteField
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { getSections, hasRealSections, getEditableText, buildRecipeFields } from './recipe-model.js';
+import { getSections, hasRealSections, getEditableText, buildRecipeFields, flattenSections } from './recipe-model.js';
 import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } from './household.js';
 import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
+import qrcode from './vendor/qrcode.mjs';
 
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
@@ -80,6 +81,7 @@ async function loadAdminDashboard() {
     loadTotalCooksCount();
     loadAttentionSummary();
     consumeUploadStationHandoff();
+    loadGuestCodes();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -92,13 +94,15 @@ async function loadAdminDashboard() {
     // The full recipes collection is only needed by the Master Recipe List
     // (admin/recipe-list.html, #unified-list + #category-stats-list), Most
     // Popular (admin/popular.html, #leaderboard-list — loadAnalytics also
-    // renders the Activity roster as a side effect of the same call), and
-    // Activity itself (admin/activity.html, #activity-list) — skip the read
-    // entirely on every other admin page now that they're split up.
+    // renders the Activity roster as a side effect of the same call),
+    // Activity itself (admin/activity.html, #activity-list), and the Guest
+    // Codes recipe picker (admin/guests.html, #guest-picker-list) — skip the
+    // read entirely on every other admin page now that they're split up.
     const needsAllRecipes = document.getElementById('unified-list')
         || document.getElementById('category-stats-list')
         || document.getElementById('leaderboard-list')
-        || document.getElementById('activity-list');
+        || document.getElementById('activity-list')
+        || document.getElementById('guest-picker-list');
     if (!needsAllRecipes) return;
 
     try {
@@ -117,6 +121,7 @@ async function loadAdminDashboard() {
         renderUnifiedManager(allRecipeData);
         renderDeepStats(allRecipeData);
         loadAnalytics(allRecipeData);
+        renderGuestPicker(allRecipeData);
 
         // Activating Search
         const searchInput = document.getElementById('manager-search');
@@ -124,6 +129,11 @@ async function loadAdminDashboard() {
             searchInput.addEventListener('input', (e) => {
                 applyAdminFilters();
             });
+        }
+
+        const guestPickerSearch = document.getElementById('guest-picker-search');
+        if (guestPickerSearch) {
+            guestPickerSearch.addEventListener('input', applyGuestPickerFilter);
         }
     } catch (error) {
         console.error("🔥 [DASHBOARD CRITICAL ERROR]:", error);
@@ -172,6 +182,7 @@ function buildRecipeRowHtml(r) {
                 <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
                 <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
                 <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️ Delete</button>
+                <button onclick="generateRecipeCard('${r.id}')" class="btn-action" style="background:#fef3c7; color:#92400e;" title="${r.public ? 'Already shareable — print another card' : 'Make this recipe public and print a QR card'}">📇 ${r.public ? 'Card (Public)' : 'Card'}</button>
             </div>
             <div class="rmc-favorites">
                 <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" style="background: ${isEgb ? '#0284c7' : '#f0f9ff'}; color: ${isEgb ? '#ffffff' : '#0369a1'}; border: 1px solid #bae6fd; font-weight: 800;" title="Toggle Egbert Favorite">
@@ -280,6 +291,283 @@ window.toggleVisibility = async function(id, currentStatus) {
         triggerDriveSyncSilently();
     } catch (error) { alert("Could not update visibility."); }
 };
+
+// ==========================================
+// PRINTABLE RECIPE CARDS (QR code, admin/recipe-list.html)
+//
+// Marks a recipe `public: true` (the one deliberately-public case in
+// firestore.rules — see its comment on /recipes) and prints a bordered,
+// card-shaped block per recipe: logo, name, a plain ingredient-NAME list
+// (no measurements, "like a nutrition label" — this is for reading at a
+// glance whether a dish is safe to eat, not for recreating it), and a QR
+// code linking to share.html, which works for anyone, no login or code,
+// forever. One recipe (the row's own "📇 Card" button) or several at once
+// (the page's "🎴 Print Multiple Cards" button) both go through the same
+// pipeline below — printing 2-up on normal paper, not a special page size
+// (browsers don't reliably honor a CSS @page size — the first version of
+// this feature tried that and it silently printed full-page instead — so
+// instead the .print-card class itself draws a fixed-size, bordered card
+// shape that stays correct regardless of what paper size the printer uses).
+// ==========================================
+
+// Best-effort strip of a leading amount/unit so what's left is just the
+// ingredient's name. Deliberately not trusted outright — recipes are typed
+// by hand so phrasing varies a lot — the review step shows this in an
+// editable box before anything gets printed, since this list is meant to
+// flag allergens and a parsing miss should never go to print unreviewed.
+function stripIngredientToName(line) {
+    let s = String(line || '').trim();
+    if (!s) return '';
+    const UNITS = 'cups?|tbsp\\.?|tablespoons?|tsp\\.?|teaspoons?|oz\\.?|ounces?|lbs?\\.?|pounds?|grams?|g|kg|ml|liters?|l|cloves?|cans?|packages?|pkgs?|pinch(?:es)?|dash(?:es)?|slices?|sticks?|bunch(?:es)?|heads?|stalks?|jars?|bags?';
+    // Leading amount: digits/fractions/decimals/ranges — "2", "1/2", "1 1/2", "¼", "2-3"
+    s = s.replace(/^[\d¼½¾⅓⅔⅛⅜⅝⅞.\/\-–\s]+/, '').trim();
+    // A leading parenthetical size note — "(15 oz) can black beans"
+    s = s.replace(/^\([^)]*\)\s*/, '').trim();
+    // A leading unit word, optionally followed by "of"
+    s = s.replace(new RegExp(`^(?:${UNITS})\\.?\\s+(?:of\\s+)?`, 'i'), '').trim();
+    // A trailing prep note after the first comma — ", softened" / ", to taste"
+    s = s.replace(/,.*$/, '').trim();
+    if (!s) return String(line || '').trim();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+let cardReviewRecipes = [];
+
+// Entry point for the single-recipe row button — just hands one id to the
+// same pipeline the multi-select picker uses below.
+window.generateRecipeCard = function(id) {
+    proceedToCardReview([id]);
+};
+
+// Recipe picker for printing several cards at once (search + checkboxes),
+// same structure as the guest-code recipe picker earlier in this file, but
+// its own separate state — this selection has nothing to do with guest
+// codes, just happens to need the same kind of UI.
+let cardsPickerSelected = new Set();
+const CARDS_PICKER_BATCH_SIZE = 30;
+let cardsPickerQueue = [];
+let cardsPickerObserver = null;
+
+function buildCardsPickerRowHtml(r) {
+    const checked = cardsPickerSelected.has(r.id) ? 'checked' : '';
+    return `
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; width:100%; box-sizing:border-box;">
+            <input type="checkbox" ${checked} onchange="toggleCardsPickerRecipe('${r.id}', this.checked)" style="flex:0 0 auto; width:16px; height:16px; margin:0;">
+            <span style="flex:1 1 0%; min-width:0; text-align:left;">${r.name || "Untitled"}</span>
+            ${r.public ? '<span style="flex:0 0 auto; font-size:10px; color:#a16207;">already public</span>' : ''}
+        </label>`;
+}
+
+function renderCardsPickerSummary() {
+    const el = document.getElementById('cards-picker-summary');
+    if (!el) return;
+    el.textContent = cardsPickerSelected.size === 0
+        ? "No recipes selected yet."
+        : `${cardsPickerSelected.size} recipe${cardsPickerSelected.size === 1 ? '' : 's'} selected.`;
+}
+
+function renderCardsPicker(recipes) {
+    const list = document.getElementById('cards-picker-list');
+    if (!list) return;
+    if (cardsPickerObserver) { cardsPickerObserver.disconnect(); cardsPickerObserver = null; }
+
+    if (recipes.length === 0) {
+        list.innerHTML = "<p style='padding:10px; color:#9ca3af; font-size:13px;'>No recipes match.</p>";
+        return;
+    }
+
+    cardsPickerQueue = recipes.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    list.innerHTML = '';
+    renderNextCardsPickerBatch();
+}
+
+function renderNextCardsPickerBatch() {
+    const list = document.getElementById('cards-picker-list');
+    if (!list) return;
+
+    const batch = cardsPickerQueue.splice(0, CARDS_PICKER_BATCH_SIZE);
+    list.insertAdjacentHTML('beforeend', batch.map(buildCardsPickerRowHtml).join(''));
+
+    const oldSentinel = document.getElementById('cards-picker-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+    if (cardsPickerQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'cards-picker-sentinel';
+    sentinel.style.cssText = 'height: 1px;';
+    list.appendChild(sentinel);
+
+    cardsPickerObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            cardsPickerObserver.disconnect();
+            renderNextCardsPickerBatch();
+        }
+    }, { rootMargin: '400px' });
+    cardsPickerObserver.observe(sentinel);
+}
+
+window.toggleCardsPickerRecipe = function(id, isChecked) {
+    if (isChecked) cardsPickerSelected.add(id); else cardsPickerSelected.delete(id);
+    renderCardsPickerSummary();
+};
+
+window.applyCardsPickerFilter = function() {
+    const term = (document.getElementById('cards-picker-search')?.value || '').toLowerCase();
+    const filtered = !term ? allRecipeData : allRecipeData.filter(r => (r.name || '').toLowerCase().includes(term));
+    renderCardsPicker(filtered);
+};
+
+window.openCardsPickerModal = function() {
+    cardsPickerSelected = new Set();
+    renderCardsPickerSummary();
+    renderCardsPicker(allRecipeData);
+    document.getElementById('cards-picker-modal').style.display = 'flex';
+};
+
+window.closeCardsPickerModal = function() {
+    document.getElementById('cards-picker-modal').style.display = 'none';
+};
+
+window.confirmCardsPickerSelection = function() {
+    if (cardsPickerSelected.size === 0) return alert("Pick at least one recipe first.");
+    proceedToCardReview(Array.from(cardsPickerSelected));
+};
+
+// Shared by both entry points above: confirms + marks public (batched, one
+// confirm for the whole set) whatever isn't already, then opens one review
+// screen with an editable ingredient-name box per recipe.
+async function proceedToCardReview(ids) {
+    const recipes = ids.map(id => allRecipeData.find(r => r.id === id)).filter(Boolean);
+    if (recipes.length === 0) return;
+
+    const needsPublic = recipes.filter(r => !r.public);
+    if (needsPublic.length > 0) {
+        const subject = needsPublic.length === 1 ? `"${needsPublic[0].name}"` : `${needsPublic.length} recipes`;
+        if (!confirm(`This makes ${subject} permanently viewable by anyone with the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`)) return;
+
+        for (const r of needsPublic) {
+            try {
+                await updateDoc(doc(db, "recipes", r.id), { public: true });
+                r.public = true;
+                updateSingleRecipeCard(r.id);
+            } catch (e) {
+                console.error(`🔥 [CARD] Could not make "${r.name}" public:`, e);
+                alert(`Could not make "${r.name}" public: ${e.message}`);
+            }
+        }
+    }
+
+    cardReviewRecipes = recipes;
+    document.getElementById('cards-review-body').innerHTML = recipes.map(r => {
+        const rawIng = r.ingredients || r.recipeIngredient || [];
+        const list = Array.isArray(rawIng) ? rawIng : [rawIng];
+        const names = list.map(stripIngredientToName).filter(Boolean);
+        return `
+            <div style="margin-bottom:16px;">
+                <label style="font-weight:600; font-size:13px;">${r.name || "Untitled"}</label>
+                <textarea data-recipe-id="${r.id}" class="card-review-textarea" style="width:100%; min-height:80px; padding:8px; margin-top:4px; border:1px solid #ddd; border-radius:6px; font-size:12px;">${names.join('\n')}</textarea>
+            </div>`;
+    }).join('');
+
+    closeCardsPickerModal();
+    document.getElementById('cards-review-modal').style.display = 'flex';
+}
+
+window.closeCardsReviewModal = function() {
+    document.getElementById('cards-review-modal').style.display = 'none';
+    cardReviewRecipes = [];
+};
+
+// Prints via a hidden iframe with its own isolated document, rather than
+// hiding/showing content on the CURRENT page and calling window.print() on
+// it. That direct approach was tried first (simpler) but reliably failed
+// silently in testing — no console error, no beforeprint event ever fired,
+// even right after a full page reload — with no clear cause found after
+// several rounds of narrowing it down. Printing an isolated iframe's own
+// document is a much more broadly reliable pattern for exactly this kind
+// of "print this specific generated content, not the current page" need.
+function printHtmlViaIframe(bodyHtml) {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Print</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+<style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0.2in; display: flex; flex-wrap: wrap; gap: 0.3in; justify-content: center; }
+    .print-card {
+        flex: 0 0 auto; width: 4in; min-height: 6in; border: 2px dashed #000; border-radius: 12px;
+        padding: 0.3in; box-sizing: border-box; text-align: center; font-family: 'Inter', sans-serif;
+        color: #000; page-break-inside: avoid;
+    }
+    .print-card-logo { width: 56px; height: 56px; object-fit: cover; border-radius: 50%; margin-bottom: 4px; }
+    .print-card-title { font-family: 'Amatic SC', cursive; font-size: 2rem; margin: 0 0 2px 0; }
+    .print-card-author { font-size: 10px; color: #333; margin: 0 0 12px 0; }
+    .print-card-ingredients { font-size: 10px; line-height: 1.5; text-align: center; margin: 0 0 14px 0; }
+    .print-card-qr svg { display: block; margin: 0 auto; }
+    .print-card-scan { font-size: 8px; color: #555; margin-top: 4px; }
+</style>
+</head>
+<body>${bodyHtml}</body>
+</html>`);
+    doc.close();
+
+    iframe.onload = () => {
+        // A brief delay so the just-loaded Google Font has a moment to
+        // apply — if it hasn't landed yet the card falls back to a system
+        // font, which is a minor cosmetic miss, not worth blocking print on.
+        setTimeout(() => {
+            iframe.contentWindow.focus();
+            iframe.contentWindow.print();
+            setTimeout(() => iframe.remove(), 2000);
+        }, 250);
+    };
+}
+
+window.printAllCards = function() {
+    const textareas = document.querySelectorAll('.card-review-textarea');
+    const cardsHtml = Array.from(textareas).map(ta => {
+        const id = ta.dataset.recipeId;
+        const recipe = cardReviewRecipes.find(r => r.id === id);
+        if (!recipe) return '';
+        const ingredientNames = ta.value.split('\n').map(s => s.trim()).filter(Boolean);
+        if (ingredientNames.length === 0) return '';
+
+        const shareUrl = `${location.origin}${siteRootPath()}share.html?id=${id}`;
+        const qr = qrcode(0, 'M');
+        qr.addData(shareUrl);
+        qr.make();
+        const qrSvg = qr.createSvgTag({ cellSize: 4, margin: 4 });
+
+        // Absolute URL, not "../images/logo.jpg" — this markup is printed
+        // inside a fresh iframe document with no relation to this page's
+        // location, so a relative path wouldn't resolve to anything.
+        const logoUrl = `${location.origin}${siteRootPath()}images/logo.jpg`;
+
+        return `
+            <div class="print-card">
+                <img src="${logoUrl}" class="print-card-logo">
+                <h1 class="print-card-title">${recipe.name || "Untitled"}</h1>
+                <p class="print-card-author">From: ${recipe.author || "Family"}</p>
+                <p class="print-card-ingredients"><strong>Ingredients:</strong> ${ingredientNames.join(', ')}</p>
+                <div class="print-card-qr">${qrSvg}</div>
+                <p class="print-card-scan">Scan for the full recipe</p>
+            </div>`;
+    }).join('');
+
+    if (!cardsHtml) return alert("Add at least one ingredient first.");
+
+    closeCardsReviewModal();
+    printHtmlViaIframe(cardsHtml);
+};
+
 // ==========================================
 // QUICK-TAG HALL OF FAME TOGGLE
 // ==========================================
@@ -422,7 +710,7 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         const usersSnap = await getDocs(collection(db, "users"));
         usersSnap.forEach(u => {
             const data = u.data();
-            knownUsers.push({ uid: u.id, name: data.Name || (data.email || '').split('@')[0] || u.id });
+            knownUsers.push({ uid: u.id, name: data.Name || (data.email || '').split('@')[0] || u.id, role: data.role || 'user' });
         });
         knownUsers.sort((a, b) => a.name.localeCompare(b.name));
     } catch (e) { console.error("Could not load profiles for the activity roster:", e); }
@@ -460,7 +748,7 @@ async function renderActivityRoster(viewDocs, allRecipes) {
 
     // Seed with every account first
     knownUsers.forEach(u => {
-        people[u.uid] = { key: u.uid, name: u.name, views: [], cooks: [], visits: [], unlinked: [] };
+        people[u.uid] = { key: u.uid, name: u.name, role: u.role, views: [], cooks: [], visits: [], unlinked: [] };
     });
 
     const addRecord = (bucket, record, uid, name, collectionPath, nameField) => {
@@ -567,15 +855,30 @@ async function renderActivityRoster(viewDocs, allRecipes) {
                 </button>`;
         }
 
+        // A guest's records already carry their own (anonymous) uid, so they
+        // never hit the unlinked/orphan branches above — this is a separate,
+        // always-available action for moving their whole history onto a
+        // brand-new real account once one exists (see admin/guests.html's
+        // "Start Transfer", which creates that real account's invite).
+        const guestBadge = p.role === 'guest'
+            ? ` <span style="background:#fef3c7; color:#92400e; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px;">🎟️ Guest</span>`
+            : '';
+        const guestActionsHtml = p.role === 'guest'
+            ? `<button onclick="transferGuestToUser('${safeKey}')"
+                        style="margin-top:8px; margin-left: ${actionsHtml ? '6px' : '0'}; background:#a16207; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
+                    🎟️ Finish Transfer to Real Account
+                </button>`
+            : '';
+
         return `
             <div style="padding: 10px; border-bottom: 1px solid #f3f4f6; font-size: 13px; ${isIdle ? 'opacity:0.6;' : ''}">
                 <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">
-                    <strong style="${legacy ? 'color:#6b7280; font-style:italic;' : ''}">${displayName}${isOrphan && !legacy ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}</strong>
+                    <strong style="${legacy ? 'color:#6b7280; font-style:italic;' : ''}">${displayName}${isOrphan && !legacy ? ' <span style="font-weight:600; font-size:11px; color:#b45309;">· no matching account</span>' : ''}${guestBadge}</strong>
                     <span style="font-size:11px; color:#8b5cf6; font-weight:700; white-space:nowrap;">${p.views.length} view${p.views.length === 1 ? '' : 's'} · ${p.cooks.length} cook${p.cooks.length === 1 ? '' : 's'} · ${p.visits.length} visit${p.visits.length === 1 ? '' : 's'}</span>
                 </div>
                 <div style="color: #6b7280; margin-top: 2px; cursor:pointer;" onclick="openPersonActivity('${safeKey}')">${lastActivityText}</div>
                 ${timeStr ? `<div style="color: #9ca3af; font-size: 11px;">🕒 ${timeStr}</div>` : ''}
-                ${actionsHtml}
+                ${actionsHtml}${guestActionsHtml}
             </div>`;
     }).join('')}`;
 }
@@ -667,6 +970,60 @@ window.reassignActivity = async function(key) {
     loadAdminDashboard();
 };
 
+// Finishing half of the guest transfer flow — the other half, "Start
+// Transfer" in admin/guests.html, creates the real signup invite. This
+// moves ALL of a guest's activity (not just unlinked records — a guest's
+// records already carry their own real anonymous uid) onto a real account
+// once that person has actually finished signing up through that invite.
+window.transferGuestToUser = async function(guestUid) {
+    const person = personActivityMap[guestUid];
+    if (!person) return;
+
+    const target = await pickPerson(person);
+    if (!target) return;
+    if (target.uid === guestUid) return alert("Pick the NEW real account, not the guest itself.");
+
+    const total = person.views.length + person.cooks.length + person.visits.length;
+    if (!confirm(`Move all ${total} record(s) from ${person.name} (guest) onto ${target.name}?`)) return;
+
+    const allRecords = [
+        ...person.views.map(r => ({ id: r.id, collectionPath: 'recipe_views', nameField: 'viewer' })),
+        ...person.cooks.map(r => ({ id: r.id, collectionPath: 'global_cooks', nameField: 'chef' })),
+        ...person.visits.map(r => ({ id: r.id, collectionPath: 'site_visits_log', nameField: 'viewerName' }))
+    ];
+
+    let done = 0, failed = 0;
+    for (const rec of allRecords) {
+        try {
+            await updateDoc(doc(db, rec.collectionPath, rec.id), { uid: target.uid, [rec.nameField]: target.name });
+            done++;
+        } catch (e) {
+            failed++;
+            console.error(`Could not update ${rec.collectionPath}/${rec.id}:`, e.message);
+        }
+    }
+
+    // Tombstone rather than delete: deleting users/{guestUid} wouldn't touch
+    // the still-alive Anonymous Auth session or its subcollections, and the
+    // guest could otherwise revisit their old link and silently regenerate a
+    // fresh guest identity under the same uid. Clearing guestCode also
+    // revokes their old recipe access under the new Firestore rules with no
+    // extra rule needed — guestAllowedRecipeIds() needs a non-empty
+    // guestCode pointing at an active guest_codes doc.
+    try {
+        await updateDoc(doc(db, "users", guestUid), { role: 'transferred', guestCode: '' });
+    } catch (e) {
+        console.error("Could not tombstone the guest account:", e.message);
+    }
+
+    console.log(`✅ [GUEST TRANSFER] Moved ${done} record(s) from guest ${guestUid} to ${target.name} (${target.uid})${failed ? `, ${failed} failed` : ''}.`);
+    alert(failed
+        ? `Moved ${done} record(s) to ${target.name}. ${failed} couldn't be updated — check the console.`
+        : `Done — ${target.name} now has ${person.name}'s guest history.`);
+
+    loadAdminDashboard();
+};
+
 // Scrollable picker. Replaces a prompt(), which silently truncated the list
 // after about nine names — so most of the family simply wasn't offered.
 function pickPerson(person) {
@@ -678,7 +1035,10 @@ function pickPerson(person) {
         const total = person.views.length + person.cooks.length + person.visits.length;
         titleEl.innerHTML = `<strong>"${escapeAttr(person.name)}"</strong> — ${person.cooks.length} cooks, ${person.views.length} views, ${person.visits.length} visits (${total} records)`;
 
-        listEl.innerHTML = knownUsers.map(u => `
+        // Guests/already-transferred guests are never a valid target here —
+        // you never want to link legacy records or a transferred guest's
+        // history onto a temporary guest account.
+        listEl.innerHTML = knownUsers.filter(u => u.role !== 'guest' && u.role !== 'transferred').map(u => `
             <button class="person-picker-option" data-uid="${escapeAttr(u.uid)}" data-name="${escapeAttr(u.name)}"
                     style="display:block; width:100%; text-align:left; background:white; border:1px solid #e5e7eb;
                            border-radius:6px; padding:10px 12px; margin-bottom:6px; cursor:pointer; font-size:13px;">
@@ -1273,9 +1633,8 @@ window.createInvite = async function() {
             createdAt: serverTimestamp()
         });
 
-        const basePath = location.pathname.replace(/admin\.html$/, '');
         document.getElementById('invite-code-output').innerText = code;
-        document.getElementById('invite-link-output').value = `${location.origin}${basePath}invite.html?id=${code}`;
+        document.getElementById('invite-link-output').value = `${location.origin}${siteRootPath()}invite.html?id=${code}`;
         document.getElementById('invite-result').style.display = 'block';
 
         console.log("✅ [INVITE] Created with code:", code);
@@ -1333,6 +1692,283 @@ window.revokeInvite = async function(id) {
     } catch (e) { alert("Could not revoke: " + e.message); }
 };
 
+// Whichever admin/*.html page called this, strip it back to the site's
+// root so a link built on top of it is correct regardless of folder depth
+// (every admin tool now lives at admin/<name>.html, one level deep).
+function siteRootPath() {
+    return location.pathname.replace(/admin\/[^/]+\.html$|admin\.html$/, '');
+}
+
+// ==========================================
+// GUEST CODES (admin/guests.html, plus a shared list on admin/access.html)
+//
+// One code = one specific named person, created by an admin (never
+// self-served by the guest — see the plan/firestore.rules comments for why:
+// self-typed names on a shared code were rejected as too easy to get wrong).
+// A guest signs in with Firebase Anonymous Auth and reads exactly the
+// recipeIds on their code — see firestore.rules' isAnonymous()/
+// guestAllowedRecipeIds() for the actual security boundary; everything here
+// is just admin-side CRUD on top of that.
+// ==========================================
+let guestPickerSelected = new Set();
+const GUEST_PICKER_BATCH_SIZE = 30;
+let guestPickerQueue = [];
+let guestPickerObserver = null;
+
+function buildGuestPickerRowHtml(r) {
+    const checked = guestPickerSelected.has(r.id) ? 'checked' : '';
+    let cat = "Misc";
+    if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
+    else if (r.category) cat = r.category;
+    return `
+        <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; width:100%; box-sizing:border-box;">
+            <input type="checkbox" ${checked} onchange="toggleGuestPickerRecipe('${r.id}', this.checked)" style="flex:0 0 auto; width:16px; height:16px; margin:0;">
+            <span style="flex:1 1 0%; min-width:0; text-align:left;">${r.name || "Untitled"}</span>
+            <span style="flex:0 0 auto; font-size:11px; color:#9ca3af;">${cat}</span>
+        </label>`;
+}
+
+function renderGuestPickerSummary() {
+    const el = document.getElementById('guest-picker-summary');
+    if (!el) return;
+    el.textContent = guestPickerSelected.size === 0
+        ? "No recipes selected yet."
+        : `${guestPickerSelected.size} recipe${guestPickerSelected.size === 1 ? '' : 's'} selected.`;
+}
+
+// Full rebuild, same lazy-batch approach as the Master Recipe List
+// (renderUnifiedManager/renderNextMasterBatch) — separate queue/observer
+// variables so the two pickers never interfere with each other.
+function renderGuestPicker(recipes) {
+    const list = document.getElementById('guest-picker-list');
+    if (!list) return;
+
+    if (guestPickerObserver) { guestPickerObserver.disconnect(); guestPickerObserver = null; }
+
+    if (recipes.length === 0) {
+        list.innerHTML = "<p style='padding:10px; color:#9ca3af; font-size:13px;'>No recipes match.</p>";
+        return;
+    }
+
+    guestPickerQueue = recipes.slice().sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    list.innerHTML = '';
+    renderNextGuestPickerBatch();
+}
+
+function renderNextGuestPickerBatch() {
+    const list = document.getElementById('guest-picker-list');
+    if (!list) return;
+
+    const batch = guestPickerQueue.splice(0, GUEST_PICKER_BATCH_SIZE);
+    list.insertAdjacentHTML('beforeend', batch.map(buildGuestPickerRowHtml).join(''));
+
+    const oldSentinel = document.getElementById('guest-picker-sentinel');
+    if (oldSentinel) oldSentinel.remove();
+    if (guestPickerQueue.length === 0) return;
+
+    const sentinel = document.createElement('div');
+    sentinel.id = 'guest-picker-sentinel';
+    sentinel.style.cssText = 'height: 1px;';
+    list.appendChild(sentinel);
+
+    guestPickerObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            guestPickerObserver.disconnect();
+            renderNextGuestPickerBatch();
+        }
+    }, { rootMargin: '400px' });
+    guestPickerObserver.observe(sentinel);
+}
+
+window.toggleGuestPickerRecipe = function(id, isChecked) {
+    if (isChecked) guestPickerSelected.add(id); else guestPickerSelected.delete(id);
+    renderGuestPickerSummary();
+};
+
+window.applyGuestPickerFilter = function() {
+    const term = (document.getElementById('guest-picker-search')?.value || '').toLowerCase();
+    const filtered = !term ? allRecipeData : allRecipeData.filter(r => (r.name || '').toLowerCase().includes(term));
+    renderGuestPicker(filtered);
+};
+
+window.createGuestCode = async function() {
+    const nameInput = document.getElementById('guest-name');
+    const emailInput = document.getElementById('guest-email');
+    const noteInput = document.getElementById('guest-note');
+    const codeInput = document.getElementById('guest-code');
+
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim().toLowerCase();
+    const note = noteInput.value.trim();
+    if (!name) return alert("A name is required — that's what shows up in Activity and on their welcome banner.");
+    if (guestPickerSelected.size === 0) return alert("Pick at least one recipe to share with them first.");
+
+    // Same code shape/rules as invites — see generateInviteCode() above.
+    const typed = codeInput.value.trim().toUpperCase().replace(/\s+/g, '');
+    const code = typed || generateInviteCode();
+    if (typed && typed.length < 4) return alert("Give the code at least 4 characters.");
+
+    try {
+        const existing = await getDoc(doc(db, "guest_codes", code));
+        if (existing.exists()) return alert(`The code ${code} is already in use. Pick another.`);
+
+        await setDoc(doc(db, "guest_codes", code), {
+            name,
+            email: email || '',
+            note: note || '',
+            recipeIds: Array.from(guestPickerSelected),
+            active: true,
+            createdAt: serverTimestamp(),
+            createdBy: auth.currentUser.uid
+        });
+
+        const link = `${location.origin}${siteRootPath()}guest.html?code=${code}`;
+        await navigator.clipboard.writeText(link).catch(() => {});
+        alert(`Guest link created and copied to your clipboard:\n\n${link}\n\nSend that to ${name}.`);
+
+        nameInput.value = ""; emailInput.value = ""; noteInput.value = ""; codeInput.value = "";
+        guestPickerSelected = new Set();
+        renderGuestPickerSummary();
+        applyGuestPickerFilter();
+        loadGuestCodes();
+    } catch (e) {
+        console.error("🔥 [GUEST CODE] Could not create:", e);
+        alert("Could not create guest code: " + e.message);
+    }
+};
+
+window.toggleGuestCodeActive = async function(code, currentlyActive) {
+    try {
+        await updateDoc(doc(db, "guest_codes", code), { active: !currentlyActive });
+        loadGuestCodes();
+    } catch (e) { alert("Could not update: " + e.message); }
+};
+
+window.copyGuestLink = function(code) {
+    const link = `${location.origin}${siteRootPath()}guest.html?code=${code}`;
+    navigator.clipboard.writeText(link).then(() => alert("Link copied!"));
+};
+
+window.deleteGuestCode = async function(code, name) {
+    if (!confirm(`Delete the guest code for ${name}? Their link will stop working immediately. This does not delete anything they've already cooked.`)) return;
+    try {
+        await deleteDoc(doc(db, "guest_codes", code));
+        loadGuestCodes();
+    } catch (e) { alert("Could not delete: " + e.message); }
+};
+
+// "Start Transfer" creates a real invite (same doc shape createInvite makes,
+// literally reusing the invites collection) pre-filled with whatever name/
+// email is already on file for this guest — nothing to retype. Finishing the
+// transfer (moving their old guest activity onto the new real account) is a
+// separate action on the Activity page, since it needs the brand-new uid
+// that doesn't exist until that person actually finishes signing up.
+window.startGuestTransfer = async function(code, name, email) {
+    try {
+        const guestSnap = await getDoc(doc(db, "guest_codes", code));
+        if (!guestSnap.exists()) return alert("That guest code no longer exists.");
+        const guestData = guestSnap.data();
+
+        if (guestData.transferInviteCode) {
+            const existingInvite = await getDoc(doc(db, "invites", guestData.transferInviteCode));
+            if (existingInvite.exists() && !existingInvite.data().used) {
+                const link = `${location.origin}${siteRootPath()}invite.html?id=${guestData.transferInviteCode}`;
+                await navigator.clipboard.writeText(link).catch(() => {});
+                return alert(`A transfer invite is already pending for ${name}. Link copied again:\n\n${link}`);
+            }
+            // Otherwise (used or deleted some other way) fall through and make a new one.
+        }
+
+        let finalEmail = email;
+        if (!finalEmail) {
+            finalEmail = (prompt(`${name} doesn't have an email on file. Enter one to send them a signup invite:`) || '').trim().toLowerCase();
+            if (!finalEmail) return;
+        }
+
+        const inviteCode = generateInviteCode();
+        const existingInviteDoc = await getDoc(doc(db, "invites", inviteCode));
+        if (existingInviteDoc.exists()) return alert("Could not generate a unique invite code — try again.");
+
+        await setDoc(doc(db, "invites", inviteCode), {
+            name,
+            email: finalEmail,
+            used: false,
+            createdAt: serverTimestamp()
+        });
+        await updateDoc(doc(db, "guest_codes", code), { transferInviteCode: inviteCode, email: finalEmail });
+
+        const link = `${location.origin}${siteRootPath()}invite.html?id=${inviteCode}`;
+        await navigator.clipboard.writeText(link).catch(() => {});
+        alert(`Signup invite created for ${name} and copied to your clipboard:\n\n${link}\n\nOnce they finish signing up, come back to the Activity page to move their guest history onto the new account.`);
+        loadGuestCodes();
+    } catch (e) {
+        console.error("🔥 [GUEST TRANSFER] Could not start transfer:", e);
+        alert("Could not start transfer: " + e.message);
+    }
+};
+
+function buildGuestRowHtml(g) {
+    const cookCount = typeof g.cookCount === 'number' ? g.cookCount : 0;
+    const safeName = (g.name || '').replace(/'/g, "\\'");
+    const safeEmail = (g.email || '').replace(/'/g, "\\'");
+    const activeBadge = g.active
+        ? `<span style="background:#d1fae5; color:#065f46; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;">🟢 Active</span>`
+        : `<span style="background:#f3f4f6; color:#6b7280; font-size:11px; font-weight:700; padding:3px 8px; border-radius:10px;">⏸️ Inactive</span>`;
+    const transferBtn = g.transferInviteCode
+        ? `<button onclick="startGuestTransfer('${g.id}', '${safeName}', '${safeEmail}')" style="background:#e0e7ff; color:#3730a3; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; white-space:nowrap;">🔗 Invite Pending</button>`
+        : `<button onclick="startGuestTransfer('${g.id}', '${safeName}', '${safeEmail}')" style="background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold; white-space:nowrap;">Start Transfer</button>`;
+
+    return `
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
+            <div>
+                <div style="font-weight:600;">🎟️ ${g.name}${g.email ? ` <span style="font-weight:400; color:#9ca3af; font-size:11px;">(${g.email})</span>` : ''}</div>
+                <div style="font-size:11px; color:#9ca3af;">${(g.recipeIds || []).length} recipe${(g.recipeIds || []).length === 1 ? '' : 's'} shared · ${cookCount} made · code <span style="font-family:monospace;">${g.id}</span></div>
+            </div>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                ${activeBadge}
+                <button onclick="toggleGuestCodeActive('${g.id}', ${g.active})" style="background:var(--bg-card); border:1px solid var(--border); color:var(--primary); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">${g.active ? 'Deactivate' : 'Reactivate'}</button>
+                <button onclick="copyGuestLink('${g.id}')" style="background:var(--bg-card); border:1px solid var(--border); color:var(--primary); padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Copy Link</button>
+                ${transferBtn}
+                <button onclick="deleteGuestCode('${g.id}', '${safeName}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Delete</button>
+            </div>
+        </div>`;
+}
+
+window.loadGuestCodes = async function() {
+    const listEl = document.getElementById('guest-codes-list');
+    if (!listEl) return;
+    listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>Loading guest codes...</p>";
+
+    try {
+        const snap = await getDocs(query(collection(db, "guest_codes"), orderBy("createdAt", "desc")));
+        const codes = [];
+        snap.forEach(d => codes.push({ id: d.id, ...d.data() }));
+
+        if (codes.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>No guest codes yet.</p>";
+            return;
+        }
+
+        // One query for every guest-claimed account, rather than one query
+        // per code, so this page doesn't fire N Firestore reads for N codes.
+        const guestUsersSnap = await getDocs(query(collection(db, "users"), where("role", "==", "guest")));
+        const uidByCode = {};
+        guestUsersSnap.forEach(d => { const gc = d.data().guestCode; if (gc) uidByCode[gc] = d.id; });
+
+        await Promise.all(codes.map(async (g) => {
+            const uid = uidByCode[g.id];
+            if (!uid) { g.cookCount = 0; return; }
+            const cooksSnap = await getDocs(query(collection(db, "global_cooks"), where("uid", "==", uid)));
+            g.cookCount = cooksSnap.size;
+        }));
+
+        listEl.innerHTML = codes.map(buildGuestRowHtml).join('');
+    } catch (e) {
+        console.error("🔥 [GUEST CODES] Could not load:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load guest codes: " + e.message + "</p>";
+    }
+};
+
 // ==========================================
 // MANAGE ADMIN ACCESS — promote/demote anyone straight from the console,
 // no code edits or redeploy needed (unlike the original 3 ADMIN_UIDS, which
@@ -1347,7 +1983,15 @@ window.loadAdminUsersList = async function() {
     try {
         const snap = await getDocs(collection(db, "users"));
         const users = [];
-        snap.forEach(d => users.push({ uid: d.id, ...d.data() }));
+        // Guests (and guests already transferred to a real account) have
+        // their own row on the same page — see the "🎟️ Guests" section /
+        // loadGuestCodes() — so they're left out of the real-member table
+        // here rather than cluttering role/family-side management.
+        snap.forEach(d => {
+            const data = d.data();
+            if (data.role === 'guest' || data.role === 'transferred') return;
+            users.push({ uid: d.id, ...data });
+        });
         users.sort((a, b) => (a.Name || a.email || "").localeCompare(b.Name || b.email || ""));
 
         console.log(`👑 [ADMIN ACCESS] Loaded ${users.length} user(s).`);
@@ -1713,14 +2357,28 @@ window.uploadBulkRecipes = async function() {
             : `Upload ${recipes.length}?`;
         if(confirm(confirmMsg)) {
             for(const r of recipes) {
-                const ingredients = r.recipeIngredient || r.ingredients || [];
-                const instructions = r.recipeInstructions || r.instructions || [];
+                const rawIngredients = r.recipeIngredient || r.ingredients || [];
+                const rawInstructions = r.recipeInstructions || r.instructions || [];
+
+                // Sections work two ways here, same as everywhere else sections
+                // are read (see recipe-model.js): given explicitly as
+                // ingredientSections/instructionSections (the exact Firestore
+                // shape — {title, items}[]), or marked inline with a "## Title"
+                // line right in the flat ingredients/instructions array, same
+                // as typing "## Crust" in the recipe editors' textareas. Explicit
+                // sections win if present; otherwise inline markers are
+                // auto-split. A recipe with neither is unaffected either way.
+                const ingFields = (Array.isArray(r.ingredientSections) && r.ingredientSections.length)
+                    ? { ingredients: flattenSections(r.ingredientSections), recipeIngredient: flattenSections(r.ingredientSections), ingredientSections: r.ingredientSections }
+                    : buildRecipeFields(rawIngredients.join('\n'), 'ingredients');
+                const instFields = (Array.isArray(r.instructionSections) && r.instructionSections.length)
+                    ? { instructions: flattenSections(r.instructionSections), recipeInstructions: flattenSections(r.instructionSections), instructionSections: r.instructionSections }
+                    : buildRecipeFields(rawInstructions.join('\n'), 'instructions');
+
                 await addDoc(collection(db, "recipes"), {
                     name: r.name, author: r.author, tags: r.tags,
-                    ingredients, recipeIngredient: ingredients,
-                    instructions, recipeInstructions: instructions,
-                    ingredientSections: r.ingredientSections || [],
-                    instructionSections: r.instructionSections || [],
+                    ...ingFields,
+                    ...instFields,
                     notes: r.notes || "",
                     sourceUrl: r.sourceUrl || "",
                     isDraft: asDraft,
