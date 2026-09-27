@@ -82,6 +82,13 @@ h1, h2, h3, h4 {
 }
 
 main { max-width: 1000px; margin: 0 auto; padding: 0 15px; }
+/* Homepage only — its recipe grid should actually use a wide screen instead
+   of being capped at the same 1000px reading-width every other page uses
+   for text comfort. This is what auto-fit (above, in the #recipes rule)
+   needed all along: auto-fit only stretches EXISTING cards to fill
+   available space, it was never going to add more COLUMNS while the
+   parent container itself stayed capped at 1000px regardless of screen size. */
+main.main-wide { max-width: 1600px; }
 
 /* ==========================================================================
    3. HEADER
