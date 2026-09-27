@@ -14,6 +14,7 @@ import { db, auth } from './firebase-config.js';
 import { addDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { buildRecipeFields, DIETARY_TAGS } from './recipe-model.js';
+import { checkIsAdmin } from './main.js';
 
 const QUEUE_KEY = 'offlineRecipeDrafts';
 
@@ -114,6 +115,7 @@ function resetForm() {
     document.querySelectorAll('#dietary input').forEach(cb => cb.checked = false);
     document.getElementById('fav-egbert').checked = false;
     document.getElementById('fav-wheeler').checked = false;
+    document.getElementById('draft-testing-kitchen').checked = false;
     editingLocalId = null;
     document.getElementById('form-heading').innerText = "📝 New Draft";
     document.getElementById('save-draft-btn').innerText = "💾 Save to This Device";
@@ -136,6 +138,7 @@ window.editDraft = function(localId) {
     });
     document.getElementById('fav-egbert').checked = draft.favEgbert === true;
     document.getElementById('fav-wheeler').checked = draft.favWheeler === true;
+    document.getElementById('draft-testing-kitchen').checked = draft.testingKitchen === true;
 
     editingLocalId = localId;
     document.getElementById('form-heading').innerText = "✏️ Editing Draft";
@@ -166,6 +169,7 @@ document.getElementById('submitForm').addEventListener('submit', (e) => {
         dietary: Array.from(document.querySelectorAll('#dietary input:checked')).map(cb => cb.value),
         favEgbert: document.getElementById('fav-egbert').checked,
         favWheeler: document.getElementById('fav-wheeler').checked,
+        testingKitchen: document.getElementById('draft-testing-kitchen').checked,
         savedAt: editingLocalId ? (loadQueue().find(d => d.localId === editingLocalId)?.savedAt || new Date().toISOString()) : new Date().toISOString()
     };
 
@@ -213,7 +217,13 @@ window.uploadAllDrafts = async function() {
         return;
     }
 
-    let uploaded = 0, failed = 0;
+    // Checked once, reused for every draft — Testing Kitchen writes straight
+    // to the live recipes collection (isDraft:true), which firestore.rules
+    // only allows an admin to do, so a non-admin's checkbox is honored as
+    // "review queue instead" rather than failing the whole upload.
+    const isAdmin = await checkIsAdmin(user.uid);
+
+    let uploaded = 0, failed = 0, toTestingKitchen = 0;
     const stillQueued = [];
 
     for (let i = 0; i < list.length; i++) {
@@ -231,28 +241,48 @@ window.uploadAllDrafts = async function() {
             if (draft.favEgbert) tags.push("Egbert Favorite");
             if (draft.favWheeler) tags.push("Wheeler Favorite");
 
-            // Exactly the same shape and destination as a normal submit.html
-            // submission — this is just that same form, filled out earlier
-            // with no signal. Goes to the review queue like any other
-            // submission; nothing here needs the Testing Kitchen (that's for
-            // a recipe you want to cook and verify yourself first — these
-            // are hand-typed from a known source, not something to test).
-            await addDoc(collection(db, "pending_recipes"), {
-                name: draft.name,
-                author: draft.author,
-                submittedBy: user.email,
-                uid: user.uid,
-                category: draft.category,
-                tags,
-                ...ingredientFields,
-                ...instructionFields,
-                notes: draft.notes || "",
-                sourceUrl: draft.sourceUrl || "",
-                family: draft.family || 'Both',
-                dietary: draft.dietary || [],
-                timestamp: serverTimestamp(),
-                status: "pending"
-            });
+            if (draft.testingKitchen && isAdmin) {
+                // Same direct-to-recipes shape Speed Upload uses for its own
+                // Testing Kitchen checkbox — bypasses the review queue
+                // entirely, since this is a personal staging area, not a
+                // family-facing submission.
+                await addDoc(collection(db, "recipes"), {
+                    name: draft.name,
+                    author: draft.author,
+                    category: draft.category,
+                    tags,
+                    ...ingredientFields,
+                    ...instructionFields,
+                    notes: draft.notes || "",
+                    sourceUrl: draft.sourceUrl || "",
+                    family: draft.family || 'Both',
+                    dietary: draft.dietary || [],
+                    isDraft: true,
+                    reviewed: false
+                });
+                toTestingKitchen++;
+            } else {
+                // Exactly the same shape and destination as a normal
+                // submit.html submission — this is just that same form,
+                // filled out earlier with no signal. Goes to the review
+                // queue like any other submission.
+                await addDoc(collection(db, "pending_recipes"), {
+                    name: draft.name,
+                    author: draft.author,
+                    submittedBy: user.email,
+                    uid: user.uid,
+                    category: draft.category,
+                    tags,
+                    ...ingredientFields,
+                    ...instructionFields,
+                    notes: draft.notes || "",
+                    sourceUrl: draft.sourceUrl || "",
+                    family: draft.family || 'Both',
+                    dietary: draft.dietary || [],
+                    timestamp: serverTimestamp(),
+                    status: "pending"
+                });
+            }
 
             uploaded++;
         } catch (err) {
@@ -266,8 +296,11 @@ window.uploadAllDrafts = async function() {
     renderQueue();
     btn.disabled = false;
 
+    const destinationNote = toTestingKitchen > 0
+        ? ` (${toTestingKitchen} straight to your Testing Kitchen, the rest waiting in the review queue)`
+        : ' — waiting in the review queue, same as any other submission';
     statusEl.innerText = failed === 0
-        ? `✅ Uploaded all ${uploaded} — waiting in the review queue, same as any other submission.`
+        ? `✅ Uploaded all ${uploaded}${destinationNote}.`
         : `⚠️ Uploaded ${uploaded}, ${failed} failed and are still saved here — try "Upload All" again.`;
 };
 
