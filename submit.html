@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Submit Recipe</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=4">
+    <link rel="stylesheet" href="styles/recipes.css?v=5">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -119,9 +119,10 @@
     <script type="module" src="scripts/submit.js"></script>
     <nav class="bottom-nav">
         <a href="homepage.html" class="bottom-nav-item"><span class="bottom-nav-icon">🏠</span><span>Home</span></a>
-        <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
+        <a href="homepage.html?search=1" onclick="handleBottomNavSearch(event)" class="bottom-nav-item"><span class="bottom-nav-icon">🔍</span><span>Search</span></a>
         <a href="submit.html" class="bottom-nav-item bottom-nav-add"><span class="bottom-nav-icon">➕</span></a>
-        <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon">👤</span><span>Profile</span></a>
+        <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
+        <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon bottom-nav-avatar"></span><span>Profile</span></a>
     </nav>
     <script type="module" src="scripts/bottom-nav-menu.js"></script>
 </body>

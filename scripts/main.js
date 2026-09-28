@@ -1163,8 +1163,17 @@ function setupSearch() {
     const input = document.getElementById('searchbar');
 
     if (!openBtn) return;
-    openBtn.onclick = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
+    const openSearch = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
+    openBtn.onclick = openSearch;
     if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
+
+    // The bottom nav's search icon lives on every page, not just the
+    // homepage — from anywhere else it links here with ?search=1 so the
+    // bar opens automatically on arrival instead of landing on a plain
+    // homepage the person then has to go find search on again.
+    if (new URLSearchParams(window.location.search).get('search') === '1') {
+        openSearch();
+    }
 
     // Live filtering as you type (debounced), so results update in real time
     // instead of only after hitting GO.

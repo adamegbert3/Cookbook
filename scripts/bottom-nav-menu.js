@@ -1,5 +1,5 @@
 // ==========================================
-// BOTTOM NAV "MENU" POPUP
+// BOTTOM NAV: "Menu" popup, Search shortcut, profile initials
 // ==========================================
 // Tapping the Menu icon in the bottom nav (present on every main page) pops
 // this small modal instead of navigating anywhere directly — it's just a
@@ -7,7 +7,13 @@
 // Favorites), each on its own dedicated page. Self-contained and reads
 // localStorage directly rather than importing main.js, so it works the
 // same on every page regardless of whether that page happens to load
-// main.js for anything else.
+// main.js for anything else. Also fills in the Profile icon's initials
+// circle, for the same reason — a direct Firebase Auth import here works
+// identically everywhere, instead of relying on whatever auth flow (or
+// none) each page's own script happens to run.
+import { db, auth } from './firebase-config.js';
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
 function escapeHtml(str) {
     const div = document.createElement('div');
@@ -52,3 +58,35 @@ window.openNavMenuModal = function(event) {
 window.closeNavMenuModal = function() {
     document.getElementById('nav-menu-modal')?.classList.add('hidden');
 };
+
+// From the homepage, just opens the existing search bar in place (no
+// reload); from anywhere else, the link's own href does the navigating to
+// homepage.html?search=1, which main.js's setupSearch() auto-opens on load.
+window.handleBottomNavSearch = function(event) {
+    if (document.body.dataset.page === 'homepage') {
+        event.preventDefault();
+        document.getElementById('header-search-btn')?.click();
+    }
+};
+
+function getInitials(name) {
+    return (name || "?").trim().split(/\s+/).filter(Boolean).map(n => n[0]).join('').toUpperCase().substring(0, 2) || "?";
+}
+
+async function updateBottomNavAvatar(user) {
+    const icons = document.querySelectorAll('.bottom-nav-avatar');
+    if (!icons.length) return;
+
+    let name = user.displayName || (user.email ? user.email.split('@')[0] : 'Chef');
+    try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (snap.exists() && snap.data().Name) name = snap.data().Name;
+    } catch (e) {}
+
+    const initials = getInitials(name);
+    icons.forEach(el => { el.textContent = initials; });
+}
+
+onAuthStateChanged(auth, (user) => {
+    if (user) updateBottomNavAvatar(user);
+});
