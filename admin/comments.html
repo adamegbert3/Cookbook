@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Google Drive Sync | Admin</title>
-    <link rel="stylesheet" href="../styles/recipes.css">
-    <link rel="stylesheet" href="../styles/admin.css">
+    <title>Comments | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css?v=2">
+    <link rel="stylesheet" href="../styles/admin.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
@@ -26,17 +26,12 @@
 
 <div class="admin-container">
     <a href="../admin.html" class="admin-back-link">← Admin Home</a>
-    <h1 style="color: #15803d;">☁️ Google Drive Sync</h1>
+    <h1 style="color: #0e7490;">💬 Comments</h1>
     <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
-        For family members without internet access. Mirrors every visible recipe into a shared Google Drive
-        folder as Google Docs. When you save, approve, or delete a recipe <strong>from this admin console while
-        <code>local-tools/scan-recipe/serve-locally.mjs</code> is running</strong>, this now kicks off automatically
-        in the background — no need to remember to run it. As a backup, it also runs on its own schedule (see
-        <code>local-tools/sync-to-drive/README.md</code>) so changes made from your phone still make it to Drive
-        within a few hours even if that helper isn't open.
+        Every comment across every recipe, newest first, so you can see what people are talking about in one place.
     </p>
-    <button id="drive-sync-btn" onclick="triggerDriveSync()" style="background:#15803d; color:white; border:none; padding:8px 16px; border-radius:8px; cursor:pointer; font-weight:bold;">☁️ Sync to Drive Now</button>
-    <div id="drive-sync-status" style="font-size:12px; color:#6b7280; margin-top:8px;"></div>
+
+    <div id="comments-dashboard-list" style="margin-top: 15px;"><p style="color:#9ca3af; font-size:13px;">Loading...</p></div>
 </div>
 
 <script type="module" src="../scripts/dashboard.js?v=17"></script>

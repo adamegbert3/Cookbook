@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js'; 
-import { 
-    collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc,
+import {
+    collection, collectionGroup, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc,
     query, orderBy, limit, where, serverTimestamp, Timestamp,
     arrayUnion, arrayRemove, deleteField
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
@@ -84,6 +84,7 @@ async function loadAdminDashboard() {
     loadGuestCodes();
     loadCardExtensionRequests();
     loadPublicRecipesList();
+    loadCommentsDashboard();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -684,6 +685,58 @@ window.revokeCardNow = async function(recipeId) {
         loadPublicRecipesList();
     } catch (e) {
         alert("Could not revoke: " + e.message);
+    }
+};
+
+// ==========================================
+// COMMENTS DASHBOARD (see everything being said, across every recipe)
+// ==========================================
+window.loadCommentsDashboard = async function() {
+    const listEl = document.getElementById('comments-dashboard-list');
+    if (!listEl) return;
+    try {
+        const snap = await getDocs(query(collectionGroup(db, "comments"), orderBy("timestamp", "desc"), limit(100)));
+        const comments = [];
+        snap.forEach(d => comments.push({ id: d.id, recipeId: d.ref.parent.parent.id, ...d.data() }));
+
+        if (comments.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>No comments yet.</p>";
+            return;
+        }
+
+        // Recipe titles aren't stored on the comment itself, so look each
+        // unique recipe up once and reuse it for every comment on that recipe.
+        const recipeIds = [...new Set(comments.map(c => c.recipeId))];
+        const titles = {};
+        await Promise.all(recipeIds.map(async id => {
+            try {
+                const rSnap = await getDoc(doc(db, "recipes", id));
+                titles[id] = rSnap.exists() ? (rSnap.data().name || "Untitled") : "(deleted recipe)";
+            } catch { titles[id] = "(unknown recipe)"; }
+        }));
+
+        listEl.innerHTML = comments.map(c => `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:13px;">
+                <div>
+                    <div style="font-weight:600;">${c.author || "Someone"} on <a href="../recipe.html?id=${c.recipeId}" target="_blank" style="color:#0e7490;">${titles[c.recipeId]}</a></div>
+                    <div style="margin-top:2px;">${(c.text || "").replace(/</g, "&lt;")}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:2px;">${c.timestamp ? c.timestamp.toDate().toLocaleString() : ""}</div>
+                </div>
+                <button onclick="deleteCommentFromDashboard('${c.recipeId}', '${c.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; flex-shrink:0;">Delete</button>
+            </div>`).join('');
+    } catch (e) {
+        console.error("🔥 [COMMENTS DASHBOARD] Could not load comments:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load: " + e.message + "</p>";
+    }
+};
+
+window.deleteCommentFromDashboard = async function(recipeId, commentId) {
+    if (!confirm("Delete this comment?")) return;
+    try {
+        await deleteDoc(doc(db, "recipes", recipeId, "comments", commentId));
+        loadCommentsDashboard();
+    } catch (e) {
+        alert("Could not delete: " + e.message);
     }
 };
 

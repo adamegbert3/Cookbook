@@ -8,6 +8,8 @@ Running list — add to it anytime, I'll check it each session. Move items to
 - [ ] **Public cards v2** (`public-cards-v2` branch) — self-serve 48h public cards for any member, admin approval for extensions, card size picker, admin "Public Cards" page, and the on-page ingredient-review modal (replacing the old `prompt()` popups). Ready for your test now that Firestore rules are live.
 
 ## Not started
+- [ ] Recipe page: show "cooked X times, by [names]" on each recipe (fun/social, not just admin-only stats).
+- [ ] Admin Activity page: "unidentified cooks" in Family Dishes Served are currently just missing/dropped. Don't lose the record of what was made — group unmatched cook records under an "Anonymous" bucket at the bottom of the list instead of hiding them.
 - [ ] Guest mode: when a guest uses "Share this Recipe," offer the public `share.html` QR-card link instead of the normal internal recipe link (which needs login).
 - [ ] Admin: a Comments Dashboard — see every comment across all recipes in one place, to spot what people are talking about.
 - [ ] Homepage declutter:
