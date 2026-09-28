@@ -266,10 +266,9 @@ onAuthStateChanged(auth, async (user) => {
 
         // 3. Load User Preferences & Profile in background
         loadUserSettings(user);
-        loadHomepageMenu(user);
+        if (document.getElementById('weekly-menu-widget')) loadHomepageMenu(user);
         syncPendingNotes(user);
         setupTestModeToggle(user);
-        renderRecentlyViewed();
 
         // 4. Everything below is background work — none of it blocks the
         // recipe list appearing.
@@ -1043,22 +1042,25 @@ function showTestingKitchenButton() {
 // hidden for the duration of a non-empty search term and restored the
 // moment it's cleared.
 function setSearchModeUI(active) {
-    const idsToHide = [
-        'announcements-box', 'testing-kitchen-wrap', 'homepage-action-row',
-        'test-mode-slot', 'offline-download-slot', 'weekly-menu-widget'
-    ];
+    // These three don't have any other logic governing their visibility, so
+    // a plain show/hide is safe.
+    const idsToHide = ['announcements-box', 'testing-kitchen-wrap', 'homepage-action-row'];
     idsToHide.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.style.display = active ? 'none' : '';
     });
 
-    // recent-recipes-box has its own empty/non-empty visibility logic
-    // (renderRecentlyViewed) — don't blindly clear its inline style back to
-    // visible on restore, or an empty box would reappear.
-    const recentBox = document.getElementById('recent-recipes-box');
-    if (recentBox) {
-        if (active) recentBox.style.display = 'none';
-        else renderRecentlyViewed();
+    // These two have their own visibility logic elsewhere (the widget
+    // placement setting) — on restore, re-run that logic instead of
+    // blindly clearing style.display back to visible, or a widget that's
+    // supposed to live on the other page would reappear here.
+    ['test-mode-slot', 'offline-download-slot'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && active) el.style.display = 'none';
+    });
+    if (!active) {
+        const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+        applyWidgetPlacement(settings);
     }
 }
 
@@ -1293,29 +1295,6 @@ function setupDietaryFilters() {
 // invoked from renderLocalList() instead.
 setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
 
-// Fills the "Pick up where you left off" box from the localStorage trail
-// recipePage.js leaves behind (recordRecentlyViewed) — no Firestore read
-// needed, and the box collapses to nothing (instead of a big empty card)
-// when there's no history yet.
-function renderRecentlyViewed() {
-    const box = document.getElementById('recent-recipes-box');
-    const display = document.getElementById('last-recipe-display');
-    if (!box || !display) return;
-
-    let list = [];
-    try { list = JSON.parse(localStorage.getItem('recentlyViewedRecipes')) || []; } catch (e) {}
-
-    if (list.length === 0) {
-        box.style.display = 'none';
-        return;
-    }
-
-    box.style.display = '';
-    display.innerHTML = list.map(r => `
-        <a href="recipe.html?id=${r.id}" class="pill-btn btn-slate" style="text-decoration:none; margin: 4px;">${r.name}</a>
-    `).join('');
-}
-
 // ==========================================
 // 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)
 // ==========================================
@@ -1514,6 +1493,33 @@ function applyTheme(settings) {
     }
     html.style.setProperty('--base-size', resolveFontSizePx(settings.fontSize) + 'px');
     html.setAttribute('data-font', settings.fontStyle || 'inter');
+    applyWidgetPlacement(settings);
+}
+
+// Lets each person choose whether Download Offline and Test Mode live on
+// the homepage or the profile page — both pages carry the same widget
+// markup (same ids) and both load this script, so this just hides
+// whichever copy isn't the chosen one for the page it's on. The rule list
+// is declared inline (not as a module-level const) so this function has no
+// load-order dependency on anything else in the file — it's safe to call
+// from applyTheme() even during the very first, synchronous pass over
+// cached settings at module load. Inline style.display always wins over
+// the .hidden class regardless of which runs first, so this also doesn't
+// need to race setupTestModeToggle().
+function applyWidgetPlacement(settings) {
+    const page = document.body.dataset.page;
+    if (page !== 'homepage' && page !== 'profile') return;
+    const placement = (settings && settings.widgetPlacement) || {};
+    const rules = [
+        { key: 'offlineDownload', id: 'offline-download-slot' },
+        { key: 'testMode', id: 'test-mode-slot' }
+    ];
+    rules.forEach(rule => {
+        const el = document.getElementById(rule.id);
+        if (!el) return;
+        const wanted = placement[rule.key] || 'homepage';
+        el.style.display = (wanted === page) ? '' : 'none';
+    });
 }
 
 window.quickToggleTheme = async function() {

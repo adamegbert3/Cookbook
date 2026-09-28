@@ -61,7 +61,7 @@
         }
     </style>
 </head>
-<body>
+<body data-page="profile">
 
     <!-- Fixed height + nowrap pills were overflowing the header on narrow
          screens; this wraps onto a second row instead of running off. -->
@@ -90,12 +90,9 @@
         </div>
     </div>
 
-    <div style="max-width: 1200px; margin: 0 auto; padding: 20px;">
-        <h3 style="text-align: center; color: var(--accent-teal); font-family: 'Amatic SC', cursive; font-size: 2.5rem; margin-bottom: 20px;">❤️ My Favorite Recipes</h3>
-        
-        <div id="favorites-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; align-items: stretch; width: 100%;">
-            <p style="color: var(--primary);">Loading your favorites...</p>
-        </div>
+    <div style="max-width: 400px; margin: 0 auto 20px auto; text-align: center;">
+        <a href="favorites.html" class="pill-btn btn-teal" style="text-decoration:none;">❤️ My Favorite Recipes →</a>
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 6px;">Now its own page.</p>
     </div>
 
     <script type="module" src="scripts/profile.js"></script>
@@ -114,8 +111,10 @@
 </div>
     <nav class="bottom-nav">
         <a href="homepage.html" class="bottom-nav-item"><span class="bottom-nav-icon">🏠</span><span>Home</span></a>
+        <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
         <a href="submit.html" class="bottom-nav-item bottom-nav-add"><span class="bottom-nav-icon">➕</span></a>
         <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon">👤</span><span>Profile</span></a>
     </nav>
+    <script type="module" src="scripts/bottom-nav-menu.js"></script>
 </body>
 </html>

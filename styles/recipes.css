@@ -928,3 +928,10 @@ input:checked + .slider:before {
     border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: 22px; margin-top: -20px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
+
+/* Rows inside the bottom nav's "Menu" popup (scripts/bottom-nav-menu.js) */
+.nav-menu-row {
+    display: block; padding: 12px 8px; border-bottom: 1px solid var(--border);
+    color: var(--primary); text-decoration: none; font-weight: 600; font-size: 15px;
+}
+.nav-menu-row:last-of-type { border-bottom: none; }
