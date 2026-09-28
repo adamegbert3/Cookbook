@@ -188,7 +188,7 @@
         </div>
     </div>
 
-    <script type="module" src="scripts/recipePage.js?v=2"></script>
+    <script type="module" src="scripts/recipePage.js?v=3"></script>
     <script type="module" src="scripts/main.js"></script>
     
     <script>
@@ -256,6 +256,33 @@
         </a>
     </div>
 </div>
+
+<!-- Real on-page review instead of a native prompt() — the tiny single-line
+     prompt box made a whole ingredient list nearly impossible to read/edit. -->
+<div id="recipe-card-modal" class="modal hidden">
+    <div class="modal-content" style="text-align: left;">
+        <button onclick="closeRecipeCardModal()" class="close-btn">✕</button>
+        <h2 style="margin-top: 0;">📇 Recipe Card</h2>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+            Just ingredient names, like a nutrition label — no measurements. Fix anything the
+            auto-strip got wrong before printing; this list is meant to flag allergens.
+        </p>
+        <textarea id="recipe-card-ingredients" style="width: 100%; min-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;"></textarea>
+
+        <label style="display:block; margin-top: 14px; font-size: 13px; font-weight: 600;">Card size</label>
+        <select id="recipe-card-size" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ddd; border-radius:6px;">
+            <option value="sticky">Sticky note (3x3in)</option>
+            <option value="index" selected>Index card (4x6in)</option>
+            <option value="full">Full page (7.5x10in)</option>
+        </select>
+
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button onclick="closeRecipeCardModal()" style="flex: 1; padding: 10px; background: #f3f4f6; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+            <button onclick="confirmPrintThisRecipeCard()" style="flex: 1; padding: 10px; background: #ea580c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">🖨️ Print Card</button>
+        </div>
+    </div>
+</div>
+
 <div style="text-align: center; margin-top: 30px;">
     <a href="terms.html" style="color: #64748b; font-size: 13px; text-decoration: underline;">Terms of Use & Privacy Policy</a>
 </div>

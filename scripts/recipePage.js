@@ -1652,15 +1652,6 @@ const CARD_SIZES = {
     full: { label: 'Full page (7.5x10in)', width: '7.5in', minHeight: '10in' }
 };
 
-function promptCardSize() {
-    const choice = (prompt(
-        `Card size? Type one of: sticky, index, full\n\n` +
-        `sticky = ${CARD_SIZES.sticky.label}\nindex = ${CARD_SIZES.index.label}\nfull = ${CARD_SIZES.full.label}`,
-        'index'
-    ) || '').trim().toLowerCase();
-    return CARD_SIZES[choice] || CARD_SIZES.index;
-}
-
 function timestampToDate(ts) {
     if (!ts) return null;
     if (typeof ts.toDate === 'function') return ts.toDate();
@@ -1722,15 +1713,29 @@ window.printThisRecipeCard = async function() {
     const list = Array.isArray(rawIng) ? rawIng : [rawIng];
     const names = list.map(stripIngredientToNameForCard).filter(Boolean);
 
-    const edited = prompt(
-        "Ingredient list for the card — just names, like a nutrition label, no measurements. One per line; fix anything that looks wrong (this list is meant to flag allergens):",
-        names.join('\n')
-    );
-    if (edited === null) return; // cancelled
-    const ingredientNames = edited.split('\n').map(s => s.trim()).filter(Boolean);
+    // A real on-page modal, not prompt() — a native prompt box is a single
+    // line tall with almost no room to scroll, which made reviewing a whole
+    // ingredient list (the actual point of this step — catching an allergen
+    // the auto-strip mangled) nearly unreadable.
+    closeShareModal();
+    document.getElementById('recipe-card-ingredients').value = names.join('\n');
+    document.getElementById('recipe-card-modal').classList.remove('hidden');
+};
+
+window.closeRecipeCardModal = function() {
+    document.getElementById('recipe-card-modal').classList.add('hidden');
+};
+
+window.confirmPrintThisRecipeCard = function() {
+    const recipe = lastRenderedRecipe;
+    if (!recipe || !recipe.id) return;
+
+    const ingredientNames = document.getElementById('recipe-card-ingredients').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
     if (ingredientNames.length === 0) return alert("Add at least one ingredient first.");
 
-    const size = promptCardSize();
+    const sizeChoice = document.getElementById('recipe-card-size').value;
+    const size = CARD_SIZES[sizeChoice] || CARD_SIZES.index;
 
     const shareUrl = `${location.origin}${location.pathname.replace(/recipe\.html$/, '')}share.html?id=${recipe.id}`;
     const qr = qrcode(0, 'M');
@@ -1749,7 +1754,7 @@ window.printThisRecipeCard = async function() {
             <p class="print-card-scan">Scan for the full recipe</p>
         </div>`;
 
-    closeShareModal();
+    closeRecipeCardModal();
     printHtmlViaIframeForCard(cardHtml, size);
 };
 

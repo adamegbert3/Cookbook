@@ -508,15 +508,6 @@ const CARD_SIZES = {
     full: { label: 'Full page (7.5x10in)', width: '7.5in', minHeight: '10in' }
 };
 
-function promptCardSize() {
-    const choice = (prompt(
-        `Card size? Type one of: sticky, index, full\n\n` +
-        `sticky = ${CARD_SIZES.sticky.label}\nindex = ${CARD_SIZES.index.label}\nfull = ${CARD_SIZES.full.label}`,
-        'index'
-    ) || '').trim().toLowerCase();
-    return CARD_SIZES[choice] || CARD_SIZES.index;
-}
-
 function printHtmlViaIframe(bodyHtml, size) {
     const cardSize = size || CARD_SIZES.index;
     const iframe = document.createElement('iframe');
@@ -596,7 +587,8 @@ window.printAllCards = function() {
 
     if (!cardsHtml) return alert("Add at least one ingredient first.");
 
-    const size = promptCardSize();
+    const sizeChoice = document.getElementById('cards-review-size')?.value || 'index';
+    const size = CARD_SIZES[sizeChoice] || CARD_SIZES.index;
     closeCardsReviewModal();
     printHtmlViaIframe(cardsHtml, size);
 };
