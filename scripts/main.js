@@ -269,6 +269,7 @@ onAuthStateChanged(auth, async (user) => {
         loadHomepageMenu(user);
         syncPendingNotes(user);
         setupTestModeToggle(user);
+        renderRecentlyViewed();
 
         // 4. Everything below is background work — none of it blocks the
         // recipe list appearing.
@@ -1264,6 +1265,29 @@ function setupDietaryFilters() {
 // each tag, so it has to wait until the recipes are actually loaded. It's
 // invoked from renderLocalList() instead.
 setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
+
+// Fills the "Pick up where you left off" box from the localStorage trail
+// recipePage.js leaves behind (recordRecentlyViewed) — no Firestore read
+// needed, and the box collapses to nothing (instead of a big empty card)
+// when there's no history yet.
+function renderRecentlyViewed() {
+    const box = document.getElementById('recent-recipes-box');
+    const display = document.getElementById('last-recipe-display');
+    if (!box || !display) return;
+
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('recentlyViewedRecipes')) || []; } catch (e) {}
+
+    if (list.length === 0) {
+        box.style.display = 'none';
+        return;
+    }
+
+    box.style.display = '';
+    display.innerHTML = list.map(r => `
+        <a href="recipe.html?id=${r.id}" class="pill-btn btn-slate" style="text-decoration:none; margin: 4px;">${r.name}</a>
+    `).join('');
+}
 
 // ==========================================
 // 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)

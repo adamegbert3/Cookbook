@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
     <link rel="stylesheet" href="styles/recipes.css">
-    <script src="scripts/main.js" type="module" defer></script>
+    <script src="scripts/main.js?v=3" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
     /* Default: Stack days vertically on mobile (readable!) */
@@ -132,11 +132,9 @@
             <p id="offline-status-line" style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Do this before you lose signal — recipes you've already opened stay available too.</p>
         </div>
 
-        <div id="recent-recipes-box">
-            <h3>🕰️ Pick up where you left off:</h3>
-            <div id="last-recipe-display" style="margin-top: 15px;">
-                <p class="recent-placeholder">No recent history.</p>
-            </div>
+        <div id="recent-recipes-box" style="display:none; padding: 12px 20px;">
+            <h3 style="font-size: 1rem; margin-bottom: 4px;">🕰️ Pick up where you left off</h3>
+            <div id="last-recipe-display" style="margin-top: 6px;"></div>
         </div>
 
 <div class="widget-card" style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-top: 20px; box-shadow: var(--shadow-sm);">

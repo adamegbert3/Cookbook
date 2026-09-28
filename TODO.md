@@ -11,7 +11,6 @@ Running list — add to it anytime, I'll check it each session. Move items to
 - [ ] Recipe page: show "cooked X times, by [names]" on each recipe (fun/social, not just admin-only stats).
 - [ ] Admin Activity page: "unidentified cooks" in Family Dishes Served are currently just missing/dropped. Don't lose the record of what was made — group unmatched cook records under an "Anonymous" bucket at the bottom of the list instead of hiding them.
 - [ ] Guest mode: when a guest uses "Share this Recipe," offer the public `share.html` QR-card link instead of the normal internal recipe link (which needs login).
-- [ ] Admin: a Comments Dashboard — see every comment across all recipes in one place, to spot what people are talking about.
 - [ ] Homepage declutter:
   - Shrink "Pick up where you left off" to fit its content instead of a big fixed box.
   - Live, scrollable search results as you type (Google-suggestions style) instead of a full-screen search overlay that hides everything.
@@ -19,6 +18,9 @@ Running list — add to it anytime, I'll check it each session. Move items to
 - [ ] Bottom navigation bar (mobile-app style): house icon (center, → homepage), + (add recipe), profile picture (→ profile), etc. Intended to replace/reduce a lot of the homepage button clutter.
 - [ ] Settings: customizable widget placement — choose whether things like Download All Recipes Offline, Test Mode, and the Weekly Menu show on the homepage or the profile page (per-user preference).
 - [ ] Shopping list redesign: multiple named lists (grocery, storage, etc.) in an Apple-Reminders-style swipeable/columned view. Biggest item — needs its own scoping pass before starting.
+
+## Done (needs your test / not yet merged)
+- [x] Admin Comments Dashboard — see every comment across all recipes in one place (`admin/comments.html`).
 
 ## Done (merged to main)
 - [x] Guest mode + printable QR recipe cards (`guest-mode-and-recipe-cards` branch) — merged to main, confirmed working live on yum4you.com.

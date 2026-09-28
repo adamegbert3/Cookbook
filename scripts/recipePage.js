@@ -322,8 +322,22 @@ function renderCachedRecipe(localData, recipeContainer) {
 // the recipe is unverified, and only asks "viewing or cooking?" afterwards —
 // stacking both modals at once would be a mess.
 function afterRecipeShown(recipe) {
+    recordRecentlyViewed(recipe);
     if (maybeShowUnreviewedWarning(recipe)) return; // it chains into the cook prompt on dismiss
     maybeShowCookPrompt();
+}
+
+// Feeds homepage.html's "Pick up where you left off" box — kept as just an
+// id/name pair in localStorage (no Firestore read needed to show it), most
+// recent first, deduped, capped at 5 so the homepage box stays small.
+function recordRecentlyViewed(recipe) {
+    if (!recipe || !recipe.id) return;
+    try {
+        let list = JSON.parse(localStorage.getItem('recentlyViewedRecipes')) || [];
+        list = list.filter(r => r.id !== recipe.id);
+        list.unshift({ id: recipe.id, name: recipe.name || recipe.n || 'Untitled' });
+        localStorage.setItem('recentlyViewedRecipes', JSON.stringify(list.slice(0, 5)));
+    } catch (e) {}
 }
 
 // Shared tail-end for every offline/cached render path. The cook counter
