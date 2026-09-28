@@ -158,6 +158,17 @@ service cloud.firestore {
       }
     }
 
+    // Collection-group companion to the nested /recipes/{id}/comments rule
+    // above. That nested rule alone covers direct reads of one recipe's
+    // comments, but the admin Comments Dashboard uses collectionGroup() to
+    // pull every recipe's comments in one query — Firestore only allows a
+    // collectionGroup query when a rule is also declared with this
+    // {path=**} form, so without this block the query is denied outright
+    // even though the nested rule above would've allowed each doc.
+    match /{path=**}/comments/{commentId} {
+      allow read: if isAdmin();
+    }
+
     // --- SUBMISSION QUEUE ---
     // Guests consume the cookbook, they don't contribute to it — a guest
     // is a visitor Adam hasn't vetted as a family cook, so letting one
