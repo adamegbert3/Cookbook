@@ -1032,8 +1032,6 @@ function renderRecipeHTML(recipe) {
         });
     }, 100);
 
-    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: currentId }));
-
     // Populate the Kitchen Tools slots (scale/altitude controls + the ingredients-in-steps toggle state)
     const scaleSlot = document.getElementById('kt-scale-slot');
     if (scaleSlot) scaleSlot.innerHTML = scaleSlotHtml;

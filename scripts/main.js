@@ -1037,10 +1037,27 @@ function showTestingKitchenButton() {
     if (btn) btn.style.display = 'inline-block';
 }
 
+// Browse-only widgets (category pills, favorites, dietary chips, Testing
+// Kitchen, Test Mode, Download Offline) get in the way once you're actually
+// searching — nobody needs to see them while scrolling live results — so
+// they're hidden for the duration of a non-empty search term and restored
+// the moment it's cleared.
+function setSearchModeUI(active) {
+    document.querySelectorAll('.folders').forEach(el => el.style.display = active ? 'none' : '');
+    const testingKitchen = document.getElementById('testing-kitchen-wrap');
+    if (testingKitchen) testingKitchen.style.display = active ? 'none' : '';
+    const testMode = document.getElementById('test-mode-slot');
+    if (testMode) testMode.style.display = active ? 'none' : '';
+    const offlineSlot = document.getElementById('offline-download-slot');
+    if (offlineSlot) offlineSlot.style.display = active ? 'none' : '';
+}
+
 window.applyHomepageFilters = function() {
     const searchInput = document.getElementById('searchbar');
     const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
     const showReviewedOnly = document.getElementById('reviewed-toggle') ? document.getElementById('reviewed-toggle').checked : false;
+
+    setSearchModeUI(!!term);
 
     let filtered = allRecipes;
 

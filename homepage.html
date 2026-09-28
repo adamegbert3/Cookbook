@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css">
+    <link rel="stylesheet" href="styles/recipes.css?v=3">
     <script src="scripts/main.js?v=3" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -63,6 +63,18 @@
     </div>
 
     <main>
+        <div id="search-overlay" class="hidden">
+            <div class="search-box-content">
+                <h3>What are you craving?</h3>
+                <p style="font-size: 12px; color: #94a3b8; margin: -10px 0 5px 0;">Search by recipe name or an ingredient</p>
+                <form id="search-form">
+                    <input type="text" id="searchbar" placeholder="Tacos, Pie, or chicken..." autocomplete="off">
+                    <button type="submit" id="search-submit">GO</button>
+                    <button type="button" id="close-search">✕</button>
+                </form>
+            </div>
+        </div>
+
         <div class="buzz-container">
             <div class="buzz-header">
                 <h2>📢 Announcements</h2>
@@ -101,7 +113,7 @@
              in scripts/main.js grabs every button in a .folders container and treats
              it as a tag filter, which this isn't. Revealed by showTestingKitchenButton()
              in scripts/main.js once the admin check resolves. -->
-        <div style="text-align:center; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+        <div id="testing-kitchen-wrap" style="text-align:center; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
             <button id="testing-kitchen-btn" onclick="toggleDraftKitchen()" style="display:none; background:#fff7ed; color:#9a3412; border:1px solid #fdba74; font-weight:800; padding:8px 16px; border-radius:20px; cursor:pointer;">🍳 Testing Kitchen</button>
         </div>
 
@@ -127,7 +139,7 @@
             <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">While on, opening or cooking recipes won't count toward views or the leaderboard.</p>
         </div>
 
-        <div style="text-align: center; margin-bottom: 30px;">
+        <div id="offline-download-slot" style="text-align: center; margin-bottom: 30px;">
             <button onclick="downloadAllForOffline(event)" class="pill-btn btn-teal">⛺ Download All Recipes for Offline</button>
             <p id="offline-status-line" style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Do this before you lose signal — recipes you've already opened stay available too.</p>
         </div>
@@ -223,18 +235,6 @@
     </div>
 </div>
 
-        <div id="search-overlay" class="hidden">
-            <div class="search-box-content">
-                <button id="close-search">✕</button>
-                <h3>What are you craving?</h3>
-                <p style="font-size: 12px; color: #94a3b8; margin: -10px 0 5px 0;">Search by recipe name or an ingredient</p>
-                <form id="search-form">
-                    <input type="text" id="searchbar" placeholder="Tacos, Pie, or chicken..." autocomplete="off">
-                    <button type="submit" id="search-submit">GO</button>
-                </form>
-            </div>
-        </div>
-
         <div id="active-search-chip" class="hidden" style="text-align:center; margin-bottom:15px;">
             <button onclick="clearHomepageSearch()" class="pill-btn btn-slate" style="font-size:0.8rem;">
                 🔍 Searching: "<span id="active-search-term"></span>" ✕
@@ -255,13 +255,6 @@
     </div>
 
     <script>
-        const lastRecipe = JSON.parse(localStorage.getItem('lastRecipeSingle'));
-        if (lastRecipe) {
-            document.getElementById('last-recipe-display').innerHTML = `
-                <a href="recipe.html?id=${lastRecipe.id}" class="btn-dark" style="display:inline-flex; align-items:center; gap:8px;">
-                    ${lastRecipe.name} ➡️
-                </a>`;
-        }
         function openReviewModal() { document.getElementById('reviewInfoModal').classList.remove('hidden'); }
         function closeReviewModal() { document.getElementById('reviewInfoModal').classList.add('hidden'); }
     </script>
