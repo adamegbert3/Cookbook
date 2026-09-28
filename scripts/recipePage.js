@@ -1959,10 +1959,13 @@ function setupMobileKitchenTools() {
                 }
                 #mobile-tool-fab {
                     display: flex;
+                    /* Raised above the bottom nav bar (see .bottom-nav in
+                       recipes.css) so the two don't overlap. */
+                    bottom: 84px;
                 }
-                /* Extra breathing room at the bottom so the comment Post button clears the FAB */
+                /* Extra breathing room at the bottom so the comment Post button clears the FAB + bottom nav */
                 body {
-                    padding-bottom: 90px !important;
+                    padding-bottom: 164px !important;
                 }
             }
         `;
