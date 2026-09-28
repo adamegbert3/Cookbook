@@ -1037,19 +1037,29 @@ function showTestingKitchenButton() {
     if (btn) btn.style.display = 'inline-block';
 }
 
-// Browse-only widgets (category pills, favorites, dietary chips, Testing
-// Kitchen, Test Mode, Download Offline) get in the way once you're actually
-// searching — nobody needs to see them while scrolling live results — so
-// they're hidden for the duration of a non-empty search term and restored
-// the moment it's cleared.
+// Everything on the homepage EXCEPT the "Show Verified Only" toggle and the
+// category/favorite/dietary tag pills (still useful for narrowing a search)
+// is just scrolling in the way once you're actually searching — so it's all
+// hidden for the duration of a non-empty search term and restored the
+// moment it's cleared.
 function setSearchModeUI(active) {
-    document.querySelectorAll('.folders').forEach(el => el.style.display = active ? 'none' : '');
-    const testingKitchen = document.getElementById('testing-kitchen-wrap');
-    if (testingKitchen) testingKitchen.style.display = active ? 'none' : '';
-    const testMode = document.getElementById('test-mode-slot');
-    if (testMode) testMode.style.display = active ? 'none' : '';
-    const offlineSlot = document.getElementById('offline-download-slot');
-    if (offlineSlot) offlineSlot.style.display = active ? 'none' : '';
+    const idsToHide = [
+        'announcements-box', 'testing-kitchen-wrap', 'homepage-action-row',
+        'test-mode-slot', 'offline-download-slot', 'weekly-menu-widget'
+    ];
+    idsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = active ? 'none' : '';
+    });
+
+    // recent-recipes-box has its own empty/non-empty visibility logic
+    // (renderRecentlyViewed) — don't blindly clear its inline style back to
+    // visible on restore, or an empty box would reappear.
+    const recentBox = document.getElementById('recent-recipes-box');
+    if (recentBox) {
+        if (active) recentBox.style.display = 'none';
+        else renderRecentlyViewed();
+    }
 }
 
 window.applyHomepageFilters = function() {
