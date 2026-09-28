@@ -4,8 +4,9 @@ import { getSections, hasRealSections, prettyFractions } from './recipe-model.js
 
 // No Firebase Auth involved at all on purpose — this page exists so a
 // printed recipe card's QR code works for a total stranger, no login and no
-// guest code. The Firestore rule (`resource.data.public == true`) is the
-// real gate; this file just renders whatever it's allowed to read.
+// guest code. The Firestore rule (publicUntil > now) is the real gate; this
+// file just renders whatever it's allowed to read. Once publicUntil passes,
+// the exact same link starts failing on its own — no cleanup step needed.
 const recipeId = new URLSearchParams(window.location.search).get('id');
 
 function showError(message) {

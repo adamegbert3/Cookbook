@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Recipe Approval Queue | Admin</title>
-    <link rel="stylesheet" href="../styles/recipes.css">
-    <link rel="stylesheet" href="../styles/admin.css">
+    <title>Public Cards | Admin</title>
+    <link rel="stylesheet" href="../styles/recipes.css?v=2">
+    <link rel="stylesheet" href="../styles/admin.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
@@ -26,9 +26,21 @@
 
 <div class="admin-container">
     <a href="../admin.html" class="admin-back-link">← Admin Home</a>
-    <h1 style="color: #5b21b6;">🛡️ Recipe Approval Queue</h1>
-    <div id="loading" style="margin-top: 15px; color: #666; font-style: italic;">Checking for new recipes...</div>
-    <div id="pending-list" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px;"></div>
+    <h1 style="color: #0e7490;">🌐 Public Cards</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        Any recipe with a QR/potluck card is public for 48 hours by default, then the link stops
+        working on its own — no cleanup needed. Requests for more time land here.
+    </p>
+
+    <div style="margin-top: 20px;">
+        <h2 style="font-size: 1.1rem; margin: 0 0 8px 0;">⏳ Pending Extension Requests</h2>
+        <div id="card-requests-list"><p style="color:#9ca3af; font-size:13px;">Loading...</p></div>
+    </div>
+
+    <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border);">
+        <h2 style="font-size: 1.1rem; margin: 0 0 8px 0;">Currently Public Recipes</h2>
+        <div id="public-recipes-list"><p style="color:#9ca3af; font-size:13px;">Loading...</p></div>
+    </div>
 </div>
 
 <script type="module" src="../scripts/dashboard.js?v=15"></script>
