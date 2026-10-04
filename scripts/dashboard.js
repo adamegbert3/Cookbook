@@ -11,6 +11,9 @@ import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
 import qrcode from './vendor/qrcode.mjs';
 
+// Admin pages live one folder down, so root-page links need a "../" prefix there.
+const SITE_ROOT = location.pathname.includes('/admin/') ? '../' : '';
+
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
 // missing or corrupted. Keep in sync with firestore.rules and the
@@ -182,7 +185,7 @@ function buildRecipeRowHtml(r) {
                 👀 ${viewCount} views
             </div>
             <div class="rmc-actions">
-                <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
+                <a href="${SITE_ROOT}edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
                 <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
                 <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️ Delete</button>
                 <button onclick="generateRecipeCard('${r.id}')" class="btn-action" style="background:#fef3c7; color:#92400e;" title="${isStillPublic(r) ? 'Already shareable — print another card' : 'Make this recipe public and print a QR card'}">📇 ${isStillPublic(r) ? 'Card (Public)' : 'Card'}</button>
@@ -1600,7 +1603,7 @@ window.loadSuggestions = async function() {
                         <strong>Proposed ingredients:</strong> ${escapeAttr(ingPreview)}${more}
                     </div>
                     <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                        <a href="recipe.html?id=${encodeURIComponent(s.recipeId)}" target="_blank" class="btn-action btn-toggle" style="text-decoration:none;">👀 View current</a>
+                        <a href="${SITE_ROOT}recipe.html?id=${encodeURIComponent(s.recipeId)}" target="_blank" class="btn-action btn-toggle" style="text-decoration:none;">👀 View current</a>
                         <button onclick="applySuggestion('${s.id}')" class="btn-action" style="background:#16a34a; color:white; font-weight:bold;">✅ Apply to shared recipe</button>
                         <button onclick="dismissSuggestion('${s.id}')" class="btn-action btn-delete">✖️ Dismiss</button>
                     </div>
@@ -2958,7 +2961,7 @@ window.loadReportedIssues = async function() {
                 ? 'background:#fffbeb; border-left:4px solid #f59e0b;'
                 : '';
             const actionHtml = isReviewRequest
-                ? `<a href="review.html" class="btn-action" style="background:#f59e0b; color:white; font-weight:bold; text-decoration:none; margin-right:6px;">📋 Review</a>
+                ? `<a href="${SITE_ROOT}review.html" class="btn-action" style="background:#f59e0b; color:white; font-weight:bold; text-decoration:none; margin-right:6px;">📋 Review</a>
                    <button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Done</button>`
                 : `<button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Resolve</button>`;
 
@@ -2967,7 +2970,7 @@ window.loadReportedIssues = async function() {
                     <td style="padding: 10px; color: var(--primary);">${dateStr}</td>
                     <td style="padding: 10px; font-weight: bold; color: var(--accent-teal);">${reporter}</td>
                     <td style="padding: 10px;">
-                        <a href="recipe.html?id=${recipeId}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">${recipeName}</a>
+                        <a href="${SITE_ROOT}recipe.html?id=${recipeId}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">${recipeName}</a>
                     </td>
                     <td style="padding: 10px; color: var(--primary);">${issue}</td>
                     <td style="padding: 10px; white-space: nowrap;">${actionHtml}</td>

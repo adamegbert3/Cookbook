@@ -110,18 +110,28 @@ function formatQuantity(value) {
     return String(wholePart);
 }
 
+// Old-style multi-part lines carry a label in front of the amount ("Filling:
+// 2 cups jam", "- Frosting: 1 tsp vanilla"). Peel that off, scale what's
+// left, and put the label back exactly as written.
+function splitIngredientLabel(line) {
+    const m = line.match(/^(\s*(?:[-*•]\s*)?(?:[A-Za-z][A-Za-z &'’()\-]*:\s*)?)/);
+    const prefix = m ? m[1] : '';
+    return { prefix, body: line.slice(prefix.length) };
+}
+
 function scaleIngredientLine(line, factor) {
     if (factor === 1 || typeof line !== 'string') return line;
 
-    const parsed = parseLeadingQuantity(line);
+    const { prefix, body } = splitIngredientLabel(line);
+    const parsed = parseLeadingQuantity(body);
     if (!parsed) return line; // No leading quantity (e.g. "Salt to taste") — leave untouched
 
-    const rest = line.slice(parsed.raw.length);
+    const rest = body.slice(parsed.raw.length);
 
     if (parsed.isRange) {
-        return `${formatQuantity(parsed.value[0] * factor)}-${formatQuantity(parsed.value[1] * factor)}${rest}`;
+        return `${prefix}${formatQuantity(parsed.value[0] * factor)}-${formatQuantity(parsed.value[1] * factor)}${rest}`;
     }
-    return `${formatQuantity(parsed.value * factor)}${rest}`;
+    return `${prefix}${formatQuantity(parsed.value * factor)}${rest}`;
 }
 
 // ==========================================
