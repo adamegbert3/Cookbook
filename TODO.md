@@ -11,14 +11,16 @@ Running list — add to it anytime, I'll check it each session. Move items to
 - [ ] Recipe page: show "cooked X times, by [names]" on each recipe (fun/social, not just admin-only stats) ONLY FOR ADMINS.
 - [ ] Admin Activity page: "unidentified cooks" in Family Dishes Served are currently just missing/dropped. Don't lose the record of what was made — group unmatched cook records under an "Anonymous" bucket at the bottom of the list instead of hiding them.
 - [ ] Guest mode: when a guest uses "Share this Recipe," offer the public `share.html` QR-card link instead of the normal internal recipe link (which needs login).
-- [ ] Settings: customizable widget placement — choose whether Download All Recipes Offline and Test Mode show on the homepage or the profile page (per-user preference). (Weekly Menu no longer applies here — it got its own page instead, see Done below.)
 - [ ] Shopping list redesign: multiple named lists (grocery, storage, etc.) in an Apple-Reminders-style swipeable/columned view. Biggest item — needs its own scoping pass before starting.
 
 ## Done (needs your test / not yet merged)
 - [x] Admin Comments Dashboard — see every comment across all recipes in one place (`admin/comments.html`).
 - [x] "Pick up where you left off" now actually tracks your last 5 viewed recipes and collapses to nothing when empty, instead of being a big static empty box.
 - [x] Homepage declutter — search is now a live, non-blocking bar docked under the header instead of a full-screen overlay, and browse-only widgets (announcements, tags stay visible, the add/swipe/offline row, Testing Kitchen, Test Mode, Download Offline, Weekly Menu, recently-viewed) hide themselves while a search term is active.
-- [x] Bottom navigation bar (mobile-only, house/menu/+/profile) — added to homepage, recipe, profile, submit, swipe, offline-recipes, shopping-list, leaderboard, settings, suggestions, weekly-menu, and favorites pages.
+- [x] Settings: choose homepage or profile page for "Download All for Offline" (and Test Mode, admin only).
+- [x] Fixed: Edit recipe 404 from the master recipe list on the live site (admin pages were using a relative link).
+- [x] Fixed: ingredient scaling skips a "Label:" prefix, so "Filling: 2 cups jam" scales. Affected recipes in the Aug 18 backup are listed in the chat, not in this file.
+- [x] Bottom navigation bar (mobile-only, house/search/+/menu/profile) — added to homepage, recipe, profile, submit, swipe, offline-recipes, shopping-list, leaderboard, settings, suggestions, weekly-menu, and favorites pages.
 - [x] Weekly Menu and Favorite Recipes moved off the homepage/profile onto their own dedicated pages (`weekly-menu.html`, `favorites.html`) — the Weekly Menu widget alone was a full screen on mobile. The bottom nav's Menu icon now pops a short list (Weekly Menu / continue your last recipe / Favorites) instead of a 4th full page.
 
 ## Done (merged to main)
