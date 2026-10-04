@@ -97,6 +97,32 @@
                 </select>
             </div>
 
+            <div class="setting-row">
+                <label>
+                    📴 "Download All for Offline" button
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Show it on the homepage or on your profile page.
+                    </div>
+                </label>
+                <select id="offlinePlacementSelect">
+                    <option value="homepage">Homepage</option>
+                    <option value="profile">Profile page</option>
+                </select>
+            </div>
+
+            <div class="setting-row" id="testModePlacementRow" style="display:none;">
+                <label>
+                    🧪 Test Mode toggle
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Show it on the homepage or on your profile page.
+                    </div>
+                </label>
+                <select id="testModePlacementSelect">
+                    <option value="homepage">Homepage</option>
+                    <option value="profile">Profile page</option>
+                </select>
+            </div>
+
             <button id="save-btn" class="btn-dark" style="width:100%; margin-top:20px; text-align:center;">
                 💾 Save Changes
             </button>
@@ -176,7 +202,7 @@
         async function initSettings() {
             try {
                 const { auth } = await import('./scripts/firebase-config.js');
-                const { saveUserSettings, resolveFontSizePx } = await import('./scripts/main.js');
+                const { saveUserSettings, resolveFontSizePx, canUseTestMode } = await import('./scripts/main.js');
                 const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
 
                 console.log("✅ [SETTINGS] Imports successful!");
@@ -215,6 +241,12 @@
 
                         if(document.getElementById('familyFilterSelect'))
                             document.getElementById('familyFilterSelect').value = settings.familyFilter || 'all';
+
+                        const placement = settings.widgetPlacement || {};
+                        document.getElementById('offlinePlacementSelect').value = placement.offlineDownload || 'homepage';
+                        document.getElementById('testModePlacementSelect').value = placement.testMode || 'homepage';
+                        if (canUseTestMode(user))
+                            document.getElementById('testModePlacementRow').style.display = '';
                     }
                 });
 
@@ -228,7 +260,11 @@
                             theme: document.getElementById('darkModeToggle').checked ? 'dark' : 'light',
                             fontSize: currentFontPx,
                             fontStyle: document.getElementById('fontStyleSelect').value,
-                            familyFilter: document.getElementById('familyFilterSelect').value
+                            familyFilter: document.getElementById('familyFilterSelect').value,
+                            widgetPlacement: {
+                                offlineDownload: document.getElementById('offlinePlacementSelect').value,
+                                testMode: document.getElementById('testModePlacementSelect').value
+                            }
                         };
 
                         const msg = document.getElementById('saveMsg');
