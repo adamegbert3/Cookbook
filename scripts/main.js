@@ -707,17 +707,23 @@ function buildRecipeListRowHtml(item) {
     let recTags = item.t || item.tags || [];
     if (!Array.isArray(recTags)) recTags = [String(recTags)];
     const cat = recTags.find(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite") || item.c || "Misc";
+    const colorClass = getCategoryClass(cat);
 
     const isFav = userFavorites.includes(recId);
     const heartIcon = isFav ? "❤️" : "🤍";
     const dimStyle = isHidden ? "opacity: 0.6;" : "";
 
     return `
-        <div class="recipe-list-row" style="${dimStyle}"
+        <div class="recipe-list-row ${colorClass}" style="${dimStyle}"
              data-recipe-id="${escapeHtml(recId)}" data-recipe-name="${escapeHtml(recName)}">
             <button class="card-heart list-row-heart" data-heart-id="${escapeHtml(recId)}">${heartIcon}</button>
-            <span class="list-row-name">${escapeHtml(recName)}</span>
-            <span class="list-row-meta">${escapeHtml(recAuth)} · ${escapeHtml(cat)}</span>
+            <div class="list-row-text">
+                <div class="list-row-title">
+                    <span class="list-row-name">${escapeHtml(recName)}</span>
+                    <span class="list-row-author"> - ${escapeHtml(recAuth)}</span>
+                </div>
+                <span class="list-row-cat">${escapeHtml(cat)}</span>
+            </div>
             ${isHidden ? `<span title="Hidden from public">👁️</span>` : ""}
         </div>`;
 }
