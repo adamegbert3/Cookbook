@@ -338,7 +338,18 @@ main.main-wide { max-width: 1600px; }
 .folders button.cat-teal:not([style]) { --tag-soft: #ccfbf1; --tag-ink: #0f766e; --tag-border: #5eead4; }
 .folders button.cat-green:not([style]) { --tag-soft: #d1fae5; --tag-ink: #047857; --tag-border: #6ee7b7; }
 .folders button.cat-purple:not([style]) { --tag-soft: #ede9fe; --tag-ink: #6d28d9; --tag-border: #c4b5fd; }
-:root[data-theme="dark"] .folders button[class*="cat-"]:not([style]) { background-color: rgba(255,255,255,0.08); color: #e2e8f0; border-color: rgba(255,255,255,0.2); }
+/* Dark theme: keep each category's hue as a tint, with lighter text */
+:root[data-theme="dark"] .folders button.cat-blue:not([style]) { background-color: rgba(59,130,246,0.22); color: #bfdbfe; border-color: #1d4ed8; }
+:root[data-theme="dark"] .folders button.cat-cyan:not([style]) { background-color: rgba(6,182,212,0.22); color: #a5f3fc; border-color: #0e7490; }
+:root[data-theme="dark"] .folders button.cat-brown:not([style]) { background-color: rgba(180,83,9,0.25); color: #fcd9b6; border-color: #78350f; }
+:root[data-theme="dark"] .folders button.cat-orange:not([style]) { background-color: rgba(249,115,22,0.22); color: #fed7aa; border-color: #c2410c; }
+:root[data-theme="dark"] .folders button.cat-yellow:not([style]) { background-color: rgba(234,179,8,0.22); color: #fef08a; border-color: #a16207; }
+:root[data-theme="dark"] .folders button.cat-slate:not([style]) { background-color: rgba(148,163,184,0.2); color: #cbd5e1; border-color: #475569; }
+:root[data-theme="dark"] .folders button.cat-red:not([style]) { background-color: rgba(239,68,68,0.22); color: #fecaca; border-color: #b91c1c; }
+:root[data-theme="dark"] .folders button.cat-gray:not([style]) { background-color: rgba(156,163,175,0.2); color: #e2e8f0; border-color: #475569; }
+:root[data-theme="dark"] .folders button.cat-teal:not([style]) { background-color: rgba(20,184,166,0.22); color: #99f6e4; border-color: #0f766e; }
+:root[data-theme="dark"] .folders button.cat-green:not([style]) { background-color: rgba(16,185,129,0.22); color: #a7f3d0; border-color: #047857; }
+:root[data-theme="dark"] .folders button.cat-purple:not([style]) { background-color: rgba(139,92,246,0.22); color: #ddd6fe; border-color: #6d28d9; }
 .folders button:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);
