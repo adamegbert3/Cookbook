@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, redirectToSignInSoon } from './firebase-config.js';
 import { collection, addDoc, doc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { buildRecipeFields, DIETARY_TAGS } from './recipe-model.js';
@@ -49,7 +49,7 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) {
         console.warn("🚫 [SUBMIT] Not logged in — bouncing to login page.");
         alert("Please log in to submit recipes.");
-        window.location.href = "index.html";
+        redirectToSignInSoon();
         return;
     }
 

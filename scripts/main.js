@@ -1,7 +1,7 @@
 // ==========================================
 // 1. IMPORTS & SETUP
 // ==========================================
-import { db, auth } from './firebase-config.js'; 
+import { db, auth, redirectToSignInSoon } from './firebase-config.js'; 
 import { 
     collection, getDocs, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, 
     serverTimestamp, arrayUnion, arrayRemove, query, orderBy, limit, onSnapshot 
@@ -336,7 +336,7 @@ onAuthStateChanged(auth, async (user) => {
         ];
         
         if (privatePages.includes(currentPage) || document.getElementById('chefNotes')) {
-            window.location.href = "index.html"; 
+            redirectToSignInSoon(); 
             return;
         }
 

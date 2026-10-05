@@ -5,7 +5,7 @@
 // across every recipe — reviewed or not — to check status while flipping
 // through a physical cookbook.
 // ==========================================
-import { db, auth } from './firebase-config.js';
+import { db, auth, redirectToSignInSoon } from './firebase-config.js';
 import {
     collection, getDocs, doc, getDoc, updateDoc, addDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
@@ -58,7 +58,7 @@ onAuthStateChanged(auth, async (user) => {
     } else {
         console.warn("🚫 [REVIEW] Not an admin — redirecting.");
         alert("Unauthorized.");
-        window.location.href = "index.html";
+        redirectToSignInSoon();
     }
 });
 

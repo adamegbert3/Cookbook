@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { initializeFirestore, doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -14,6 +14,58 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// ==========================================
+// SIGN-IN SESSION
+// Signed-in sessions end after a stretch with no activity (8 hours), so a
+// shared or forgotten device doesn't stay logged in for days. Activity is
+// recorded in localStorage as the person clicks, types, or scrolls.
+// ==========================================
+const IDLE_LIMIT_MS = 8 * 60 * 60 * 1000;
+const LAST_ACTIVE_KEY = 'lastActiveAt';
+let lastActivityWrite = 0;
+let signedOutRedirectTimer = null;
+
+function recordActivity(force = false) {
+    const now = Date.now();
+    if (!force && now - lastActivityWrite < 60000) return;
+    lastActivityWrite = now;
+    try { localStorage.setItem(LAST_ACTIVE_KEY, String(now)); } catch (e) {}
+}
+
+function enforceIdleLimit() {
+    if (!auth.currentUser) return;
+    const last = Number(localStorage.getItem(LAST_ACTIVE_KEY) || 0);
+    if (last && Date.now() - last > IDLE_LIMIT_MS) {
+        localStorage.removeItem(LAST_ACTIVE_KEY);
+        signOut(auth);
+    }
+}
+
+['pointerdown', 'keydown', 'touchstart', 'scroll'].forEach(evt =>
+    document.addEventListener(evt, () => recordActivity(), { passive: true }));
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') enforceIdleLimit();
+});
+setInterval(enforceIdleLimit, 60000);
+
+onAuthStateChanged(auth, (user) => {
+    if (!user) return;
+    clearTimeout(signedOutRedirectTimer);
+    if (!localStorage.getItem(LAST_ACTIVE_KEY)) recordActivity(true);
+    enforceIdleLimit();
+});
+
+// Pages call this instead of redirecting straight away. Firebase can report
+// "no user" for a moment while a saved session is still loading (that's what
+// bounced admin pages back to sign-in), so only redirect if it's still empty
+// after a short wait.
+export function redirectToSignInSoon(page = "index.html") {
+    clearTimeout(signedOutRedirectTimer);
+    signedOutRedirectTimer = setTimeout(() => {
+        if (!auth.currentUser) window.location.href = page;
+    }, 2500);
+}
 
 // ==========================================
 // FIRESTORE TRANSPORT

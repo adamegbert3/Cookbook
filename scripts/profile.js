@@ -1,7 +1,7 @@
 // ==========================================
 // PROFILE PAGE LOGIC
 // ==========================================
-import { db, auth } from './firebase-config.js'; 
+import { db, auth, redirectToSignInSoon } from './firebase-config.js'; 
 import { 
     doc, getDoc, collection, getDocs 
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
@@ -48,7 +48,7 @@ onAuthStateChanged(auth, async (user) => {
         // 2. Load Favorites
         loadUserFavorites(user);
     } else {
-        window.location.href = "index.html";
+        redirectToSignInSoon();
     }
 });
 

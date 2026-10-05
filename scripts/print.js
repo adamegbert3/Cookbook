@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, redirectToSignInSoon } from './firebase-config.js';
 import { doc, getDoc, getDocs, collection, query, where, documentId } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { getSections, hasRealSections, prettyFractions } from './recipe-model.js';
@@ -7,7 +7,7 @@ let indexedRecipes = [];
 
 onAuthStateChanged(auth, (user) => {
     if (!user) {
-        window.location.href = "index.html";
+        redirectToSignInSoon();
         return;
     }
     loadPickList();
