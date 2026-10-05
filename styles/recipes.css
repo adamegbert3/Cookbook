@@ -169,16 +169,46 @@ main.main-wide { max-width: 1600px; }
 .recipe-card h2 { font-size: 1.6rem; margin: 15px 0 5px 0; } 
 .recipe-author { font-family: var(--font-main); font-size: 0.75rem; color: #64748b; margin-bottom: 10px; }
 
-.tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
+.tag-container { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 12px; }
 .tag-pill {
-    background: var(--bg-body); color: var(--primary); 
-    border: 1px solid var(--border);
-    font-size: 0.65rem;
-    padding: 2px 6px; border-radius: 4px; font-weight: 600; font-family: var(--font-main);
+    font-size: 0.7rem; font-weight: 700; font-family: var(--font-main);
+    padding: 3px 10px; border-radius: 12px; line-height: 1.4;
+    background: var(--tag-soft, #f1f5f9); color: var(--tag-ink, #334155);
+    border: 1px solid var(--tag-border, #cbd5e1);
 }
+/* Each tag takes its card's category hue, like the Egbert/Wheeler badges */
+.recipe-card.border-red .tag-pill { --tag-soft: #fee2e2; --tag-ink: #b91c1c; --tag-border: #fca5a5; }
+.recipe-card.border-yellow .tag-pill { --tag-soft: #fef9c3; --tag-ink: #854d0e; --tag-border: #fde047; }
+.recipe-card.border-blue .tag-pill { --tag-soft: #dbeafe; --tag-ink: #1d4ed8; --tag-border: #93c5fd; }
+.recipe-card.border-orange .tag-pill { --tag-soft: #ffedd5; --tag-ink: #c2410c; --tag-border: #fdba74; }
+.recipe-card.border-brown .tag-pill { --tag-soft: #f5e6d3; --tag-ink: #78350f; --tag-border: #d6a77a; }
+.recipe-card.border-purple .tag-pill { --tag-soft: #ede9fe; --tag-ink: #6d28d9; --tag-border: #c4b5fd; }
+.recipe-card.border-green .tag-pill { --tag-soft: #d1fae5; --tag-ink: #047857; --tag-border: #6ee7b7; }
+.recipe-card.border-teal .tag-pill { --tag-soft: #ccfbf1; --tag-ink: #0f766e; --tag-border: #5eead4; }
+.recipe-card.border-slate .tag-pill { --tag-soft: #e2e8f0; --tag-ink: #334155; --tag-border: #94a3b8; }
+.recipe-card.border-cyan .tag-pill { --tag-soft: #cffafe; --tag-ink: #0e7490; --tag-border: #67e8f9; }
+.recipe-card.border-gray .tag-pill { --tag-soft: #f1f5f9; --tag-ink: #475569; --tag-border: #cbd5e1; }
+/* Dark theme: deeper tints with lighter text so the pills stay readable */
+:root[data-theme="dark"] .tag-pill { background-color: rgba(255,255,255,0.08); color: #e2e8f0; border-color: rgba(255,255,255,0.18); background-image: linear-gradient(var(--tag-tint, transparent), var(--tag-tint, transparent)); }
+:root[data-theme="dark"] .recipe-card.border-red .tag-pill { --tag-tint: rgba(239,68,68,0.22); color: #fecaca; border-color: #b91c1c; }
+:root[data-theme="dark"] .recipe-card.border-yellow .tag-pill { --tag-tint: rgba(234,179,8,0.22); color: #fef08a; border-color: #a16207; }
+:root[data-theme="dark"] .recipe-card.border-blue .tag-pill { --tag-tint: rgba(59,130,246,0.22); color: #bfdbfe; border-color: #1d4ed8; }
+:root[data-theme="dark"] .recipe-card.border-orange .tag-pill { --tag-tint: rgba(249,115,22,0.22); color: #fed7aa; border-color: #c2410c; }
+:root[data-theme="dark"] .recipe-card.border-brown .tag-pill { --tag-tint: rgba(180,83,9,0.25); color: #fcd9b6; border-color: #78350f; }
+:root[data-theme="dark"] .recipe-card.border-purple .tag-pill { --tag-tint: rgba(139,92,246,0.22); color: #ddd6fe; border-color: #6d28d9; }
+:root[data-theme="dark"] .recipe-card.border-green .tag-pill { --tag-tint: rgba(16,185,129,0.22); color: #a7f3d0; border-color: #047857; }
+:root[data-theme="dark"] .recipe-card.border-teal .tag-pill { --tag-tint: rgba(20,184,166,0.22); color: #99f6e4; border-color: #0f766e; }
+:root[data-theme="dark"] .recipe-card.border-slate .tag-pill { --tag-tint: rgba(148,163,184,0.2); color: #cbd5e1; border-color: #475569; }
+:root[data-theme="dark"] .recipe-card.border-cyan .tag-pill { --tag-tint: rgba(6,182,212,0.22); color: #a5f3fc; border-color: #0e7490; }
 
 /* Badges & Icons */
 .status-badge { position: absolute; top: 10px; left: 10px; font-size: 0.8rem; }
+/* Hidden recipes stay readable in both themes: a dashed outline and a
+   slightly muted card, instead of washing the whole card out */
+.recipe-card.is-hidden {
+    border-style: dashed; opacity: 0.8;
+}
+.recipe-card.is-hidden .card-content h2 { opacity: 0.85; }
 .card-heart {
     position: absolute; top: 10px; right: 10px;
     background: transparent; border: none; font-size: 1.2rem; cursor: pointer;
@@ -301,19 +331,37 @@ main.main-wide { max-width: 1600px; }
 }
 
 /* Category Background Colors */
-.cat-blue { background-color: #3b82f6; }
-.cat-brown { background-color: #b45309; }
-.cat-orange { background-color: #f97316; }
-.cat-yellow { background-color: #eab308; color: #111827 !important; } /* Dark text for yellow so it's readable */
-.cat-slate { background-color: #475569; }
-.cat-red { background-color: #ef4444; }
-.cat-gray { background-color: #9ca3af; color: #111827 !important; } /* Same reasoning as yellow — too light for white text */
-.cat-teal { background-color: #14b8a6; }
-.cat-green { background-color: #10b981; }
-.cat-purple { background-color: #8b5cf6; }
-.cat-cyan { background-color: #06b6d4; color: #111827 !important; } /* Same reasoning as yellow — too light for white text */
 
 /* Hover & Active States */
+/* Category buttons on the homepage use the same soft pill style as the
+   card tags, in matching hues. Egbert/Wheeler keep their own inline styling. */
+.folders button[class*="cat-"]:not([style]) {
+    background: var(--tag-soft, #f1f5f9); color: var(--tag-ink, #334155);
+    border: 1px solid var(--tag-border, #cbd5e1); font-weight: 700;
+}
+.folders button.cat-blue:not([style]) { --tag-soft: #dbeafe; --tag-ink: #1d4ed8; --tag-border: #93c5fd; }
+.folders button.cat-cyan:not([style]) { --tag-soft: #cffafe; --tag-ink: #0e7490; --tag-border: #67e8f9; }
+.folders button.cat-brown:not([style]) { --tag-soft: #f5e6d3; --tag-ink: #78350f; --tag-border: #d6a77a; }
+.folders button.cat-orange:not([style]) { --tag-soft: #ffedd5; --tag-ink: #c2410c; --tag-border: #fdba74; }
+.folders button.cat-yellow:not([style]) { --tag-soft: #fef9c3; --tag-ink: #854d0e; --tag-border: #fde047; }
+.folders button.cat-slate:not([style]) { --tag-soft: #e2e8f0; --tag-ink: #334155; --tag-border: #94a3b8; }
+.folders button.cat-red:not([style]) { --tag-soft: #fee2e2; --tag-ink: #b91c1c; --tag-border: #fca5a5; }
+.folders button.cat-gray:not([style]) { --tag-soft: #f1f5f9; --tag-ink: #475569; --tag-border: #cbd5e1; }
+.folders button.cat-teal:not([style]) { --tag-soft: #ccfbf1; --tag-ink: #0f766e; --tag-border: #5eead4; }
+.folders button.cat-green:not([style]) { --tag-soft: #d1fae5; --tag-ink: #047857; --tag-border: #6ee7b7; }
+.folders button.cat-purple:not([style]) { --tag-soft: #ede9fe; --tag-ink: #6d28d9; --tag-border: #c4b5fd; }
+/* Dark theme: keep each category's hue as a tint, with lighter text */
+:root[data-theme="dark"] .folders button.cat-blue:not([style]) { background-color: rgba(59,130,246,0.22); color: #bfdbfe; border-color: #1d4ed8; }
+:root[data-theme="dark"] .folders button.cat-cyan:not([style]) { background-color: rgba(6,182,212,0.22); color: #a5f3fc; border-color: #0e7490; }
+:root[data-theme="dark"] .folders button.cat-brown:not([style]) { background-color: rgba(180,83,9,0.25); color: #fcd9b6; border-color: #78350f; }
+:root[data-theme="dark"] .folders button.cat-orange:not([style]) { background-color: rgba(249,115,22,0.22); color: #fed7aa; border-color: #c2410c; }
+:root[data-theme="dark"] .folders button.cat-yellow:not([style]) { background-color: rgba(234,179,8,0.22); color: #fef08a; border-color: #a16207; }
+:root[data-theme="dark"] .folders button.cat-slate:not([style]) { background-color: rgba(148,163,184,0.2); color: #cbd5e1; border-color: #475569; }
+:root[data-theme="dark"] .folders button.cat-red:not([style]) { background-color: rgba(239,68,68,0.22); color: #fecaca; border-color: #b91c1c; }
+:root[data-theme="dark"] .folders button.cat-gray:not([style]) { background-color: rgba(156,163,175,0.2); color: #e2e8f0; border-color: #475569; }
+:root[data-theme="dark"] .folders button.cat-teal:not([style]) { background-color: rgba(20,184,166,0.22); color: #99f6e4; border-color: #0f766e; }
+:root[data-theme="dark"] .folders button.cat-green:not([style]) { background-color: rgba(16,185,129,0.22); color: #a7f3d0; border-color: #047857; }
+:root[data-theme="dark"] .folders button.cat-purple:not([style]) { background-color: rgba(139,92,246,0.22); color: #ddd6fe; border-color: #6d28d9; }
 .folders button:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0,0,0,0.15);

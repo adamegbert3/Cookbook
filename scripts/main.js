@@ -648,7 +648,7 @@ function buildRecipeCardHtml(item) {
     const isWheeler = recTags.includes("Wheeler Favorite");
 
     // --- 🏆 CLEAN EMOJI BADGES (Dashboard Cards) ---
-    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 4px; flex-wrap: wrap;">`;
+    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 12px; flex-wrap: wrap;">`;
     if (isOfflineReady) {
         legacyBadges += `<span style="background: #fef08a; border: 1px solid #eab308; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Available offline on this device">⛺</span>`;
     }
@@ -665,13 +665,13 @@ function buildRecipeCardHtml(item) {
 
     // 🚨 ADMIN VISUALS: Add the eye icon and dim the card
     const eyeIcon = isHidden ? `<div style="position: absolute; top: 10px; right: 40px; font-size: 1.2rem;" title="Hidden from public">👁️</div>` : "";
-    const dimStyle = isHidden ? `opacity: 0.6; background-color: #f8fafc;` : "";
+    const hiddenClass = isHidden ? " is-hidden" : "";
 
     // Recipe id/name travel as data attributes read by a delegated click
     // handler (see setupRecipeCardClicks) rather than being baked into an
     // inline onclick — that's what made quotes in a recipe name fatal.
     return `
-        <div class="recipe-card ${colorClass}" style="${dimStyle}"
+        <div class="recipe-card ${colorClass}${hiddenClass}"
              data-recipe-id="${escapeHtml(recId)}" data-recipe-name="${escapeHtml(recName)}">
             ${eyeIcon}
             <button class="card-heart" data-heart-id="${escapeHtml(recId)}">${heartIcon}</button>

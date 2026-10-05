@@ -167,7 +167,7 @@ function ProfileCardTemplate(id, recipe) {
     const isEgbert = recTags.includes("Egbert Favorite");
     const isWheeler = recTags.includes("Wheeler Favorite");
 
-    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 4px; flex-wrap: wrap;">`;
+    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 12px; flex-wrap: wrap;">`;
     if (recipe.r || recipe.reviewed) {
         legacyBadges += `<span style="background: #d1fae5; border: 1px solid #10b981; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Verified Recipe">✅</span>`;
     }
@@ -191,7 +191,7 @@ function ProfileCardTemplate(id, recipe) {
 
             ${legacyBadges}
 
-            <div class="tag-container" style="margin-top: 10px;">
+            <div class="tag-container" style="margin-top: 12px;">
                 ${recTags
                     .filter(t => t !== "Egbert Favorite" && t !== "Wheeler Favorite")
                     .map(t => `<span class="tag-pill">${escapeHtml(t)}</span>`)
