@@ -728,11 +728,11 @@ function buildRecipeListRowHtml(item) {
                     <span class="list-row-author"> - ${escapeHtml(recAuth)}</span>
                 </div>
                 <div class="list-row-badges">
-                    ${isOfflineReady ? `<span class="lr-badge lr-offline" title="Saved on this device">⛺ Offline</span>` : ""}
-                    ${isVerified ? `<span class="lr-badge lr-verified" title="Verified recipe">✅ Verified</span>` : ""}
-                    <span class="lr-badge lr-family" title="Family">👪 ${escapeHtml(family)}</span>
-                    ${isEgbert ? `<span class="lr-badge lr-egbert" title="Egbert Favorite">⭐ Egbert</span>` : ""}
-                    ${isWheeler ? `<span class="lr-badge lr-wheeler" title="Wheeler Favorite">⭐ Wheeler</span>` : ""}
+                    ${isOfflineReady ? `<span class="lr-badge lr-offline" title="Saved on this device">⛺<span class="lr-label"> Offline</span></span>` : ""}
+                    ${isVerified ? `<span class="lr-badge lr-verified" title="Verified recipe">✅<span class="lr-label"> Verified</span></span>` : ""}
+                    ${family !== "Both" ? `<span class="lr-badge lr-family" title="Family">👪<span class="lr-label"> ${escapeHtml(family)}</span><span class="lr-short"> ${escapeHtml(family.charAt(0))}</span></span>` : ""}
+                    ${isEgbert ? `<span class="lr-badge lr-egbert" title="Egbert Favorite">⭐<span class="lr-label"> Egbert</span></span>` : ""}
+                    ${isWheeler ? `<span class="lr-badge lr-wheeler" title="Wheeler Favorite">⭐<span class="lr-label"> Wheeler</span></span>` : ""}
                     <span class="list-row-cat">${escapeHtml(cat)}</span>
                 </div>
             </div>

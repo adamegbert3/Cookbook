@@ -219,6 +219,13 @@ main.main-wide { max-width: 1600px; }
 .lr-family { background: var(--bg-body); color: var(--primary); border-color: var(--border); }
 .lr-egbert { background: #e0f2fe; color: #0369a1; border-color: #38bdf8; }
 .lr-wheeler { background: #dcfce7; color: #15803d; border-color: #4ade80; }
+/* Phones: icons only for the status badges, to save room */
+.lr-short { display: none; }
+@media (max-width: 768px) {
+    .lr-label { display: none; }
+    .lr-short { display: inline; }
+    .lr-badge { padding: 2px 6px; font-size: 0.8rem; }
+}
 .recipe-list-row.border-red { --cat-color: #ef4444; }
 .recipe-list-row.border-yellow { --cat-color: #eab308; }
 .recipe-list-row.border-blue { --cat-color: #3b82f6; }
