@@ -14,6 +14,8 @@ Running list — add to it anytime, I'll check it each session. Move items to
 - [ ] Shopping list redesign: multiple named lists (grocery, storage, etc.) in an Apple-Reminders-style swipeable/columned view. Biggest item — needs its own scoping pass before starting.
 
 ## Done (needs your test / not yet merged)
+- [x] Offline Recipes page (`offline-downloads.html`, linked from the profile and homepage offline buttons): pick all, favorites only, or specific recipes; see Saved / Not saved / Changed; remove; "Update all changed" re-syncs edited recipes. Views and public-card expiry don't count as changes.
+- [x] Homepage "Show verified recipes only" toggle made smaller and tighter.
 - [x] Admin Comments Dashboard — see every comment across all recipes in one place (`admin/comments.html`).
 - [x] "Pick up where you left off" now actually tracks your last 5 viewed recipes and collapses to nothing when empty, instead of being a big static empty box.
 - [x] Homepage declutter — search is now a live, non-blocking bar docked under the header instead of a full-screen overlay, and browse-only widgets (announcements, tags stay visible, the add/swipe/offline row, Testing Kitchen, Test Mode, Download Offline, Weekly Menu, recently-viewed) hide themselves while a search term is active.

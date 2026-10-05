@@ -533,6 +533,13 @@ input:checked + .slider:before {
     font-family: var(--font-main);
 }
 
+/* Smaller pill for places like the homepage filter row (homepage.html) */
+.toggle-wrapper.compact { gap: 8px; padding: 5px 12px; }
+.toggle-wrapper.compact .switch { width: 40px; height: 22px; }
+.toggle-wrapper.compact .slider:before { height: 16px; width: 16px; left: 3px; bottom: 3px; }
+.toggle-wrapper.compact input:checked + .slider:before { transform: translateX(18px); }
+.toggle-wrapper.compact .toggle-label-text { font-size: 13px; }
+
 /* ==========================================================================
    11. STEP INGREDIENTS (Inline ingredients toggle)
    ========================================================================== */

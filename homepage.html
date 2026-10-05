@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=5">
+    <link rel="stylesheet" href="styles/recipes.css?v=6">
     <script src="scripts/main.js?v=6" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -117,8 +117,8 @@
             <button id="testing-kitchen-btn" onclick="toggleDraftKitchen()" style="display:none; background:#fff7ed; color:#9a3412; border:1px solid #fdba74; font-weight:800; padding:8px 16px; border-radius:20px; cursor:pointer;">🍳 Testing Kitchen</button>
         </div>
 
-        <div style="text-align: center; margin: 15px 0 25px 0; display: flex; justify-content: center;">
-            <label class="toggle-wrapper">
+        <div style="text-align: center; margin: 8px 0 12px 0; display: flex; justify-content: center;">
+            <label class="toggle-wrapper compact">
                 <div class="switch">
                     <input type="checkbox" id="reviewed-toggle" onchange="applyHomepageFilters()">
                     <span class="slider"></span>
@@ -142,6 +142,7 @@
         <div id="offline-download-slot" style="text-align: center; margin-bottom: 30px;">
             <button onclick="downloadAllForOffline(event)" class="pill-btn btn-teal">⛺ Download All Recipes for Offline</button>
             <p id="offline-status-line" style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Do this before you lose signal — recipes you've already opened stay available too.</p>
+            <a href="offline-downloads.html" style="font-size: 13px; color: var(--accent-teal); font-weight: 700; text-decoration: underline;">Choose which recipes to save →</a>
         </div>
 
         <!-- Weekly Menu, Favorites, and "Pick up where you left off" now

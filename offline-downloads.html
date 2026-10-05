@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline Recipes - Cookbook</title>
+    <link rel="stylesheet" href="styles/recipes.css?v=6">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <script>
+        const settings = JSON.parse(localStorage.getItem('userSettings'));
+        if (settings) {
+            const html = document.documentElement;
+            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
+            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
+            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
+            html.style.setProperty('--base-size', fontPx + 'px');
+            html.setAttribute('data-font', settings.fontStyle || 'inter');
+        }
+    </script>
+    <style>
+        .od-controls { max-width: 760px; margin: 0 auto 12px auto; display: flex; flex-direction: column; gap: 10px; }
+        .od-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+        .od-chip { padding: 6px 12px; font-size: 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-card); color: var(--primary); cursor: pointer; font-weight: 600; }
+        .od-chip.active { background: var(--accent-teal); color: white; border-color: var(--accent-teal); }
+        .od-list { max-width: 760px; margin: 0 auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+        .od-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--primary); font-size: 14px; }
+        .od-item:last-child { border-bottom: none; }
+        .od-item input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; }
+        .od-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .od-badge { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 12px; white-space: nowrap; }
+        .od-badge.saved { background: #dcfce7; color: #15803d; }
+        .od-badge.update { background: #fef3c7; color: #92400e; }
+        .od-badge.none { background: var(--bg-body); color: #64748b; border: 1px solid var(--border); }
+        .od-status { max-width: 760px; margin: 0 auto 10px auto; text-align: center; font-size: 13px; color: var(--primary); opacity: 0.8; }
+        .od-search { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; background: var(--bg-card); color: var(--primary); }
+    </style>
+    <link rel="icon" type="image/png" href="images/favicon.png">
+    <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
+    <link rel="manifest" href="offline_features/manifest.json">
+</head>
+<body data-page="offline-downloads">
+    <div class="header-container">
+        <div class="logo-area">
+            <div class="header-title">
+                <h1>📥 Offline Recipes</h1>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="profile.html" class="pill-btn btn-slate">⬅ Back</a>
+        </div>
+    </div>
+
+    <main>
+        <div class="od-status" id="od-summary">Loading…</div>
+
+        <div class="od-controls">
+            <input type="search" id="od-search" class="od-search" placeholder="🔍 Find a recipe…">
+            <div class="od-row" id="od-filters">
+                <button class="od-chip active" data-filter="all">All</button>
+                <button class="od-chip" data-filter="saved">Saved</button>
+                <button class="od-chip" data-filter="none">Not saved</button>
+                <button class="od-chip" data-filter="update">Needs update</button>
+                <button class="od-chip" data-filter="favorites">❤️ Favorites</button>
+            </div>
+            <div class="od-row">
+                <button class="od-chip" id="od-select-visible">Select all shown</button>
+                <button class="od-chip" id="od-select-none">Clear selection</button>
+            </div>
+            <div class="od-row">
+                <button class="pill-btn btn-teal" id="od-download-selected" style="font-size:0.85rem;">⬇️ Download selected</button>
+                <button class="pill-btn btn-slate" id="od-remove-selected" style="font-size:0.85rem;">🗑️ Remove selected</button>
+                <button class="pill-btn btn-slate" id="od-sync-all" style="font-size:0.85rem;">🔄 Update all changed</button>
+            </div>
+        </div>
+
+        <div class="od-list" id="od-list"><p style="padding:14px; text-align:center; color:#94a3b8;">Loading recipes…</p></div>
+    </main>
+
+    <script type="module" src="scripts/offline-downloads.js"></script>
+
+    <nav class="bottom-nav">
+        <a href="homepage.html" class="bottom-nav-item"><span class="bottom-nav-icon">🏠</span><span>Home</span></a>
+        <a href="homepage.html?search=1" onclick="handleBottomNavSearch(event)" class="bottom-nav-item"><span class="bottom-nav-icon">🔍</span><span>Search</span></a>
+        <a href="submit.html" class="bottom-nav-item bottom-nav-add"><span class="bottom-nav-icon">➕</span></a>
+        <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
+        <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon bottom-nav-avatar"></span><span>Profile</span></a>
+    </nav>
+    <script type="module" src="scripts/bottom-nav-menu.js"></script>
+</body>
+</html>
