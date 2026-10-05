@@ -2,6 +2,14 @@ import { db, auth, redirectToSignInSoon } from './firebase-config.js';
 import { collection, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
+// First name and last initial ("Adam Egbert" → "Adam E."), so the board stays
+// compact. Single names and the unnamed placeholder are shown as they are.
+function displayName(name) {
+    const parts = String(name || "").trim().split(/\s+/);
+    if (parts.length < 2 || name === "Name not recorded") return name;
+    return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+}
+
 onAuthStateChanged(auth, (user) => {
     if (!user) {
         redirectToSignInSoon();
@@ -87,7 +95,7 @@ async function loadLeaderboard(viewerUid) {
         list.innerHTML = ranked.map((u, i) => `
             <div class="leaderboard-row${i < 3 ? ' leaderboard-top' : ''}">
                 <div class="leaderboard-rank">${medals[i] || (i + 1)}</div>
-                <div class="leaderboard-name">${u.name}</div>
+                <div class="leaderboard-name">${displayName(u.name)}</div>
                 <div class="leaderboard-count">${u.count} recipe${u.count === 1 ? '' : 's'}</div>
             </div>`).join('');
 
