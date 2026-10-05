@@ -648,7 +648,7 @@ function buildRecipeCardHtml(item) {
     const isWheeler = recTags.includes("Wheeler Favorite");
 
     // --- 🏆 CLEAN EMOJI BADGES (Dashboard Cards) ---
-    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 4px; flex-wrap: wrap;">`;
+    let legacyBadges = `<div style="display: flex; gap: 6px; margin-top: 6px; margin-bottom: 12px; flex-wrap: wrap;">`;
     if (isOfflineReady) {
         legacyBadges += `<span style="background: #fef08a; border: 1px solid #eab308; padding: 2px 6px; border-radius: 12px; font-size: 14px; cursor: help;" title="Available offline on this device">⛺</span>`;
     }
