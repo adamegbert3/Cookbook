@@ -123,6 +123,19 @@
                 </select>
             </div>
 
+            <div class="setting-row">
+                <label>
+                    📅 Weekly Menu
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Show it on your profile page (default) or the homepage.
+                    </div>
+                </label>
+                <select id="weeklyMenuPlacementSelect">
+                    <option value="profile">Profile page</option>
+                    <option value="homepage">Homepage</option>
+                </select>
+            </div>
+
             <button id="save-btn" class="btn-dark" style="width:100%; margin-top:20px; text-align:center;">
                 💾 Save Changes
             </button>
@@ -245,6 +258,7 @@
                         const placement = settings.widgetPlacement || {};
                         document.getElementById('offlinePlacementSelect').value = placement.offlineDownload || 'homepage';
                         document.getElementById('testModePlacementSelect').value = placement.testMode || 'homepage';
+                        document.getElementById('weeklyMenuPlacementSelect').value = placement.weeklyMenu || 'profile';
                         if (canUseTestMode(user))
                             document.getElementById('testModePlacementRow').style.display = '';
                     }
@@ -263,7 +277,8 @@
                             familyFilter: document.getElementById('familyFilterSelect').value,
                             widgetPlacement: {
                                 offlineDownload: document.getElementById('offlinePlacementSelect').value,
-                                testMode: document.getElementById('testModePlacementSelect').value
+                                testMode: document.getElementById('testModePlacementSelect').value,
+                                weeklyMenu: document.getElementById('weeklyMenuPlacementSelect').value
                             }
                         };
 

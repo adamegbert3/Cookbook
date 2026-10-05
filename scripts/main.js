@@ -1054,7 +1054,7 @@ function setSearchModeUI(active) {
     // placement setting) — on restore, re-run that logic instead of
     // blindly clearing style.display back to visible, or a widget that's
     // supposed to live on the other page would reappear here.
-    ['test-mode-slot', 'offline-download-slot'].forEach(id => {
+    ['test-mode-slot', 'offline-download-slot', 'weekly-menu-widget'].forEach(id => {
         const el = document.getElementById(id);
         if (el && active) el.style.display = 'none';
     });
@@ -1505,8 +1505,8 @@ function applyTheme(settings) {
     applyWidgetPlacement(settings);
 }
 
-// Lets each person choose whether Download Offline and Test Mode live on
-// the homepage or the profile page — both pages carry the same widget
+// Lets each person choose whether Download Offline, Test Mode, and the
+// Weekly Menu live on the homepage or the profile page — both pages carry the same widget
 // markup (same ids) and both load this script, so this just hides
 // whichever copy isn't the chosen one for the page it's on. The rule list
 // is declared inline (not as a module-level const) so this function has no
@@ -1520,13 +1520,14 @@ function applyWidgetPlacement(settings) {
     if (page !== 'homepage' && page !== 'profile') return;
     const placement = (settings && settings.widgetPlacement) || {};
     const rules = [
-        { key: 'offlineDownload', id: 'offline-download-slot' },
-        { key: 'testMode', id: 'test-mode-slot' }
+        { key: 'offlineDownload', id: 'offline-download-slot', fallback: 'homepage' },
+        { key: 'testMode', id: 'test-mode-slot', fallback: 'homepage' },
+        { key: 'weeklyMenu', id: 'weekly-menu-widget', fallback: 'profile' }
     ];
     rules.forEach(rule => {
         const el = document.getElementById(rule.id);
         if (!el) return;
-        const wanted = placement[rule.key] || 'homepage';
+        const wanted = placement[rule.key] || rule.fallback;
         el.style.display = (wanted === page) ? '' : 'none';
     });
 }

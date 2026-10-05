@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
     <link rel="stylesheet" href="styles/recipes.css?v=6">
-    <script src="scripts/main.js?v=6" type="module" defer></script>
+    <script src="scripts/main.js?v=7" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
     /* Default: Stack days vertically on mobile (readable!) */
@@ -150,7 +150,87 @@
              the homepage since the Weekly Menu widget alone was a full
              screen on mobile. -->
 
-        <div id="active-search-chip" class="hidden" style="text-align:center; margin-bottom:15px;">
+<div class="widget-card" id="weekly-menu-widget" style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+            <div class="weekly-grid">
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">SUNDAY</div>
+                    <div id="menu-Sun" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">MONDAY</div>
+                    <div id="menu-Mon" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">TUESDAY</div>
+                    <div id="menu-Tue" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">WEDNESDAY</div>
+                    <div id="menu-Wed" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">THURSDAY</div>
+                    <div id="menu-Thu" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">FRIDAY</div>
+                    <div id="menu-Fri" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+
+                <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
+                    <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">SATURDAY</div>
+                    <div id="menu-Sat" style="font-size: 12px; color: var(--primary); margin-top: 5px; min-height: 15px;">-</div>
+                </div>
+            </div>
+
+            <div style="text-align: center; display: flex; justify-content: center; gap: 10px; margin-top: 15px; flex-wrap: wrap;">
+                <a href="shopping-list.html" style="background: var(--accent-teal); color: white; padding: 8px 20px; border-radius: 20px; text-decoration: none; font-size: 14px; font-weight: bold; display: inline-block;">
+                    🛒 View Shopping List
+                </a>
+                <button onclick="openCustomMealModal()" class="pill-btn btn-slate">+ Add Custom Meal</button>
+            </div>
+        </div>
+
+<div id="customMealModal" class="modal hidden">
+        <div style="background: var(--bg-card); padding: 25px; border-radius: 12px; width: 300px; max-width: 90%; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <h3 style="margin-top: 0; color: var(--accent-teal);">+ Custom Meal</h3>
+            <p style="font-size: 12px; color: #94a3b8; margin-top: -8px;">For leftovers, takeout, or anything not in the cookbook.</p>
+
+            <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">What is it?</label>
+            <input type="text" id="customMealName" class="form-input" placeholder="e.g. Leftovers, Pizza Night" style="margin-bottom: 15px;">
+
+            <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">Day:</label>
+            <select id="customMealDay" class="form-input" style="margin-bottom: 15px;">
+                <option value="Sunday">Sunday</option>
+                <option value="Monday">Monday</option>
+                <option value="Tuesday">Tuesday</option>
+                <option value="Wednesday">Wednesday</option>
+                <option value="Thursday">Thursday</option>
+                <option value="Friday">Friday</option>
+                <option value="Saturday">Saturday</option>
+            </select>
+
+            <label style="display: block; text-align: left; font-weight: bold; margin-bottom: 5px;">Meal Type:</label>
+            <select id="customMealType" class="form-input" style="margin-bottom: 20px;">
+                <option value="Dinner">Dinner</option>
+                <option value="Lunch">Lunch</option>
+                <option value="Breakfast">Breakfast</option>
+                <option value="Snack">Snack</option>
+            </select>
+
+            <div style="display: flex; gap: 10px;">
+                <button onclick="closeCustomMealModal()" class="pill-btn btn-slate" style="flex: 1; justify-content: center;">Cancel</button>
+                <button onclick="confirmAddCustomMeal()" class="pill-btn btn-teal" style="flex: 1; justify-content: center;">Save</button>
+            </div>
+        </div>
+    </div>
+
+                <div id="active-search-chip" class="hidden" style="text-align:center; margin-bottom:15px;">
             <button onclick="clearHomepageSearch()" class="pill-btn btn-slate" style="font-size:0.8rem;">
                 🔍 Searching: "<span id="active-search-term"></span>" ✕
             </button>
