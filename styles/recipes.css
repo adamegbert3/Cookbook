@@ -243,6 +243,16 @@ main.main-wide { max-width: 1600px; }
     background: var(--accent-teal) !important; color: white !important;
     border-color: var(--accent-teal) !important;
 }
+.view-segment {
+    display: inline-flex; gap: 2px; padding: 3px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 999px; box-shadow: var(--shadow-sm);
+}
+.view-seg-btn {
+    border: 1px solid transparent; background: transparent; color: var(--primary);
+    padding: 7px 18px; border-radius: 999px; font-size: 0.85rem; font-weight: 700;
+    cursor: pointer; font-family: var(--font-main);
+}
 
 /* Card Colors - Mapped to Categories */
 .border-red { border-left-color: #ef4444 !important; }       /* Main Dishes */
