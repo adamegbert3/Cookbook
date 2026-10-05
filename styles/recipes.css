@@ -115,6 +115,11 @@ main.main-wide { max-width: 1600px; }
 .header-title { min-width: 0; overflow: hidden; }
 .header-title h1 { font-size: 1.8rem; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+/* On phones the bottom nav already has Search and Profile, so the header
+   doesn't repeat them (JS still clicks the search button from the bottom nav). */
+@media (max-width: 768px) {
+    .header-actions .hide-on-mobile-nav { display: none !important; }
+}
 
 .icon-btn {
     background: var(--bg-body); /* Changed to variable */

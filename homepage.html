@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=15">
+    <link rel="stylesheet" href="styles/recipes.css?v=16">
     <script src="scripts/main.js?v=12" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
@@ -52,11 +52,12 @@
                  Five icons crowded "Welcome to the Cookbook!" off the screen on
                  a phone, and neither is a daily-use action. -->
 
-            <button id="header-search-btn" class="icon-btn" aria-label="Search">
+            <button id="header-search-btn" class="icon-btn hide-on-mobile-nav" aria-label="Search">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             </button>
 
-            <a href="profile.html" class="profile-link" aria-label="My Profile">
+            <a href="settings.html" class="icon-btn" aria-label="Settings" title="Settings" style="text-decoration:none; font-size:1.15rem;">⚙️</a>
+            <a href="profile.html" class="profile-link hide-on-mobile-nav" aria-label="My Profile">
                 <img id="header-profile-icon" class="profile-img" alt="Profile">
             </a>
         </div>
