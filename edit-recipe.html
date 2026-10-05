@@ -116,7 +116,7 @@
     </div>
 
     <script type="module">
-        import { db, auth } from './scripts/firebase-config.js';
+        import { db, auth, redirectToSignInSoon } from './scripts/firebase-config.js';
         import { doc, getDoc, updateDoc, serverTimestamp, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
         import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
         import { buildRecipeFields, getEditableText, DIETARY_TAGS, getDietaryTags, getRecipeFamily } from './scripts/recipe-model.js';
@@ -188,7 +188,7 @@
                 }
             } else {
                 alert("Unauthorized.");
-                window.location.href = "index.html";
+                redirectToSignInSoon();
             }
         });
 

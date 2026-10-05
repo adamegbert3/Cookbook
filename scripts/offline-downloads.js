@@ -6,7 +6,7 @@
 // from (OFFLINE_DATA_KEY in scripts/main.js), so anything saved here shows up
 // everywhere else with no other changes. "Saved but changed" is detected by
 // comparing the stored copy with what's in Firestore right now.
-import { db, auth } from './firebase-config.js';
+import { db, auth, redirectToSignInSoon } from './firebase-config.js';
 import { collection, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 
@@ -215,5 +215,5 @@ bindControls();
 
 onAuthStateChanged(auth, (user) => {
     if (user) loadEverything();
-    else window.location.href = "index.html";
+    else redirectToSignInSoon();
 });

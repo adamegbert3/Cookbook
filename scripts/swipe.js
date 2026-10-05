@@ -8,7 +8,7 @@
 // print page use — fast, and keeps this consistent with what's actually
 // visible in the cookbook (hidden + Testing Kitchen drafts excluded, family
 // filter respected).
-import { db, auth } from './firebase-config.js';
+import { db, auth, redirectToSignInSoon } from './firebase-config.js';
 import { doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { getDietaryTags, matchesFamilyFilter, getSections, hasRealSections, prettyFractions } from './recipe-model.js';
@@ -71,7 +71,7 @@ async function ensureFullRecipesLoaded() {
 
 onAuthStateChanged(auth, (user) => {
     if (!user) {
-        window.location.href = "index.html";
+        redirectToSignInSoon();
         return;
     }
     loadRecipes();
