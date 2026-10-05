@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Master Recipe List | Admin</title>
-    <link rel="stylesheet" href="../styles/recipes.css">
-    <link rel="stylesheet" href="../styles/admin.css">
+    <link rel="stylesheet" href="../styles/recipes.css?v=8">
+    <link rel="stylesheet" href="../styles/admin.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../images/favicon.png">
     <link rel="apple-touch-icon" href="../images/apple-touch-icon.png">
@@ -56,6 +56,11 @@
     </div>
 
     <input type="text" id="manager-search" placeholder="🔍 Search recipes..." style="width: 100%; padding: 10px; margin: 15px 0; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;">
+
+    <div style="display:flex; gap:8px; margin-bottom: 10px;">
+        <button id="admin-view-grid-btn" onclick="setAdminRecipeViewMode('grid')" class="pill-btn btn-slate" style="padding:6px 14px; font-size:0.8rem;">🔲 Grid</button>
+        <button id="admin-view-list-btn" onclick="setAdminRecipeViewMode('list')" class="pill-btn btn-slate" style="padding:6px 14px; font-size:0.8rem;">☰ List</button>
+    </div>
 
     <div id="unified-list" style="overflow-x: auto;">
         <p>Loading list...</p>

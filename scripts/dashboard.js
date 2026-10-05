@@ -168,7 +168,7 @@ function buildRecipeRowHtml(r) {
     const isWhl = currentTags.includes("Wheeler Favorite");
 
     return `
-        <div class="recipe-manage-card" data-recipe-id="${r.id}">
+        <div class="recipe-manage-card rmc-row" data-recipe-id="${r.id}">
             ${badge}
             <div class="rmc-top">
                 <span class="rmc-name">${r.name || "Untitled"}</span>
@@ -195,9 +195,64 @@ function buildRecipeRowHtml(r) {
         </div>`;
 }
 
+// Compact single-line alternative to buildRecipeRowHtml, for list view.
+// Every action from the card stays available, just as small icon buttons
+// instead of full-width ones — there's no admin-only action this omits.
+function buildRecipeManageListRowHtml(r) {
+    const isHidden = r.isHidden === true;
+    const isDraft = r.isDraft === true;
+    const isReviewed = r.reviewed === true;
+
+    let statusIcon = "🟢";
+    if (isDraft) statusIcon = "🍳";
+    else if (!isReviewed) statusIcon = "⚠️";
+    else if (isHidden) statusIcon = "❌";
+
+    let cat = "Misc";
+    if (r.tags && Array.isArray(r.tags) && r.tags.length > 0) cat = r.tags[0];
+    else if (r.category) cat = r.category;
+
+    const toggleIcon = isHidden ? "👁️" : "🚫";
+    const currentTags = r.tags || [];
+    const isEgb = currentTags.includes("Egbert Favorite");
+    const isWhl = currentTags.includes("Wheeler Favorite");
+    const safeName = r.name?.replace(/'/g, "\\'");
+
+    return `
+        <div class="recipe-list-row rmc-row" data-recipe-id="${r.id}">
+            <span title="${isDraft ? 'Testing Kitchen' : (!isReviewed ? 'Needs Review' : (isHidden ? 'Hidden' : 'Live'))}">${statusIcon}</span>
+            <span class="list-row-name">${r.name || "Untitled"}</span>
+            <span class="list-row-meta">${r.author || "Unknown"} · ${cat} · ${r.views || 0} views</span>
+            <div class="rmc-row-actions">
+                <a href="edit-recipe.html?id=${r.id}" class="btn-action" title="Edit">✏️</a>
+                <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action" title="${isHidden ? 'Show' : 'Hide'}">${toggleIcon}</button>
+                <button onclick="deleteRecipe('${r.id}', '${safeName}')" class="btn-action" title="Delete">🗑️</button>
+                <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" title="Toggle Egbert Favorite">${isEgb ? '★' : '☆'}Egb</button>
+                <button onclick="quickTag('${r.id}', 'Wheeler Favorite', ${isWhl})" class="btn-action" title="Toggle Wheeler Favorite">${isWhl ? '★' : '☆'}Whl</button>
+            </div>
+        </div>`;
+}
+
 const MASTER_LIST_BATCH_SIZE = 30;
 let masterListQueue = [];
 let masterListObserver = null;
+let adminRecipeViewMode = localStorage.getItem('adminRecipeViewMode') === 'list' ? 'list' : 'grid';
+
+window.setAdminRecipeViewMode = function(mode) {
+    adminRecipeViewMode = mode === 'list' ? 'list' : 'grid';
+    localStorage.setItem('adminRecipeViewMode', adminRecipeViewMode);
+    updateAdminViewToggleButtons();
+    // Cheapest correct way to re-render with the new template — same data,
+    // same filters, just picking the other buildFn inside renderUnifiedManager.
+    applyAdminFilters();
+};
+
+function updateAdminViewToggleButtons() {
+    const gridBtn = document.getElementById('admin-view-grid-btn');
+    const listBtn = document.getElementById('admin-view-list-btn');
+    if (gridBtn) gridBtn.classList.toggle('view-toggle-active', adminRecipeViewMode === 'grid');
+    if (listBtn) listBtn.classList.toggle('view-toggle-active', adminRecipeViewMode === 'list');
+}
 
 // Full rebuild — only for when the actual SET of cards changes (a new
 // filter/search, or the initial load). Toggling a single recipe's status
@@ -207,6 +262,8 @@ let masterListObserver = null;
 function renderUnifiedManager(recipes) {
     const list = document.getElementById('unified-list');
     if(!list) return;
+
+    updateAdminViewToggleButtons();
 
     recipes.sort((a, b) => {
         const aRev = a.reviewed === true;
@@ -224,7 +281,8 @@ function renderUnifiedManager(recipes) {
 
     masterListQueue = recipes.slice();
 
-    list.innerHTML = `<div class="recipe-manage-list" id="unified-cards"></div>`;
+    const listViewClass = adminRecipeViewMode === 'list' ? ' list-view' : '';
+    list.innerHTML = `<div class="recipe-manage-list${listViewClass}" id="unified-cards"></div>`;
 
     renderNextMasterBatch();
 }
@@ -233,8 +291,9 @@ function renderNextMasterBatch() {
     const cardsEl = document.getElementById('unified-cards');
     if (!cardsEl) return;
 
+    const buildFn = adminRecipeViewMode === 'list' ? buildRecipeManageListRowHtml : buildRecipeRowHtml;
     const batch = masterListQueue.splice(0, MASTER_LIST_BATCH_SIZE);
-    cardsEl.insertAdjacentHTML('beforeend', batch.map(buildRecipeRowHtml).join(''));
+    cardsEl.insertAdjacentHTML('beforeend', batch.map(buildFn).join(''));
 
     const oldSentinel = document.getElementById('unified-sentinel');
     if (oldSentinel) oldSentinel.remove();
@@ -243,7 +302,7 @@ function renderNextMasterBatch() {
 
     const sentinel = document.createElement('div');
     sentinel.id = 'unified-sentinel';
-    sentinel.style.cssText = 'grid-column: 1 / -1; height: 1px;';
+    sentinel.style.cssText = adminRecipeViewMode === 'list' ? 'height: 1px;' : 'grid-column: 1 / -1; height: 1px;';
     cardsEl.appendChild(sentinel);
 
     masterListObserver = new IntersectionObserver((entries) => {
@@ -262,9 +321,10 @@ function renderNextMasterBatch() {
 // yet (e.g. it's further down the lazy-load queue) — nothing to update yet.
 function updateSingleRecipeCard(id) {
     const recipe = allRecipeData.find(r => r.id === id);
-    const cardEl = document.querySelector(`.recipe-manage-card[data-recipe-id="${CSS.escape(id)}"]`);
+    const cardEl = document.querySelector(`.rmc-row[data-recipe-id="${CSS.escape(id)}"]`);
     if (!recipe || !cardEl) return;
-    cardEl.outerHTML = buildRecipeRowHtml(recipe);
+    const buildFn = adminRecipeViewMode === 'list' ? buildRecipeManageListRowHtml : buildRecipeRowHtml;
+    cardEl.outerHTML = buildFn(recipe);
 }
 
 // ACTION FUNCTIONS

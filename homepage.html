@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css">
-    <script src="scripts/main.js" type="module" defer></script>
+    <link rel="stylesheet" href="styles/recipes.css?v=8">
+    <script src="scripts/main.js?v=8" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
     /* Default: Stack days vertically on mobile (readable!) */
@@ -62,7 +62,7 @@
         </div>
     </div>
 
-    <main>
+    <main class="main-wide">
         <div class="buzz-container">
             <div class="buzz-header">
                 <h2>📢 Announcements</h2>
@@ -243,8 +243,15 @@
             </button>
         </div>
 
+        <div style="text-align:center; margin: 28px 0 16px 0;">
+            <div class="view-segment">
+                <button id="view-grid-btn" class="view-seg-btn" onclick="setRecipeViewMode('grid')">▦ Grid</button>
+                <button id="view-list-btn" class="view-seg-btn" onclick="setRecipeViewMode('list')">☰ List</button>
+            </div>
+        </div>
+
         <div id="recipes"></div>
-        
+
         <p id="notsigned" class="hidden" style="text-align:center; color:red; display:none;">Please sign in to view recipes.</p>
     </main>
 
