@@ -8,6 +8,7 @@ Running list — add to it anytime, I'll check it each session. Move items to
 - [ ] **Public cards v2** (`public-cards-v2` branch) — self-serve 48h public cards for any member, admin approval for extensions, card size picker, admin "Public Cards" page, and the on-page ingredient-review modal (replacing the old `prompt()` popups). Ready for your test now that Firestore rules are live.
 
 ## Not started
+- [ ] Profile "Member since" shows the Firebase login creation date (Aug 3, 2026), which is wrong. Needs the real join date, then set it as `createdAt` on the user record.
 - [ ] Tokens: earn tokens after cooking a recipe, spend them in the cookbook on things like plants and customizations. Stored in Firebase. Open decisions: how tokens are earned (per cook, per recipe per day, Test Mode?), what they buy and at what price, and whether admins can grant them. Needs decisions before building.
 - [ ] Guest mode: when a guest uses "Share this Recipe," offer the public `share.html` QR-card link instead of the normal internal recipe link (which needs login).
 - [ ] Shopping list redesign: multiple named lists (grocery, storage, etc.) in an Apple-Reminders-style swipeable/columned view. Biggest item — needs its own scoping pass before starting.
