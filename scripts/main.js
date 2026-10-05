@@ -288,7 +288,7 @@ onAuthStateChanged(auth, async (user) => {
 
         // 3. Load User Preferences & Profile in background
         loadUserSettings(user);
-        loadHomepageMenu(user);
+        if (document.getElementById('weekly-menu-widget')) loadHomepageMenu(user);
         syncPendingNotes(user);
         setupTestModeToggle(user);
 
@@ -1108,10 +1108,40 @@ function showTestingKitchenButton() {
     if (btn) btn.style.display = 'inline-block';
 }
 
+// Everything on the homepage EXCEPT the "Show Verified Only" toggle and the
+// category/favorite/dietary tag pills (still useful for narrowing a search)
+// is just scrolling in the way once you're actually searching — so it's all
+// hidden for the duration of a non-empty search term and restored the
+// moment it's cleared.
+function setSearchModeUI(active) {
+    // These three don't have any other logic governing their visibility, so
+    // a plain show/hide is safe.
+    const idsToHide = ['announcements-box', 'testing-kitchen-wrap', 'homepage-action-row'];
+    idsToHide.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = active ? 'none' : '';
+    });
+
+    // These two have their own visibility logic elsewhere (the widget
+    // placement setting) — on restore, re-run that logic instead of
+    // blindly clearing style.display back to visible, or a widget that's
+    // supposed to live on the other page would reappear here.
+    ['test-mode-slot', 'offline-download-slot', 'weekly-menu-widget'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && active) el.style.display = 'none';
+    });
+    if (!active) {
+        const settings = JSON.parse(localStorage.getItem('userSettings') || '{}');
+        applyWidgetPlacement(settings);
+    }
+}
+
 window.applyHomepageFilters = function() {
     const searchInput = document.getElementById('searchbar');
     const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
     const showReviewedOnly = document.getElementById('reviewed-toggle') ? document.getElementById('reviewed-toggle').checked : false;
+
+    setSearchModeUI(!!term);
 
     let filtered = allRecipes;
 
@@ -1205,8 +1235,17 @@ function setupSearch() {
     const input = document.getElementById('searchbar');
 
     if (!openBtn) return;
-    openBtn.onclick = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
+    const openSearch = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
+    openBtn.onclick = openSearch;
     if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
+
+    // The bottom nav's search icon lives on every page, not just the
+    // homepage — from anywhere else it links here with ?search=1 so the
+    // bar opens automatically on arrival instead of landing on a plain
+    // homepage the person then has to go find search on again.
+    if (new URLSearchParams(window.location.search).get('search') === '1') {
+        openSearch();
+    }
 
     // Live filtering as you type (debounced), so results update in real time
     // instead of only after hitting GO.
@@ -1535,6 +1574,34 @@ function applyTheme(settings) {
     }
     html.style.setProperty('--base-size', resolveFontSizePx(settings.fontSize) + 'px');
     html.setAttribute('data-font', settings.fontStyle || 'inter');
+    applyWidgetPlacement(settings);
+}
+
+// Lets each person choose whether Download Offline, Test Mode, and the
+// Weekly Menu live on the homepage or the profile page — both pages carry the same widget
+// markup (same ids) and both load this script, so this just hides
+// whichever copy isn't the chosen one for the page it's on. The rule list
+// is declared inline (not as a module-level const) so this function has no
+// load-order dependency on anything else in the file — it's safe to call
+// from applyTheme() even during the very first, synchronous pass over
+// cached settings at module load. Inline style.display always wins over
+// the .hidden class regardless of which runs first, so this also doesn't
+// need to race setupTestModeToggle().
+function applyWidgetPlacement(settings) {
+    const page = document.body.dataset.page;
+    if (page !== 'homepage' && page !== 'profile') return;
+    const placement = (settings && settings.widgetPlacement) || {};
+    const rules = [
+        { key: 'offlineDownload', id: 'offline-download-slot', fallback: 'homepage' },
+        { key: 'testMode', id: 'test-mode-slot', fallback: 'homepage' },
+        { key: 'weeklyMenu', id: 'weekly-menu-widget', fallback: 'profile' }
+    ];
+    rules.forEach(rule => {
+        const el = document.getElementById(rule.id);
+        if (!el) return;
+        const wanted = placement[rule.key] || rule.fallback;
+        el.style.display = (wanted === page) ? '' : 'none';
+    });
 }
 
 window.quickToggleTheme = async function() {

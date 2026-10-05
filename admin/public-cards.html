@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Password Reset Requests | Admin</title>
+    <title>Public Cards | Admin</title>
     <link rel="stylesheet" href="../styles/recipes.css?v=9">
     <link rel="stylesheet" href="../styles/admin.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -26,13 +26,20 @@
 
 <div class="admin-container">
     <a href="../admin.html" class="admin-back-link">← Admin Home</a>
-    <h1 style="color: #5b21b6;">🔑 Password Reset Requests</h1>
+    <h1 style="color: #0e7490;">🌐 Public Cards</h1>
     <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
-        Nothing is emailed until you approve. <strong>Check with the person directly first</strong> —
-        a text or a call — then approve, and Firebase sends the reset link to their own inbox.
+        Any recipe with a QR/potluck card is public for 48 hours by default, then the link stops
+        working on its own — no cleanup needed. Requests for more time land here.
     </p>
-    <div id="reset-requests-list" style="margin-top: 10px;">
-        <p style="color:#9ca3af; font-size: 13px;">Loading…</p>
+
+    <div style="margin-top: 20px;">
+        <h2 style="font-size: 1.1rem; margin: 0 0 8px 0;">⏳ Pending Extension Requests</h2>
+        <div id="card-requests-list"><p style="color:#9ca3af; font-size:13px;">Loading...</p></div>
+    </div>
+
+    <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid var(--border);">
+        <h2 style="font-size: 1.1rem; margin: 0 0 8px 0;">Currently Public Recipes</h2>
+        <div id="public-recipes-list"><p style="color:#9ca3af; font-size:13px;">Loading...</p></div>
     </div>
 </div>
 

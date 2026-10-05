@@ -107,17 +107,37 @@ service cloud.firestore {
       //      same as always.
       //   2. A guest (anonymous) — sees ONLY the specific recipe IDs on
       //      their code, per guestAllowedRecipeIds() above.
-      //   3. Anyone at all, no login required — ONLY if an admin has
-      //      explicitly flipped `public: true` on this exact recipe (the
-      //      printable QR recipe card feature, admin/recipe-list.html's
-      //      "📇 Card" action). This is the one deliberately-public case in
-      //      this whole file: it's opt-in per recipe, admin-only to set,
-      //      and by design (so a printed card's QR code works for literally
-      //      anyone who scans it, forever, with no code and no account).
+      //   3. Anyone at all, no login required — ONLY while `publicUntil` is
+      //      set AND still in the future (the printable QR recipe card
+      //      feature — the Share modal's "📇 Print Recipe Card" button, or
+      //      admin/recipe-list.html's "📇 Card" action for several at once).
+      //      This is the one deliberately-public case in this whole file.
+      //      Time-boxed rather than a permanent flag on purpose — see the
+      //      `update` rule below for who can set it and for how long.
       allow read: if (isLoggedIn() && !isAnonymous())
                   || (isAnonymous() && recipeId in guestAllowedRecipeIds())
-                  || resource.data.get('public', false) == true;
-      allow create, update, delete: if isAdmin();
+                  || (resource.data.get('publicUntil', null) != null
+                      && resource.data.publicUntil > request.time);
+      allow create, delete: if isAdmin();
+
+      // Admins can change anything, anytime (including setting publicUntil
+      // to whatever they want — that's how an approved extension request
+      // actually gets applied). Anyone else who's a real logged-in member
+      // (not a guest) can ALSO set publicUntil themselves, self-serve, but
+      // ONLY that one field (plus publicRequestedBy, so we know whose card
+      // this is) and ONLY up to 48 hours out — asking for more than that
+      // requires a request in card_extension_requests, approved by an admin
+      // (who then sets publicUntil directly, using their own unrestricted
+      // path below). This cap applies to every member equally, admins
+      // included — an admin's own card still starts at 48h; going over that
+      // requires the same request-and-approve step everyone else uses.
+      allow update: if isAdmin()
+                    || (
+                      isLoggedIn() && !isAnonymous()
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['publicUntil', 'publicRequestedBy'])
+                      && request.resource.data.publicUntil is timestamp
+                      && request.resource.data.publicUntil <= request.time + duration.value(48, 'h')
+                    );
 
       match /comments/{commentId} {
         // Same three-way split as the recipe itself, minus the public/QR
@@ -136,6 +156,17 @@ service cloud.firestore {
         allow read: if isLoggedIn() && !isAnonymous();
         allow create: if isAdmin();
       }
+    }
+
+    // Collection-group companion to the nested /recipes/{id}/comments rule
+    // above. That nested rule alone covers direct reads of one recipe's
+    // comments, but the admin Comments Dashboard uses collectionGroup() to
+    // pull every recipe's comments in one query — Firestore only allows a
+    // collectionGroup query when a rule is also declared with this
+    // {path=**} form, so without this block the query is denied outright
+    // even though the nested rule above would've allowed each doc.
+    match /{path=**}/comments/{commentId} {
+      allow read: if isAdmin();
     }
 
     // --- SUBMISSION QUEUE ---
@@ -249,6 +280,21 @@ service cloud.firestore {
                     && request.resource.data.status == 'pending'
                     && request.resource.data.email is string
                     && request.resource.data.email.size() < 200;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // --- CARD EXTENSION REQUESTS ---
+    // A public recipe card (see /recipes' publicUntil above) always starts
+    // capped at 48 hours, for anyone including an admin. Wanting more time
+    // is a separate, explicit request here, approved by an admin — who then
+    // sets publicUntil directly on the recipe (admins can set it to
+    // anything). Nothing here EXTENDS a card by itself; it's purely a
+    // queue admins read and act on. Its own category, deliberately not
+    // folded into pending_recipes/recipe_reports/etc.
+    match /card_extension_requests/{requestId} {
+      allow create: if isLoggedIn() && !isAnonymous()
+                    && request.resource.data.requestedBy == request.auth.uid
+                    && request.resource.data.status == 'pending';
       allow read, update, delete: if isAdmin();
     }
 

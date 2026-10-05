@@ -409,20 +409,35 @@ textarea.form-input { resize: vertical; min-height: 100px; }
    8. MODALS & SEARCH
    ========================================================================== */
 .hidden { display: none !important; }
-#search-overlay, .modal {
+.modal {
     position: fixed; inset: 0; background: rgba(0, 0, 0, 0.8);
     backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999;
 }
-.modal-content, .search-box-content {
+.modal-content {
     background: var(--bg-card); color: var(--primary);
     padding: 30px; border-radius: 16px; width: 90%; max-width: 400px;
     text-align: center; position: relative; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);
     border: 1px solid var(--border);
 }
-#search-form { display: flex; gap: 10px; margin-top: 20px; }
+
+/* Search is a non-blocking bar docked under the header, not a full-screen
+   modal — so results filtering live in #recipes stay visible underneath as
+   you type instead of being hidden behind a dark overlay you have to close
+   first to see anything. */
+#search-overlay {
+    position: sticky; top: 60px; z-index: 500;
+    background: var(--bg-card); border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm); padding: 12px 15px;
+}
+.search-box-content {
+    max-width: 500px; margin: 0 auto; text-align: left; position: relative;
+}
+.search-box-content h3, .search-box-content p { display: none; } /* redundant once it's an inline bar, not a dialog */
+#search-form { display: flex; gap: 10px; }
 #searchbar { flex: 1; padding: 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 16px; }
 #search-submit { background: var(--accent-teal); color: white; border: none; padding: 0 20px; border-radius: 8px; font-weight: bold; cursor: pointer;}
-#close-search, .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
+#close-search { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--primary); padding: 0 4px; }
+.close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--primary); }
 
 /* Shopping Modal */
 .shopping-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
@@ -598,6 +613,13 @@ input:checked + .slider:before {
     color: var(--primary);
     font-family: var(--font-main);
 }
+
+/* Smaller pill for places like the homepage filter row (homepage.html) */
+.toggle-wrapper.compact { gap: 8px; padding: 5px 12px; }
+.toggle-wrapper.compact .switch { width: 40px; height: 22px; }
+.toggle-wrapper.compact .slider:before { height: 16px; width: 16px; left: 3px; bottom: 3px; }
+.toggle-wrapper.compact input:checked + .slider:before { transform: translateX(18px); }
+.toggle-wrapper.compact .toggle-label-text { font-size: 13px; }
 
 /* ==========================================================================
    11. STEP INGREDIENTS (Inline ingredients toggle)
@@ -968,3 +990,44 @@ input:checked + .slider:before {
     font-size: 0.95rem;
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   BOTTOM NAVIGATION (mobile-app style, phone widths only — desktop already
+   has the header for this)
+   ========================================================================== */
+.bottom-nav { display: none; }
+@media (max-width: 768px) {
+    body:has(.bottom-nav) { padding-bottom: 74px; }
+    .bottom-nav {
+        display: flex;
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 900;
+        background: var(--bg-card); border-top: 1px solid var(--border);
+        padding: 8px 0 calc(8px + env(safe-area-inset-bottom, 0px));
+        box-shadow: 0 -2px 8px rgba(0,0,0,0.08);
+    }
+}
+.bottom-nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    text-decoration: none; color: var(--primary); font-size: 11px; font-weight: 600;
+}
+.bottom-nav-icon { font-size: 22px; line-height: 1; }
+.bottom-nav-add .bottom-nav-icon {
+    background: var(--accent-teal); color: white; width: 42px; height: 42px;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-top: -20px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+}
+
+/* Profile initials circle, filled in by scripts/bottom-nav-menu.js */
+.bottom-nav-avatar {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent-teal); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.5px;
+}
+
+/* Rows inside the bottom nav's "Menu" popup (scripts/bottom-nav-menu.js) */
+.nav-menu-row {
+    display: block; padding: 12px 8px; border-bottom: 1px solid var(--border);
+    color: var(--primary); text-decoration: none; font-weight: 600; font-size: 15px;
+}
+.nav-menu-row:last-of-type { border-bottom: none; }

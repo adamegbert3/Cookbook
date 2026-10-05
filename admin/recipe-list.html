@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Master Recipe List | Admin</title>
-    <link rel="stylesheet" href="../styles/recipes.css?v=8">
+    <link rel="stylesheet" href="../styles/recipes.css?v=9">
     <link rel="stylesheet" href="../styles/admin.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="../images/favicon.png">
@@ -97,6 +97,12 @@
                 got wrong before printing; this list is meant to flag allergens.
             </p>
             <div id="cards-review-body"></div>
+            <label style="display:block; margin-top: 10px; font-size: 13px; font-weight: 600;">Card size</label>
+            <select id="cards-review-size" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ddd; border-radius:6px;">
+                <option value="sticky">Sticky note (3x3in)</option>
+                <option value="index" selected>Index card (4x6in)</option>
+                <option value="full">Full page (7.5x10in)</option>
+            </select>
             <div style="display:flex; gap:8px; margin-top: 10px;">
                 <button onclick="closeCardsReviewModal()" style="flex:1; padding:10px; background:#f3f4f6; border:none; border-radius:6px; cursor:pointer;">Cancel</button>
                 <button onclick="printAllCards()" style="flex:1; padding:10px; background:#a16207; color:white; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">🖨️ Print Card(s)</button>
@@ -109,6 +115,6 @@
      entirely in dashboard.js's printHtmlViaIframe() — no page elements or
      print-specific CSS needed here at all. -->
 
-<script type="module" src="../scripts/dashboard.js?v=14"></script>
+<script type="module" src="../scripts/dashboard.js?v=19"></script>
 </body>
 </html>

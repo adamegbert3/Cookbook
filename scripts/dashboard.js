@@ -1,7 +1,7 @@
 import { db, auth } from './firebase-config.js'; 
-import { 
-    collection, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc, 
-    query, orderBy, limit, where, serverTimestamp, 
+import {
+    collection, collectionGroup, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc,
+    query, orderBy, limit, where, serverTimestamp, Timestamp,
     arrayUnion, arrayRemove, deleteField
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
@@ -10,6 +10,9 @@ import { createHousehold, listHouseholds, getHousehold, assignUserToHousehold } 
 import { parseRecipeFromHtml } from './recipe-import.js';
 import { triggerDriveSyncSilently } from './drive-sync-trigger.js';
 import qrcode from './vendor/qrcode.mjs';
+
+// Admin pages live one folder down, so root-page links need a "../" prefix there.
+const SITE_ROOT = location.pathname.includes('/admin/') ? '../' : '';
 
 // --- CONFIGURATION ---
 // "Built-in" admins — always work even if their users/{uid} doc is ever
@@ -82,6 +85,9 @@ async function loadAdminDashboard() {
     loadAttentionSummary();
     consumeUploadStationHandoff();
     loadGuestCodes();
+    loadCardExtensionRequests();
+    loadPublicRecipesList();
+    loadCommentsDashboard();
 
     const ollamaInput = document.getElementById('ollama-server-url');
     const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
@@ -179,10 +185,10 @@ function buildRecipeRowHtml(r) {
                 👀 ${viewCount} views
             </div>
             <div class="rmc-actions">
-                <a href="edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
+                <a href="${SITE_ROOT}edit-recipe.html?id=${r.id}" class="btn-action btn-edit">✏️ Edit</a>
                 <button onclick="toggleVisibility('${r.id}', ${isHidden})" class="btn-action btn-toggle">${toggleIcon} ${toggleText}</button>
                 <button onclick="deleteRecipe('${r.id}', '${r.name?.replace(/'/g, "\\'")}')" class="btn-action btn-delete">🗑️ Delete</button>
-                <button onclick="generateRecipeCard('${r.id}')" class="btn-action" style="background:#fef3c7; color:#92400e;" title="${r.public ? 'Already shareable — print another card' : 'Make this recipe public and print a QR card'}">📇 ${r.public ? 'Card (Public)' : 'Card'}</button>
+                <button onclick="generateRecipeCard('${r.id}')" class="btn-action" style="background:#fef3c7; color:#92400e;" title="${isStillPublic(r) ? 'Already shareable — print another card' : 'Make this recipe public and print a QR card'}">📇 ${isStillPublic(r) ? 'Card (Public)' : 'Card'}</button>
             </div>
             <div class="rmc-favorites">
                 <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" style="background: ${isEgb ? '#0284c7' : '#f0f9ff'}; color: ${isEgb ? '#ffffff' : '#0369a1'}; border: 1px solid #bae6fd; font-weight: 800;" title="Toggle Egbert Favorite">
@@ -414,7 +420,7 @@ function buildCardsPickerRowHtml(r) {
         <label style="display:flex; align-items:center; gap:8px; padding:6px 4px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; width:100%; box-sizing:border-box;">
             <input type="checkbox" ${checked} onchange="toggleCardsPickerRecipe('${r.id}', this.checked)" style="flex:0 0 auto; width:16px; height:16px; margin:0;">
             <span style="flex:1 1 0%; min-width:0; text-align:left;">${r.name || "Untitled"}</span>
-            ${r.public ? '<span style="flex:0 0 auto; font-size:10px; color:#a16207;">already public</span>' : ''}
+            ${isStillPublic(r) ? '<span style="flex:0 0 auto; font-size:10px; color:#a16207;">already public</span>' : ''}
         </label>`;
 }
 
@@ -496,19 +502,31 @@ window.confirmCardsPickerSelection = function() {
 // Shared by both entry points above: confirms + marks public (batched, one
 // confirm for the whole set) whatever isn't already, then opens one review
 // screen with an editable ingredient-name box per recipe.
+// A card always starts capped at 48 hours, same as the Share modal's
+// self-serve version on recipe.html — including when triggered here by an
+// admin. Wanting longer goes through card_extension_requests either way;
+// see firestore.rules' comment on /recipes for why that cap applies evenly.
+function isStillPublic(r) {
+    const until = r.publicUntil;
+    if (!until) return false;
+    const ms = typeof until.toDate === 'function' ? until.toDate().getTime() : (until.seconds ? until.seconds * 1000 : 0);
+    return ms > Date.now();
+}
+
 async function proceedToCardReview(ids) {
     const recipes = ids.map(id => allRecipeData.find(r => r.id === id)).filter(Boolean);
     if (recipes.length === 0) return;
 
-    const needsPublic = recipes.filter(r => !r.public);
+    const needsPublic = recipes.filter(r => !isStillPublic(r));
     if (needsPublic.length > 0) {
         const subject = needsPublic.length === 1 ? `"${needsPublic[0].name}"` : `${needsPublic.length} recipes`;
-        if (!confirm(`This makes ${subject} permanently viewable by anyone with the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`)) return;
+        if (!confirm(`This makes ${subject} viewable by anyone with the card's link or QR code for the next 48 hours — no login, no guest code needed. Continue?`)) return;
 
+        const until = Timestamp.fromDate(new Date(Date.now() + 48 * 60 * 60 * 1000));
         for (const r of needsPublic) {
             try {
-                await updateDoc(doc(db, "recipes", r.id), { public: true });
-                r.public = true;
+                await updateDoc(doc(db, "recipes", r.id), { publicUntil: until, publicRequestedBy: auth.currentUser.uid });
+                r.publicUntil = until;
                 updateSingleRecipeCard(r.id);
             } catch (e) {
                 console.error(`🔥 [CARD] Could not make "${r.name}" public:`, e);
@@ -546,7 +564,16 @@ window.closeCardsReviewModal = function() {
 // several rounds of narrowing it down. Printing an isolated iframe's own
 // document is a much more broadly reliable pattern for exactly this kind
 // of "print this specific generated content, not the current page" need.
-function printHtmlViaIframe(bodyHtml) {
+// Sticky note / index card / full page — see the matching CARD_SIZES in
+// recipePage.js (kept in sync by hand; that file doesn't load this one).
+const CARD_SIZES = {
+    sticky: { label: 'Sticky note (3x3in)', width: '3in', minHeight: '3in' },
+    index: { label: 'Index card (4x6in)', width: '4in', minHeight: '6in' },
+    full: { label: 'Full page (7.5x10in)', width: '7.5in', minHeight: '10in' }
+};
+
+function printHtmlViaIframe(bodyHtml, size) {
+    const cardSize = size || CARD_SIZES.index;
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
     document.body.appendChild(iframe);
@@ -563,7 +590,7 @@ function printHtmlViaIframe(bodyHtml) {
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0.2in; display: flex; flex-wrap: wrap; gap: 0.3in; justify-content: center; }
     .print-card {
-        flex: 0 0 auto; width: 4in; min-height: 6in; border: 2px dashed #000; border-radius: 12px;
+        flex: 0 0 auto; width: ${cardSize.width}; min-height: ${cardSize.minHeight}; border: 2px dashed #000; border-radius: 12px;
         padding: 0.3in; box-sizing: border-box; text-align: center; font-family: 'Inter', sans-serif;
         color: #000; page-break-inside: avoid;
     }
@@ -624,8 +651,156 @@ window.printAllCards = function() {
 
     if (!cardsHtml) return alert("Add at least one ingredient first.");
 
+    const sizeChoice = document.getElementById('cards-review-size')?.value || 'index';
+    const size = CARD_SIZES[sizeChoice] || CARD_SIZES.index;
     closeCardsReviewModal();
-    printHtmlViaIframe(cardsHtml);
+    printHtmlViaIframe(cardsHtml, size);
+};
+
+// ==========================================
+// PUBLIC CARDS (admin/public-cards.html) — its own category, separate from
+// pending_recipes/reports/etc., per the admin's explicit ask: extension
+// requests aren't a "someone submitted something" item, they're specific to
+// the 48h cap every public card (including the admin's own) starts with.
+// ==========================================
+window.loadCardExtensionRequests = async function() {
+    const listEl = document.getElementById('card-requests-list');
+    if (!listEl) return;
+    try {
+        const snap = await getDocs(query(collection(db, "card_extension_requests"), where("status", "==", "pending")));
+        const requests = [];
+        snap.forEach(d => requests.push({ id: d.id, ...d.data() }));
+
+        if (requests.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>No pending requests.</p>";
+            return;
+        }
+
+        listEl.innerHTML = requests.map(r => `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px; flex-wrap:wrap;">
+                <div>
+                    <div style="font-weight:600;">${r.recipeName || "Untitled"}</div>
+                    <div style="font-size:11px; color:#9ca3af;">Requested by ${r.requestedByName || "someone"}</div>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button onclick="approveCardExtension('${r.id}', '${r.recipeId}')" style="background:#16a34a; color:white; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; font-weight:bold;">Approve (+48h)</button>
+                    <button onclick="denyCardExtension('${r.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Deny</button>
+                </div>
+            </div>`).join('');
+    } catch (e) {
+        console.error("🔥 [PUBLIC CARDS] Could not load requests:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load requests: " + e.message + "</p>";
+    }
+};
+
+window.approveCardExtension = async function(requestId, recipeId) {
+    try {
+        const until = Timestamp.fromDate(new Date(Date.now() + 48 * 60 * 60 * 1000));
+        await updateDoc(doc(db, "recipes", recipeId), { publicUntil: until });
+        await updateDoc(doc(db, "card_extension_requests", requestId), { status: "approved" });
+        loadCardExtensionRequests();
+        loadPublicRecipesList();
+    } catch (e) {
+        alert("Could not approve: " + e.message);
+    }
+};
+
+window.denyCardExtension = async function(requestId) {
+    try {
+        await updateDoc(doc(db, "card_extension_requests", requestId), { status: "denied" });
+        loadCardExtensionRequests();
+    } catch (e) {
+        alert("Could not deny: " + e.message);
+    }
+};
+
+window.loadPublicRecipesList = async function() {
+    const listEl = document.getElementById('public-recipes-list');
+    if (!listEl) return;
+    try {
+        const snap = await getDocs(query(collection(db, "recipes"), where("publicUntil", ">", Timestamp.now())));
+        const recipes = [];
+        snap.forEach(d => recipes.push({ id: d.id, ...d.data() }));
+
+        if (recipes.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>Nothing is public right now.</p>";
+            return;
+        }
+
+        listEl.innerHTML = recipes.map(r => `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #f3f4f6; font-size:13px;">
+                <div>
+                    <div style="font-weight:600;">${r.name || "Untitled"}</div>
+                    <div style="font-size:11px; color:#9ca3af;">Public until ${r.publicUntil.toDate().toLocaleString()}</div>
+                </div>
+                <button onclick="revokeCardNow('${r.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer;">Revoke Now</button>
+            </div>`).join('');
+    } catch (e) {
+        console.error("🔥 [PUBLIC CARDS] Could not load public recipes:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load: " + e.message + "</p>";
+    }
+};
+
+window.revokeCardNow = async function(recipeId) {
+    if (!confirm("Revoke this recipe's public link right now?")) return;
+    try {
+        await updateDoc(doc(db, "recipes", recipeId), { publicUntil: Timestamp.fromDate(new Date(0)) });
+        loadPublicRecipesList();
+    } catch (e) {
+        alert("Could not revoke: " + e.message);
+    }
+};
+
+// ==========================================
+// COMMENTS DASHBOARD (see everything being said, across every recipe)
+// ==========================================
+window.loadCommentsDashboard = async function() {
+    const listEl = document.getElementById('comments-dashboard-list');
+    if (!listEl) return;
+    try {
+        const snap = await getDocs(query(collectionGroup(db, "comments"), orderBy("timestamp", "desc"), limit(100)));
+        const comments = [];
+        snap.forEach(d => comments.push({ id: d.id, recipeId: d.ref.parent.parent.id, ...d.data() }));
+
+        if (comments.length === 0) {
+            listEl.innerHTML = "<p style='color:#9ca3af; font-size:13px;'>No comments yet.</p>";
+            return;
+        }
+
+        // Recipe titles aren't stored on the comment itself, so look each
+        // unique recipe up once and reuse it for every comment on that recipe.
+        const recipeIds = [...new Set(comments.map(c => c.recipeId))];
+        const titles = {};
+        await Promise.all(recipeIds.map(async id => {
+            try {
+                const rSnap = await getDoc(doc(db, "recipes", id));
+                titles[id] = rSnap.exists() ? (rSnap.data().name || "Untitled") : "(deleted recipe)";
+            } catch { titles[id] = "(unknown recipe)"; }
+        }));
+
+        listEl.innerHTML = comments.map(c => `
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid #f3f4f6; font-size:13px;">
+                <div>
+                    <div style="font-weight:600;">${c.author || "Someone"} on <a href="../recipe.html?id=${c.recipeId}" target="_blank" style="color:#0e7490;">${titles[c.recipeId]}</a></div>
+                    <div style="margin-top:2px;">${(c.text || "").replace(/</g, "&lt;")}</div>
+                    <div style="font-size:11px; color:#9ca3af; margin-top:2px;">${c.timestamp ? c.timestamp.toDate().toLocaleString() : ""}</div>
+                </div>
+                <button onclick="deleteCommentFromDashboard('${c.recipeId}', '${c.id}')" style="background:#fee2e2; color:#b91c1c; border:none; padding:5px 10px; border-radius:4px; font-size:11px; cursor:pointer; flex-shrink:0;">Delete</button>
+            </div>`).join('');
+    } catch (e) {
+        console.error("🔥 [COMMENTS DASHBOARD] Could not load comments:", e);
+        listEl.innerHTML = "<p style='color:red; font-size:13px;'>Could not load: " + e.message + "</p>";
+    }
+};
+
+window.deleteCommentFromDashboard = async function(recipeId, commentId) {
+    if (!confirm("Delete this comment?")) return;
+    try {
+        await deleteDoc(doc(db, "recipes", recipeId, "comments", commentId));
+        loadCommentsDashboard();
+    } catch (e) {
+        alert("Could not delete: " + e.message);
+    }
 };
 
 // ==========================================
@@ -1488,7 +1663,7 @@ window.loadSuggestions = async function() {
                         <strong>Proposed ingredients:</strong> ${escapeAttr(ingPreview)}${more}
                     </div>
                     <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
-                        <a href="recipe.html?id=${encodeURIComponent(s.recipeId)}" target="_blank" class="btn-action btn-toggle" style="text-decoration:none;">👀 View current</a>
+                        <a href="${SITE_ROOT}recipe.html?id=${encodeURIComponent(s.recipeId)}" target="_blank" class="btn-action btn-toggle" style="text-decoration:none;">👀 View current</a>
                         <button onclick="applySuggestion('${s.id}')" class="btn-action" style="background:#16a34a; color:white; font-weight:bold;">✅ Apply to shared recipe</button>
                         <button onclick="dismissSuggestion('${s.id}')" class="btn-action btn-delete">✖️ Dismiss</button>
                     </div>
@@ -2846,7 +3021,7 @@ window.loadReportedIssues = async function() {
                 ? 'background:#fffbeb; border-left:4px solid #f59e0b;'
                 : '';
             const actionHtml = isReviewRequest
-                ? `<a href="review.html" class="btn-action" style="background:#f59e0b; color:white; font-weight:bold; text-decoration:none; margin-right:6px;">📋 Review</a>
+                ? `<a href="${SITE_ROOT}review.html" class="btn-action" style="background:#f59e0b; color:white; font-weight:bold; text-decoration:none; margin-right:6px;">📋 Review</a>
                    <button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Done</button>`
                 : `<button onclick="resolveReport('${d.id}')" class="pill-btn btn-teal" style="padding: 5px 10px; font-size: 12px;">✅ Resolve</button>`;
 
@@ -2855,7 +3030,7 @@ window.loadReportedIssues = async function() {
                     <td style="padding: 10px; color: var(--primary);">${dateStr}</td>
                     <td style="padding: 10px; font-weight: bold; color: var(--accent-teal);">${reporter}</td>
                     <td style="padding: 10px;">
-                        <a href="recipe.html?id=${recipeId}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">${recipeName}</a>
+                        <a href="${SITE_ROOT}recipe.html?id=${recipeId}" target="_blank" style="color: var(--primary); font-weight: bold; text-decoration: underline;">${recipeName}</a>
                     </td>
                     <td style="padding: 10px; color: var(--primary);">${issue}</td>
                     <td style="padding: 10px; white-space: nowrap;">${actionHtml}</td>

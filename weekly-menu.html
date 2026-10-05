@@ -3,104 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Profile | Family Cookbook</title>
-    
+    <title>Weekly Menu - Cookbook</title>
     <link rel="stylesheet" href="styles/recipes.css?v=9">
-    <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    
-    <script>
-        const settings = JSON.parse(localStorage.getItem('userSettings'));
-        if (settings) {
-            const html = document.documentElement;
-            if (settings.theme === 'dark') html.setAttribute('data-theme', 'dark');
-            const legacySizeMap = { normal: 16, large: 18, xlarge: 20 };
-            const fontPx = typeof settings.fontSize === 'number' ? settings.fontSize : (legacySizeMap[settings.fontSize] || 16);
-            html.style.setProperty('--base-size', fontPx + 'px');
-            html.setAttribute('data-font', settings.fontStyle || 'inter');
+    <script src="scripts/main.js?v=9" type="module" defer></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
+    <style>
+    /* Default: Stack days vertically on mobile (readable!) */
+    .weekly-grid {
+        display: grid;
+        grid-template-columns: 1fr; /* 1 column (list view) */
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* Tablet: 2 columns */
+    @media (min-width: 480px) {
+        .weekly-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
-    </script>
+    }
+
+    /* Desktop: The full 7-day row */
+    @media (min-width: 1024px) {
+        .weekly-grid {
+            grid-template-columns: repeat(7, 1fr);
+        }
+    }
+</style>
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     <link rel="manifest" href="offline_features/manifest.json">
-    <style>
-        /* Header: wraps to a second row rather than overflowing, and stays
-           a normal-height block instead of the fixed 60px site header. */
-        .profile-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            flex-wrap: wrap;
-            padding: 12px 16px;
-            background: var(--bg-card);
-            border-bottom: 1px solid var(--border);
-            box-shadow: var(--shadow-sm);
-        }
-        .profile-header-actions {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            flex: 1;
-        }
-        .profile-header .pill-btn {
-            text-decoration: none;
-            padding: 7px 14px;
-            font-size: 0.85rem;
-            box-shadow: none;
-        }
-        .profile-logout { background: #ef4444; }
-
-        /* On phones, drop the labels down to icons only so all four fit on
-           one row instead of stacking into a tall, messy block. */
-        @media (max-width: 560px) {
-            .profile-header { padding: 10px 12px; }
-            .profile-header-actions .pill-btn span { display: none; }
-            .profile-header-actions .pill-btn { padding: 7px 12px; font-size: 1rem; }
-            .profile-logout { font-size: 0.8rem !important; }
-        }
-    </style>
-    <style>
-    .weekly-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 15px; }
-    @media (min-width: 480px) { .weekly-grid { grid-template-columns: repeat(2, 1fr); } }
-    @media (min-width: 1024px) { .weekly-grid { grid-template-columns: repeat(7, 1fr); } }
-    </style>
 </head>
-<body data-page="profile">
-
-    <!-- Fixed height + nowrap pills were overflowing the header on narrow
-         screens; this wraps onto a second row instead of running off. -->
-    <div class="profile-header">
-        <a href="homepage.html" class="pill-btn btn-slate profile-header-back">← Back</a>
-        <nav class="profile-header-actions">
-            <a href="leaderboard.html" class="pill-btn btn-slate">🏆 <span>Leaderboard</span></a>
-            <a href="print.html" class="pill-btn btn-slate">🖨️ <span>Print</span></a>
-            <a href="settings.html" class="pill-btn btn-slate">⚙️ <span>Settings</span></a>
-            <button onclick="logout()" class="pill-btn profile-logout">Log Out</button>
-        </nav>
-    </div>
-
-    <div style="max-width: 800px; margin: 30px auto; text-align: center; padding: 0 15px;">
-        
-        <h1 style="margin: 0 0 20px 0; font-family: 'Amatic SC', cursive; font-size: 3.5rem; color: var(--accent-teal);">My Kitchen</h1>
-        
-        <div style="background: var(--bg-card); padding: 40px; border-radius: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);">
-            <img id="profile-avatar" src="" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent-teal); margin-bottom: 15px;">
-            
-            <h2 id="profile-name" style="margin: 0; color: var(--primary); font-size: 2rem;">Loading...</h2>
-            <p id="profile-email" style="color: var(--primary); opacity: 0.7; margin-top: 5px;">...</p>
-            <p id="profile-joined" style="font-size: 12px; color: var(--primary); opacity: 0.5; margin-top: 15px;">Member since...</p>
-            
-            <a id="profile-admin-btn" href="admin.html" class="pill-btn hidden" style="background: #eab308; color: #111827; margin-top: 20px; text-decoration: none; display: none; justify-content: center; max-width: 250px; margin-left: auto; margin-right: auto;">👑 Go to Admin Dashboard</a>
+<body data-page="weekly-menu">
+    <div class="header-container">
+        <div class="logo-area">
+            <div class="header-title">
+                <h1>📅 Weekly Menu</h1>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="homepage.html" class="pill-btn btn-slate">⬅ Back</a>
         </div>
     </div>
 
-    <div style="max-width: 400px; margin: 0 auto 20px auto; text-align: center;">
-        <a href="favorites.html" class="pill-btn btn-teal" style="text-decoration:none;">❤️ My Favorite Recipes →</a>
-        <p style="font-size: 12px; color: #94a3b8; margin-top: 6px;">Now its own page.</p>
-    </div>
-
-<div class="widget-card" id="weekly-menu-widget" style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+    <main>
+        <div class="widget-card" id="weekly-menu-widget" style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
             <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
                 <h3 style="margin: 0; color: var(--accent-teal);">📅 Meal Planner</h3>
             </div>
@@ -148,8 +95,9 @@
                 <button onclick="openCustomMealModal()" class="pill-btn btn-slate">+ Add Custom Meal</button>
             </div>
         </div>
+    </main>
 
-<div id="customMealModal" class="modal hidden">
+    <div id="customMealModal" class="modal hidden">
         <div style="background: var(--bg-card); padding: 25px; border-radius: 12px; width: 300px; max-width: 90%; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             <h3 style="margin-top: 0; color: var(--accent-teal);">+ Custom Meal</h3>
             <p style="font-size: 12px; color: #94a3b8; margin-top: -8px;">For leftovers, takeout, or anything not in the cookbook.</p>
@@ -183,35 +131,6 @@
         </div>
     </div>
 
-        <!-- Same widgets as the homepage; which page shows them is a Settings choice
-         (scripts/main.js applyWidgetPlacement). -->
-    <div style="text-align: center; margin: 0 15px 15px 15px;">
-        <div id="test-mode-slot" class="hidden">
-            <button onclick="toggleTestMode()" class="pill-btn btn-slate js-test-mode-btn" style="font-size:0.8rem;">🧪 Test Mode: OFF</button>
-            <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">While on, opening or cooking recipes won't count toward views or the leaderboard.</p>
-        </div>
-
-        <div id="offline-download-slot" style="margin-top: 15px;">
-            <button onclick="downloadAllForOffline(event)" class="pill-btn btn-teal">⛺ Download All Recipes for Offline</button>
-            <p id="offline-status-line" style="font-size: 11px; color: #94a3b8; margin-top: 6px;">Do this before you lose signal — recipes you've already opened stay available too.</p>
-            <a href="offline-downloads.html" style="font-size: 13px; color: var(--accent-teal); font-weight: 700; text-decoration: underline;">Choose which recipes to save →</a>
-        </div>
-    </div>
-
-    <script type="module" src="scripts/profile.js"></script>
-
-    <script type="module">
-        import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-        const auth = getAuth();
-        window.logout = function() {
-            if(confirm("Log out?")) {
-                signOut(auth).then(() => window.location.href = "index.html");
-            }
-        }
-    </script>
-    <div style="text-align: center; margin-top: 30px;">
-    <a href="terms.html" style="color: #64748b; font-size: 13px; text-decoration: underline;">Terms of Use & Privacy Policy</a>
-</div>
     <nav class="bottom-nav">
         <a href="homepage.html" class="bottom-nav-item"><span class="bottom-nav-icon">🏠</span><span>Home</span></a>
         <a href="homepage.html?search=1" onclick="handleBottomNavSearch(event)" class="bottom-nav-item"><span class="bottom-nav-icon">🔍</span><span>Search</span></a>

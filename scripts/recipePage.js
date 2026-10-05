@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import {
-    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc, updateDoc
+    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe,
@@ -110,18 +110,28 @@ function formatQuantity(value) {
     return String(wholePart);
 }
 
+// Old-style multi-part lines carry a label in front of the amount ("Filling:
+// 2 cups jam", "- Frosting: 1 tsp vanilla"). Peel that off, scale what's
+// left, and put the label back exactly as written.
+function splitIngredientLabel(line) {
+    const m = line.match(/^(\s*(?:[-*•]\s*)?(?:[A-Za-z][A-Za-z &'’()\-]*:\s*)?)/);
+    const prefix = m ? m[1] : '';
+    return { prefix, body: line.slice(prefix.length) };
+}
+
 function scaleIngredientLine(line, factor) {
     if (factor === 1 || typeof line !== 'string') return line;
 
-    const parsed = parseLeadingQuantity(line);
+    const { prefix, body } = splitIngredientLabel(line);
+    const parsed = parseLeadingQuantity(body);
     if (!parsed) return line; // No leading quantity (e.g. "Salt to taste") — leave untouched
 
-    const rest = line.slice(parsed.raw.length);
+    const rest = body.slice(parsed.raw.length);
 
     if (parsed.isRange) {
-        return `${formatQuantity(parsed.value[0] * factor)}-${formatQuantity(parsed.value[1] * factor)}${rest}`;
+        return `${prefix}${formatQuantity(parsed.value[0] * factor)}-${formatQuantity(parsed.value[1] * factor)}${rest}`;
     }
-    return `${formatQuantity(parsed.value * factor)}${rest}`;
+    return `${prefix}${formatQuantity(parsed.value * factor)}${rest}`;
 }
 
 // ==========================================
@@ -322,8 +332,22 @@ function renderCachedRecipe(localData, recipeContainer) {
 // the recipe is unverified, and only asks "viewing or cooking?" afterwards —
 // stacking both modals at once would be a mess.
 function afterRecipeShown(recipe) {
+    recordRecentlyViewed(recipe);
     if (maybeShowUnreviewedWarning(recipe)) return; // it chains into the cook prompt on dismiss
     maybeShowCookPrompt();
+}
+
+// Feeds homepage.html's "Pick up where you left off" box — kept as just an
+// id/name pair in localStorage (no Firestore read needed to show it), most
+// recent first, deduped, capped at 5 so the homepage box stays small.
+function recordRecentlyViewed(recipe) {
+    if (!recipe || !recipe.id) return;
+    try {
+        let list = JSON.parse(localStorage.getItem('recentlyViewedRecipes')) || [];
+        list = list.filter(r => r.id !== recipe.id);
+        list.unshift({ id: recipe.id, name: recipe.name || recipe.n || 'Untitled' });
+        localStorage.setItem('recentlyViewedRecipes', JSON.stringify(list.slice(0, 5)));
+    } catch (e) {}
 }
 
 // Shared tail-end for every offline/cached render path. The cook counter
@@ -1018,8 +1042,6 @@ function renderRecipeHTML(recipe) {
         });
     }, 100);
 
-    localStorage.setItem('lastRecipeSingle', JSON.stringify({ name: (recipe.name || recipe.n), id: currentId }));
-
     // Populate the Kitchen Tools slots (scale/altitude controls + the ingredients-in-steps toggle state)
     const scaleSlot = document.getElementById('kt-scale-slot');
     if (scaleSlot) scaleSlot.innerHTML = scaleSlotHtml;
@@ -1643,18 +1665,66 @@ function stripIngredientToNameForCard(line) {
     return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+// Sticky note / index card / full page — see the matching CARD_SIZES in
+// dashboard.js (kept in sync by hand, same reasoning as the other small
+// duplicated card helpers in this file: dashboard.js isn't loaded here).
+const CARD_SIZES = {
+    sticky: { label: 'Sticky note (3x3in)', width: '3in', minHeight: '3in' },
+    index: { label: 'Index card (4x6in)', width: '4in', minHeight: '6in' },
+    full: { label: 'Full page (7.5x10in)', width: '7.5in', minHeight: '10in' }
+};
+
+function timestampToDate(ts) {
+    if (!ts) return null;
+    if (typeof ts.toDate === 'function') return ts.toDate();
+    if (ts.seconds) return new Date(ts.seconds * 1000);
+    return null;
+}
+
 window.printThisRecipeCard = async function() {
     const recipe = lastRenderedRecipe;
+    const user = auth.currentUser;
     if (!recipe || !recipe.id) return alert("Recipe not loaded yet — try again in a moment.");
+    if (!user || user.isAnonymous) return alert("You need to be logged in as a real member to do this.");
 
-    if (!recipe.public && !confirm(
-        `This makes "${recipe.name}" permanently viewable by anyone with the card's link or QR code — no login, no guest code, forever (until you hide or delete the recipe itself). Continue?`
-    )) return;
+    const currentExpiry = timestampToDate(recipe.publicUntil);
+    const stillPublic = currentExpiry && currentExpiry.getTime() > Date.now();
 
-    if (!recipe.public) {
+    if (stillPublic) {
+        const reprint = confirm(
+            `This recipe is already public until ${currentExpiry.toLocaleString()}.\n\n` +
+            `Click OK to print another card with that same link, or Cancel to request more time instead.`
+        );
+        if (!reprint) {
+            try {
+                await addDoc(collection(db, "card_extension_requests"), {
+                    recipeId: recipe.id,
+                    recipeName: recipe.name || "Untitled",
+                    requestedBy: user.uid,
+                    requestedByName: user.displayName || user.email || "Someone",
+                    currentExpiry: recipe.publicUntil,
+                    requestedAt: serverTimestamp(),
+                    status: "pending"
+                });
+                alert("Request sent — Adam will need to approve more time before the link stays up longer.");
+            } catch (e) {
+                console.error("🔥 [CARD] Could not send extension request:", e);
+                alert("Could not send that request: " + e.message);
+            }
+            return;
+        }
+    } else {
+        if (!confirm(
+            `This makes "${recipe.name}" viewable by anyone with the card's link or QR code for the next 48 hours — no login, no guest code needed. Continue?`
+        )) return;
+
         try {
-            await updateDoc(doc(db, "recipes", recipe.id), { public: true });
-            recipe.public = true;
+            const until = new Date(Date.now() + 48 * 60 * 60 * 1000);
+            await updateDoc(doc(db, "recipes", recipe.id), {
+                publicUntil: Timestamp.fromDate(until),
+                publicRequestedBy: user.uid
+            });
+            recipe.publicUntil = Timestamp.fromDate(until);
         } catch (e) {
             console.error("🔥 [CARD] Could not make recipe public:", e);
             return alert("Could not make this recipe public: " + e.message);
@@ -1665,13 +1735,29 @@ window.printThisRecipeCard = async function() {
     const list = Array.isArray(rawIng) ? rawIng : [rawIng];
     const names = list.map(stripIngredientToNameForCard).filter(Boolean);
 
-    const edited = prompt(
-        "Ingredient list for the card — just names, like a nutrition label, no measurements. One per line; fix anything that looks wrong (this list is meant to flag allergens):",
-        names.join('\n')
-    );
-    if (edited === null) return; // cancelled
-    const ingredientNames = edited.split('\n').map(s => s.trim()).filter(Boolean);
+    // A real on-page modal, not prompt() — a native prompt box is a single
+    // line tall with almost no room to scroll, which made reviewing a whole
+    // ingredient list (the actual point of this step — catching an allergen
+    // the auto-strip mangled) nearly unreadable.
+    closeShareModal();
+    document.getElementById('recipe-card-ingredients').value = names.join('\n');
+    document.getElementById('recipe-card-modal').classList.remove('hidden');
+};
+
+window.closeRecipeCardModal = function() {
+    document.getElementById('recipe-card-modal').classList.add('hidden');
+};
+
+window.confirmPrintThisRecipeCard = function() {
+    const recipe = lastRenderedRecipe;
+    if (!recipe || !recipe.id) return;
+
+    const ingredientNames = document.getElementById('recipe-card-ingredients').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
     if (ingredientNames.length === 0) return alert("Add at least one ingredient first.");
+
+    const sizeChoice = document.getElementById('recipe-card-size').value;
+    const size = CARD_SIZES[sizeChoice] || CARD_SIZES.index;
 
     const shareUrl = `${location.origin}${location.pathname.replace(/recipe\.html$/, '')}share.html?id=${recipe.id}`;
     const qr = qrcode(0, 'M');
@@ -1690,15 +1776,16 @@ window.printThisRecipeCard = async function() {
             <p class="print-card-scan">Scan for the full recipe</p>
         </div>`;
 
-    closeShareModal();
-    printHtmlViaIframeForCard(cardHtml);
+    closeRecipeCardModal();
+    printHtmlViaIframeForCard(cardHtml, size);
 };
 
 // Same isolated-hidden-iframe approach as dashboard.js's printHtmlViaIframe —
 // see that file's comment for why: printing the current page directly after
 // hiding/showing content proved unreliable in testing (silently did nothing,
 // no console error), so this builds a fresh document instead.
-function printHtmlViaIframeForCard(bodyHtml) {
+function printHtmlViaIframeForCard(bodyHtml, size) {
+    const cardSize = size || CARD_SIZES.index;
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed; right:0; bottom:0; width:0; height:0; border:0; visibility:hidden;';
     document.body.appendChild(iframe);
@@ -1715,7 +1802,7 @@ function printHtmlViaIframeForCard(bodyHtml) {
     * { box-sizing: border-box; }
     body { margin: 0; padding: 0.2in; display: flex; flex-wrap: wrap; gap: 0.3in; justify-content: center; }
     .print-card {
-        flex: 0 0 auto; width: 4in; min-height: 6in; border: 2px dashed #000; border-radius: 12px;
+        flex: 0 0 auto; width: ${cardSize.width}; min-height: ${cardSize.minHeight}; border: 2px dashed #000; border-radius: 12px;
         padding: 0.3in; text-align: center; font-family: 'Inter', sans-serif; color: #000;
         page-break-inside: avoid;
     }
@@ -1882,10 +1969,13 @@ function setupMobileKitchenTools() {
                 }
                 #mobile-tool-fab {
                     display: flex;
+                    /* Raised above the bottom nav bar (see .bottom-nav in
+                       recipes.css) so the two don't overlap. */
+                    bottom: 84px;
                 }
-                /* Extra breathing room at the bottom so the comment Post button clears the FAB */
+                /* Extra breathing room at the bottom so the comment Post button clears the FAB + bottom nav */
                 body {
-                    padding-bottom: 90px !important;
+                    padding-bottom: 164px !important;
                 }
             }
         `;
@@ -2013,8 +2103,15 @@ window.closeMobileToolsModal = function() {
 onAuthStateChanged(auth, (user) => {
     if (!canUseTestMode(user)) return;
     document.getElementById('admin-tools-slot')?.classList.remove('hidden');
-    document.getElementById('share-card-slot')?.classList.remove('hidden');
     updateTestModeUi();
+});
+
+// Print Recipe Card is for any real member — guests (anonymous sessions)
+// are excluded since firestore.rules' recipes update rule requires
+// !isAnonymous() to self-serve publicUntil at all.
+onAuthStateChanged(auth, (user) => {
+    if (!user || user.isAnonymous) return;
+    document.getElementById('share-card-slot')?.classList.remove('hidden');
 });
 
 // Full admin check (any admin, not just Adam — unlike Test Mode above) for

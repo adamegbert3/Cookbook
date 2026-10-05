@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings - Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=8">
+    <link rel="stylesheet" href="styles/recipes.css?v=9">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     <link rel="manifest" href="offline_features/manifest.json">
@@ -97,6 +97,45 @@
                 </select>
             </div>
 
+            <div class="setting-row">
+                <label>
+                    📴 "Download All for Offline" button
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Show it on the homepage or on your profile page.
+                    </div>
+                </label>
+                <select id="offlinePlacementSelect">
+                    <option value="homepage">Homepage</option>
+                    <option value="profile">Profile page</option>
+                </select>
+            </div>
+
+            <div class="setting-row" id="testModePlacementRow" style="display:none;">
+                <label>
+                    🧪 Test Mode toggle
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Show it on the homepage or on your profile page.
+                    </div>
+                </label>
+                <select id="testModePlacementSelect">
+                    <option value="homepage">Homepage</option>
+                    <option value="profile">Profile page</option>
+                </select>
+            </div>
+
+            <div class="setting-row">
+                <label>
+                    📅 Weekly Menu
+                    <div style="font-size:12px; font-weight:normal; opacity:0.7; margin-top:3px;">
+                        Show it on your profile page (default) or the homepage.
+                    </div>
+                </label>
+                <select id="weeklyMenuPlacementSelect">
+                    <option value="profile">Profile page</option>
+                    <option value="homepage">Homepage</option>
+                </select>
+            </div>
+
             <button id="save-btn" class="btn-dark" style="width:100%; margin-top:20px; text-align:center;">
                 💾 Save Changes
             </button>
@@ -176,7 +215,7 @@
         async function initSettings() {
             try {
                 const { auth } = await import('./scripts/firebase-config.js');
-                const { saveUserSettings, resolveFontSizePx } = await import('./scripts/main.js');
+                const { saveUserSettings, resolveFontSizePx, canUseTestMode } = await import('./scripts/main.js');
                 const { onAuthStateChanged } = await import("https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js");
 
                 console.log("✅ [SETTINGS] Imports successful!");
@@ -215,6 +254,13 @@
 
                         if(document.getElementById('familyFilterSelect'))
                             document.getElementById('familyFilterSelect').value = settings.familyFilter || 'all';
+
+                        const placement = settings.widgetPlacement || {};
+                        document.getElementById('offlinePlacementSelect').value = placement.offlineDownload || 'homepage';
+                        document.getElementById('testModePlacementSelect').value = placement.testMode || 'homepage';
+                        document.getElementById('weeklyMenuPlacementSelect').value = placement.weeklyMenu || 'profile';
+                        if (canUseTestMode(user))
+                            document.getElementById('testModePlacementRow').style.display = '';
                     }
                 });
 
@@ -228,7 +274,12 @@
                             theme: document.getElementById('darkModeToggle').checked ? 'dark' : 'light',
                             fontSize: currentFontPx,
                             fontStyle: document.getElementById('fontStyleSelect').value,
-                            familyFilter: document.getElementById('familyFilterSelect').value
+                            familyFilter: document.getElementById('familyFilterSelect').value,
+                            widgetPlacement: {
+                                offlineDownload: document.getElementById('offlinePlacementSelect').value,
+                                testMode: document.getElementById('testModePlacementSelect').value,
+                                weeklyMenu: document.getElementById('weeklyMenuPlacementSelect').value
+                            }
                         };
 
                         const msg = document.getElementById('saveMsg');
@@ -380,5 +431,13 @@
             };
         })();
     </script>
+    <nav class="bottom-nav">
+        <a href="homepage.html" class="bottom-nav-item"><span class="bottom-nav-icon">🏠</span><span>Home</span></a>
+        <a href="homepage.html?search=1" onclick="handleBottomNavSearch(event)" class="bottom-nav-item"><span class="bottom-nav-icon">🔍</span><span>Search</span></a>
+        <a href="submit.html" class="bottom-nav-item bottom-nav-add"><span class="bottom-nav-icon">➕</span></a>
+        <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
+        <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon bottom-nav-avatar"></span><span>Profile</span></a>
+    </nav>
+    <script type="module" src="scripts/bottom-nav-menu.js"></script>
 </body>
 </html>

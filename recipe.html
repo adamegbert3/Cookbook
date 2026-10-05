@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipe View</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=8">
+    <link rel="stylesheet" href="styles/recipes.css?v=9">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -188,7 +188,7 @@
         </div>
     </div>
 
-    <script type="module" src="scripts/recipePage.js?v=2"></script>
+    <script type="module" src="scripts/recipePage.js?v=9"></script>
     <script type="module" src="scripts/main.js"></script>
     
     <script>
@@ -239,12 +239,12 @@
         </a>
         <p style="font-size: 11px; color: #94a3b8; margin: -12px 0 20px 0;">Opens the print page with this recipe already ticked — you can add more there.</p>
 
-        <!-- Adam-only (see canUseTestMode in main.js) — revealed by scripts/recipePage.js -->
+        <!-- Any real member (not a guest) — revealed by scripts/recipePage.js -->
         <div id="share-card-slot" class="hidden" style="margin-bottom: 20px;">
             <button onclick="printThisRecipeCard()" class="pill-btn btn-orange" style="width: 100%; justify-content: center;">
                 📇 Print Recipe Card (QR)
             </button>
-            <p style="font-size: 11px; color: #94a3b8; margin: 6px 0 0 0;">Makes this recipe permanently public via a scannable link — for potluck-style printed cards.</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 6px 0 0 0;">Makes this recipe public via a scannable link for 48 hours — good for a potluck. Ask Adam for more time if you need it.</p>
         </div>
 
         <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 20px 0;">
@@ -256,8 +256,43 @@
         </a>
     </div>
 </div>
+
+<!-- Real on-page review instead of a native prompt() — the tiny single-line
+     prompt box made a whole ingredient list nearly impossible to read/edit. -->
+<div id="recipe-card-modal" class="modal hidden">
+    <div class="modal-content" style="text-align: left;">
+        <button onclick="closeRecipeCardModal()" class="close-btn">✕</button>
+        <h2 style="margin-top: 0;">📇 Recipe Card</h2>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+            Just ingredient names, like a nutrition label — no measurements. Fix anything the
+            auto-strip got wrong before printing; this list is meant to flag allergens.
+        </p>
+        <textarea id="recipe-card-ingredients" style="width: 100%; min-height: 200px; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;"></textarea>
+
+        <label style="display:block; margin-top: 14px; font-size: 13px; font-weight: 600;">Card size</label>
+        <select id="recipe-card-size" style="width:100%; padding:8px; margin-top:4px; border:1px solid #ddd; border-radius:6px;">
+            <option value="sticky">Sticky note (3x3in)</option>
+            <option value="index" selected>Index card (4x6in)</option>
+            <option value="full">Full page (7.5x10in)</option>
+        </select>
+
+        <div style="display: flex; gap: 10px; margin-top: 16px;">
+            <button onclick="closeRecipeCardModal()" style="flex: 1; padding: 10px; background: #f3f4f6; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+            <button onclick="confirmPrintThisRecipeCard()" style="flex: 1; padding: 10px; background: #ea580c; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">🖨️ Print Card</button>
+        </div>
+    </div>
+</div>
+
 <div style="text-align: center; margin-top: 30px;">
     <a href="terms.html" style="color: #64748b; font-size: 13px; text-decoration: underline;">Terms of Use & Privacy Policy</a>
 </div>
+    <nav class="bottom-nav">
+        <a href="homepage.html" class="bottom-nav-item"><span class="bottom-nav-icon">🏠</span><span>Home</span></a>
+        <a href="homepage.html?search=1" onclick="handleBottomNavSearch(event)" class="bottom-nav-item"><span class="bottom-nav-icon">🔍</span><span>Search</span></a>
+        <a href="submit.html" class="bottom-nav-item bottom-nav-add"><span class="bottom-nav-icon">➕</span></a>
+        <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
+        <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon bottom-nav-avatar"></span><span>Profile</span></a>
+    </nav>
+    <script type="module" src="scripts/bottom-nav-menu.js"></script>
 </body>
 </html>
