@@ -147,7 +147,13 @@ main.main-wide { max-width: 1600px; }
    4. RECIPE CARDS
    ========================================================================== */
 #recipes {
-    display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); 
+    /* auto-fit (not auto-fill): when there are fewer cards than fit a full
+       row, auto-fill still reserves empty invisible columns for cards that
+       don't exist, so the real cards stay squeezed to minmax's minimum width
+       with a gap of dead space at the edge. auto-fit collapses those empty
+       tracks, so the 1fr sizing lets the actual cards stretch to fill the
+       row instead. */
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 15px; margin-top: 20px;
 }
 .recipe-card {
