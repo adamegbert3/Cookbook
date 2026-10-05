@@ -165,11 +165,35 @@ main.main-wide { max-width: 1600px; }
 
 .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: auto; }
 .tag-pill {
-    background: var(--bg-body); color: var(--primary); 
-    border: 1px solid var(--border);
-    font-size: 0.65rem;
-    padding: 2px 6px; border-radius: 4px; font-weight: 600; font-family: var(--font-main);
+    font-size: 0.7rem; font-weight: 700; font-family: var(--font-main);
+    padding: 3px 10px; border-radius: 12px; line-height: 1.4;
+    background: var(--tag-soft, #f1f5f9); color: var(--tag-ink, #334155);
+    border: 1px solid var(--tag-border, #cbd5e1);
 }
+/* Each tag takes its card's category hue, like the Egbert/Wheeler badges */
+.recipe-card.border-red .tag-pill { --tag-soft: #fee2e2; --tag-ink: #b91c1c; --tag-border: #fca5a5; }
+.recipe-card.border-yellow .tag-pill { --tag-soft: #fef9c3; --tag-ink: #854d0e; --tag-border: #fde047; }
+.recipe-card.border-blue .tag-pill { --tag-soft: #dbeafe; --tag-ink: #1d4ed8; --tag-border: #93c5fd; }
+.recipe-card.border-orange .tag-pill { --tag-soft: #ffedd5; --tag-ink: #c2410c; --tag-border: #fdba74; }
+.recipe-card.border-brown .tag-pill { --tag-soft: #f5e6d3; --tag-ink: #78350f; --tag-border: #d6a77a; }
+.recipe-card.border-purple .tag-pill { --tag-soft: #ede9fe; --tag-ink: #6d28d9; --tag-border: #c4b5fd; }
+.recipe-card.border-green .tag-pill { --tag-soft: #d1fae5; --tag-ink: #047857; --tag-border: #6ee7b7; }
+.recipe-card.border-teal .tag-pill { --tag-soft: #ccfbf1; --tag-ink: #0f766e; --tag-border: #5eead4; }
+.recipe-card.border-slate .tag-pill { --tag-soft: #e2e8f0; --tag-ink: #334155; --tag-border: #94a3b8; }
+.recipe-card.border-cyan .tag-pill { --tag-soft: #cffafe; --tag-ink: #0e7490; --tag-border: #67e8f9; }
+.recipe-card.border-gray .tag-pill { --tag-soft: #f1f5f9; --tag-ink: #475569; --tag-border: #cbd5e1; }
+/* Dark theme: deeper tints with lighter text so the pills stay readable */
+:root[data-theme="dark"] .tag-pill { background-color: rgba(255,255,255,0.08); color: #e2e8f0; border-color: rgba(255,255,255,0.18); background-image: linear-gradient(var(--tag-tint, transparent), var(--tag-tint, transparent)); }
+:root[data-theme="dark"] .recipe-card.border-red .tag-pill { --tag-tint: rgba(239,68,68,0.22); color: #fecaca; border-color: #b91c1c; }
+:root[data-theme="dark"] .recipe-card.border-yellow .tag-pill { --tag-tint: rgba(234,179,8,0.22); color: #fef08a; border-color: #a16207; }
+:root[data-theme="dark"] .recipe-card.border-blue .tag-pill { --tag-tint: rgba(59,130,246,0.22); color: #bfdbfe; border-color: #1d4ed8; }
+:root[data-theme="dark"] .recipe-card.border-orange .tag-pill { --tag-tint: rgba(249,115,22,0.22); color: #fed7aa; border-color: #c2410c; }
+:root[data-theme="dark"] .recipe-card.border-brown .tag-pill { --tag-tint: rgba(180,83,9,0.25); color: #fcd9b6; border-color: #78350f; }
+:root[data-theme="dark"] .recipe-card.border-purple .tag-pill { --tag-tint: rgba(139,92,246,0.22); color: #ddd6fe; border-color: #6d28d9; }
+:root[data-theme="dark"] .recipe-card.border-green .tag-pill { --tag-tint: rgba(16,185,129,0.22); color: #a7f3d0; border-color: #047857; }
+:root[data-theme="dark"] .recipe-card.border-teal .tag-pill { --tag-tint: rgba(20,184,166,0.22); color: #99f6e4; border-color: #0f766e; }
+:root[data-theme="dark"] .recipe-card.border-slate .tag-pill { --tag-tint: rgba(148,163,184,0.2); color: #cbd5e1; border-color: #475569; }
+:root[data-theme="dark"] .recipe-card.border-cyan .tag-pill { --tag-tint: rgba(6,182,212,0.22); color: #a5f3fc; border-color: #0e7490; }
 
 /* Badges & Icons */
 .status-badge { position: absolute; top: 10px; left: 10px; font-size: 0.8rem; }
