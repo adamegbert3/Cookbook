@@ -197,6 +197,12 @@ main.main-wide { max-width: 1600px; }
 
 /* Badges & Icons */
 .status-badge { position: absolute; top: 10px; left: 10px; font-size: 0.8rem; }
+/* Hidden recipes stay readable in both themes: a dashed outline and a
+   slightly muted card, instead of washing the whole card out */
+.recipe-card.is-hidden {
+    border-style: dashed; opacity: 0.8;
+}
+.recipe-card.is-hidden .card-content h2 { opacity: 0.85; }
 .card-heart {
     position: absolute; top: 10px; right: 10px;
     background: transparent; border: none; font-size: 1.2rem; cursor: pointer;
