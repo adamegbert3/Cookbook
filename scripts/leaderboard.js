@@ -59,7 +59,7 @@ async function loadLeaderboard(viewerUid) {
             const data = docSnap.data();
             if (!data.uid) return; // Skip guest/unattributed cooks logged before per-user tracking existed
 
-            if (!byUser[data.uid]) byUser[data.uid] = { name: "Family Member", family: 'Both', recipeIds: new Set() };
+            if (!byUser[data.uid]) byUser[data.uid] = { name: "Name not recorded", family: 'Both', recipeIds: new Set() };
             // Profile first, then whatever the record stored.
             const profile = profileByUid[data.uid];
             byUser[data.uid].name = profile?.name || data.chef || byUser[data.uid].name;

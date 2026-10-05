@@ -2139,10 +2139,11 @@ async function loadAdminCookStats() {
         const total = snap.size;
         const names = Object.entries(byName).sort((a, b) => b[1] - a[1]);
         el.style.display = '';
-        el.innerHTML = total === 0
-            ? "👀 Admin: nobody in the family has logged a cook of this yet."
-            : `👀 Admin: cooked <b>${total}</b> time${total === 1 ? '' : 's'} by ` +
-              names.map(([n, c]) => `${escapeAttrJs(n)} (${c})`).join(', ');
+        const body = total === 0
+            ? "Nobody in the family has logged a cook of this yet."
+            : `Cooked <b>${total}</b> time${total === 1 ? '' : 's'} by ` +
+              names.map(([n, c]) => `${escapeAttrJs(n)} <span style="opacity:0.7;">(${c})</span>`).join(', ');
+        el.innerHTML = `<span style="display:inline-block; background:var(--bg-body); border:1px solid var(--border); border-radius:10px; padding:6px 12px; color:var(--primary);">👀 Admin · ${body}</span>`;
     } catch (e) {
         console.error("Could not load cook stats:", e);
     }

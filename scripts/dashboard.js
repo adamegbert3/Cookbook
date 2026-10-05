@@ -1069,14 +1069,15 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         // couldn't identify, from many people at once. Say so, rather than
         // presenting "Family Member" as though someone by that name exists.
         const legacy = isOrphan && isPlaceholder(p.name);
-        const displayName = legacy ? "Anonymous (older records)" : escapeAttr(p.name);
+        const displayName = legacy ? "Name not recorded" : escapeAttr(p.name);
 
         let actionsHtml = '';
         if (legacy) {
             actionsHtml = `
-                <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:8px 10px; margin-top:8px; font-size:11px; color:#6b7280;">
-                    These dishes were saved before the app recorded who cooked them, so they're kept here
-                    to keep the family's dish count accurate. If you can tell who made one, assign it.
+                <div style="background:#f8fafc; border:1px dashed #94a3b8; border-radius:8px; padding:10px 12px; margin-top:8px; font-size:12px; color:#475569; line-height:1.5;">
+                    <div style="font-weight:700; color:#334155; margin-bottom:4px;">❔ ${p.unlinked.length} dish${p.unlinked.length === 1 ? '' : 'es'} saved without a name</div>
+                    These were logged before the app recorded who cooked them. They stay here so the family's
+                    dish count is right. If you can tell who made one, assign it.
                     <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
                         <button onclick="reassignActivity('${safeKey}')"
                                 style="background:white; color:#4f46e5; border:1px solid #c7d2fe; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
