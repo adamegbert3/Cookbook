@@ -1,6 +1,6 @@
 import { db, auth } from './firebase-config.js';
 import {
-    doc, getDoc, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc, updateDoc, Timestamp
+    doc, getDoc, getDocs, query, where, addDoc, collection, serverTimestamp, setDoc, arrayUnion, deleteDoc, updateDoc, Timestamp
 } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
 import { saveUserSettings, resolveFontSizePx, saveRecipeOffline, getOfflineRecipe,
@@ -2121,7 +2121,32 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) return;
     recipePageIsAdmin = await checkIsAdmin(user.uid);
     if (recipePageIsAdmin && lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
+    if (recipePageIsAdmin) loadAdminCookStats();
 });
+
+// Admin-only: who has cooked this recipe, and how many times each. Reads the
+// shared global_cooks log, so it covers the whole family, not just this device.
+async function loadAdminCookStats() {
+    const el = document.getElementById('admin-cook-stats');
+    if (!el || !recipeId) return;
+    try {
+        const snap = await getDocs(query(collection(db, "global_cooks"), where("recipeId", "==", recipeId)));
+        const byName = {};
+        snap.forEach(d => {
+            const name = d.data().chef || "Unknown";
+            byName[name] = (byName[name] || 0) + 1;
+        });
+        const total = snap.size;
+        const names = Object.entries(byName).sort((a, b) => b[1] - a[1]);
+        el.style.display = '';
+        el.innerHTML = total === 0
+            ? "👀 Admin: nobody in the family has logged a cook of this yet."
+            : `👀 Admin: cooked <b>${total}</b> time${total === 1 ? '' : 's'} by ` +
+              names.map(([n, c]) => `${escapeAttrJs(n)} (${c})`).join(', ');
+    } catch (e) {
+        console.error("Could not load cook stats:", e);
+    }
+}
 
 window.releaseFromDraft = async function(id) {
     if (!confirm("Release this recipe to the whole family? Anyone can find it from now on — remember to hit \"🌐 Update Homepage Index\" in the admin console afterward so it actually shows up for everyone (same as any other recipe change).")) return;

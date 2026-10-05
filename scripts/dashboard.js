@@ -1012,6 +1012,12 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         const lastVisitMillis = p.visits[0] ? tsToMillis(p.visits[0].timestamp) : 0;
         return { ...p, lastViewMillis, lastCookMillis, lastVisitMillis, lastActivityMillis: Math.max(lastViewMillis, lastCookMillis, lastVisitMillis) };
     }).sort((a, b) => {
+        // The anonymous bucket (records nobody could be matched to) always
+        // sits at the bottom, so every dish still shows up without crowding
+        // the people list.
+        const aAnon = a.key.startsWith('name:') && isPlaceholder(a.name);
+        const bAnon = b.key.startsWith('name:') && isPlaceholder(b.name);
+        if (aAnon !== bAnon) return aAnon ? 1 : -1;
         // Most recently active first, then everyone else alphabetically
         if (b.lastActivityMillis !== a.lastActivityMillis) return b.lastActivityMillis - a.lastActivityMillis;
         return a.name.localeCompare(b.name);
@@ -1063,22 +1069,18 @@ async function renderActivityRoster(viewDocs, allRecipes) {
         // couldn't identify, from many people at once. Say so, rather than
         // presenting "Family Member" as though someone by that name exists.
         const legacy = isOrphan && isPlaceholder(p.name);
-        const displayName = legacy ? "Unidentified (older records)" : escapeAttr(p.name);
+        const displayName = legacy ? "Anonymous (older records)" : escapeAttr(p.name);
 
         let actionsHtml = '';
         if (legacy) {
             actionsHtml = `
                 <div style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; padding:8px 10px; margin-top:8px; font-size:11px; color:#6b7280;">
-                    The app didn't record who did these — it saved everyone under one placeholder name,
-                    so they're from several different people. They can't be traced back to anyone.
+                    These dishes were saved before the app recorded who cooked them, so they're kept here
+                    to keep the family's dish count accurate. If you can tell who made one, assign it.
                     <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-                        <button onclick="deleteOrphanActivity('${safeKey}')"
-                                style="background:#dc2626; color:white; border:none; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
-                            🗑️ Delete these ${p.unlinked.length} record(s)
-                        </button>
                         <button onclick="reassignActivity('${safeKey}')"
                                 style="background:white; color:#4f46e5; border:1px solid #c7d2fe; padding:5px 12px; border-radius:5px; font-size:11px; font-weight:bold; cursor:pointer;">
-                            Assign anyway
+                            Assign to a person
                         </button>
                     </div>
                 </div>`;
@@ -1119,39 +1121,6 @@ async function renderActivityRoster(viewDocs, allRecipes) {
 }
 
 // Clears activity that can never be attributed to anyone.
-window.deleteOrphanActivity = async function(key) {
-    const person = personActivityMap[key];
-    if (!person) return;
-
-    const cooks = person.cooks.length;
-    const total = person.unlinked.length;
-
-    if (!confirm(
-        `Delete ${total} unidentified record(s)?\n\n` +
-        (cooks ? `This removes ${cooks} cook(s) from the "Total Meals Cooked" count — they were real meals, just with no record of who made them.\n\n` : '') +
-        `This can't be undone.`
-    )) return;
-
-    console.log(`🗑️ [ACTIVITY] Deleting ${total} unidentified record(s)...`);
-
-    let done = 0, failed = 0;
-    for (const rec of person.unlinked) {
-        try {
-            await deleteDoc(doc(db, rec.collectionPath, rec.id));
-            done++;
-        } catch (e) {
-            failed++;
-            console.error(`Could not delete ${rec.collectionPath}/${rec.id}:`, e.message);
-        }
-    }
-
-    console.log(`✅ [ACTIVITY] Deleted ${done} record(s)${failed ? `, ${failed} failed` : ''}.`);
-    alert(failed
-        ? `Deleted ${done}. ${failed} couldn't be removed — check the console.`
-        : `Removed ${done} unidentified record(s).`);
-
-    loadAdminDashboard();
-};
 
 // Permanently attaches records that were saved without a uid to a real
 // account, so they stop being anonymous — here and on the leaderboard,
