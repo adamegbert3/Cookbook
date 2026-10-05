@@ -204,11 +204,21 @@ main.main-wide { max-width: 1600px; }
 }
 .list-row-name { font-weight: 700; }
 .list-row-author { color: #64748b; font-weight: 400; font-size: 0.9rem; }
+.list-row-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
 .list-row-cat {
-    align-self: flex-start; font-size: 0.72rem; font-weight: 700;
+    font-size: 0.72rem; font-weight: 700;
     padding: 2px 10px; border-radius: 12px;
     background: var(--cat-color, #9ca3af); color: white;
 }
+.lr-badge {
+    font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+    padding: 2px 8px; border-radius: 12px; border: 1px solid transparent;
+}
+.lr-offline { background: #fef08a; color: #713f12; border-color: #eab308; }
+.lr-verified { background: #d1fae5; color: #065f46; border-color: #10b981; }
+.lr-family { background: var(--bg-body); color: var(--primary); border-color: var(--border); }
+.lr-egbert { background: #e0f2fe; color: #0369a1; border-color: #38bdf8; }
+.lr-wheeler { background: #dcfce7; color: #15803d; border-color: #4ade80; }
 .recipe-list-row.border-red { --cat-color: #ef4444; }
 .recipe-list-row.border-yellow { --cat-color: #eab308; }
 .recipe-list-row.border-blue { --cat-color: #3b82f6; }

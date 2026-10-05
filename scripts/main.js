@@ -712,6 +712,11 @@ function buildRecipeListRowHtml(item) {
     const isFav = userFavorites.includes(recId);
     const heartIcon = isFav ? "❤️" : "🤍";
     const dimStyle = isHidden ? "opacity: 0.6;" : "";
+    const isOfflineReady = offlineChecklist.includes(recId);
+    const isVerified = item.r === true || item.reviewed === true;
+    const isEgbert = recTags.includes("Egbert Favorite");
+    const isWheeler = recTags.includes("Wheeler Favorite");
+    const family = item.fam || item.family || "Both";
 
     return `
         <div class="recipe-list-row ${colorClass}" style="${dimStyle}"
@@ -722,7 +727,14 @@ function buildRecipeListRowHtml(item) {
                     <span class="list-row-name">${escapeHtml(recName)}</span>
                     <span class="list-row-author"> - ${escapeHtml(recAuth)}</span>
                 </div>
-                <span class="list-row-cat">${escapeHtml(cat)}</span>
+                <div class="list-row-badges">
+                    ${isOfflineReady ? `<span class="lr-badge lr-offline" title="Saved on this device">⛺ Offline</span>` : ""}
+                    ${isVerified ? `<span class="lr-badge lr-verified" title="Verified recipe">✅ Verified</span>` : ""}
+                    <span class="lr-badge lr-family" title="Family">👪 ${escapeHtml(family)}</span>
+                    ${isEgbert ? `<span class="lr-badge lr-egbert" title="Egbert Favorite">⭐ Egbert</span>` : ""}
+                    ${isWheeler ? `<span class="lr-badge lr-wheeler" title="Wheeler Favorite">⭐ Wheeler</span>` : ""}
+                    <span class="list-row-cat">${escapeHtml(cat)}</span>
+                </div>
             </div>
             ${isHidden ? `<span title="Hidden from public">👁️</span>` : ""}
         </div>`;
