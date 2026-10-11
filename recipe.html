@@ -74,6 +74,7 @@
             <p id="cook-counter" style="color:#64748b; font-size:0.9rem; margin-top:10px;">Loading stats...</p>
             <p id="admin-cook-stats" class="no-print" style="display:none; color:#64748b; font-size:0.85rem; margin-top:4px;"></p>
             <p id="admin-view-stats" class="no-print" style="display:none; color:#64748b; font-size:0.85rem; margin-top:4px;"></p>
+            <button id="log-cook-for-someone-btn" class="no-print" onclick="openLogCookModal()" style="display:none; margin-top:8px; background:var(--bg-body); border:1px solid var(--border); color:var(--primary); padding:6px 14px; border-radius:20px; font-size:0.8rem; font-weight:700; cursor:pointer;">🍳 Log a cook for someone</button>
         </div>
 
         <div id="notes-section" style="margin-top:40px;" class="hidden">
@@ -190,7 +191,21 @@
         </div>
     </div>
 
-    <script type="module" src="scripts/recipePage.js?v=12"></script>
+    <div id="log-cook-modal" class="modal hidden">
+        <div class="modal-content">
+            <h3>🍳 Log a Cook</h3>
+            <p style="font-size:12px; color:#94a3b8; margin:-8px 0 15px 0;">Credit a family member with having made this — for someone who cooked it without using the app.</p>
+            <select id="log-cook-person-select" class="form-input" style="margin-bottom:15px;">
+                <option value="">Loading people…</option>
+            </select>
+            <div style="display:flex; gap:10px; justify-content:center;">
+                <button type="button" onclick="confirmLogCookForSomeone()" class="pill-btn btn-teal">Log It</button>
+                <button onclick="closeLogCookModal()" class="pill-btn btn-slate">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="scripts/recipePage.js?v=13"></script>
     <script type="module" src="scripts/main.js"></script>
     
     <script>

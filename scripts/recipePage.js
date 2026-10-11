@@ -2207,8 +2207,73 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) return;
     recipePageIsAdmin = await checkIsAdmin(user.uid);
     if (recipePageIsAdmin && lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
-    if (recipePageIsAdmin) { loadAdminCookStats(); loadAdminViewStats(); }
+    if (recipePageIsAdmin) {
+        loadAdminCookStats();
+        loadAdminViewStats();
+        const logBtn = document.getElementById('log-cook-for-someone-btn');
+        if (logBtn) logBtn.style.display = '';
+    }
 });
+
+// Admin-only: credit someone with having made this recipe, for a cook who
+// didn't log it themselves in the app (Grandma on the phone, a houseguest,
+// etc). Firestore rules only let a normal write carry your own uid — admin
+// is the one exception, checked server-side too, not just by hiding the button.
+let logCookPeople = null; // cached [{ uid, name }], sorted by name
+
+async function loadLogCookPeople() {
+    if (logCookPeople) return logCookPeople;
+    const snap = await getDocs(collection(db, "users"));
+    logCookPeople = [];
+    snap.forEach(d => {
+        const data = d.data();
+        logCookPeople.push({ uid: d.id, name: data.Name || (data.email || '').split('@')[0] || d.id });
+    });
+    logCookPeople.sort((a, b) => a.name.localeCompare(b.name));
+    return logCookPeople;
+}
+
+window.openLogCookModal = async function() {
+    const modal = document.getElementById('log-cook-modal');
+    const select = document.getElementById('log-cook-person-select');
+    if (!modal || !select) return;
+    modal.classList.remove('hidden');
+
+    try {
+        const people = await loadLogCookPeople();
+        select.innerHTML = people.map(p => `<option value="${escapeAttrJs(p.uid)}">${escapeAttrJs(p.name)}</option>`).join('');
+    } catch (e) {
+        console.error("Could not load people for Log a Cook:", e);
+        select.innerHTML = '<option value="">Could not load the family list</option>';
+    }
+};
+
+window.closeLogCookModal = function() {
+    document.getElementById('log-cook-modal')?.classList.add('hidden');
+};
+
+window.confirmLogCookForSomeone = async function() {
+    const select = document.getElementById('log-cook-person-select');
+    const uid = select?.value;
+    const person = logCookPeople?.find(p => p.uid === uid);
+    if (!person) return alert("Pick someone first.");
+
+    try {
+        await addDoc(collection(db, "global_cooks"), {
+            recipeId: recipeId,
+            timestamp: serverTimestamp(),
+            uid: person.uid,
+            chef: person.name,
+            loggedBy: auth.currentUser.uid // audit trail — who actually logged it
+        });
+        closeLogCookModal();
+        loadAdminCookStats();
+        console.log(`🍳 [ADMIN] Logged a cook of "${lastRenderedRecipe?.name || recipeId}" for ${person.name}.`);
+    } catch (e) {
+        console.error("Could not log cook:", e);
+        alert("Could not log that cook: " + e.message);
+    }
+};
 
 // Shared renderer for the two admin-only stat lines below (who cooked /
 // who viewed) — same pill look, different data source.
