@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=16">
-    <script src="scripts/main.js?v=12" type="module" defer></script>
+    <link rel="stylesheet" href="styles/recipes.css?v=17">
+    <script src="scripts/main.js?v=13" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
     /* Default: Stack days vertically on mobile (readable!) */
@@ -151,10 +151,15 @@
              the homepage since the Weekly Menu widget alone was a full
              screen on mobile. -->
 
-<div class="widget-card" id="weekly-menu-widget" style="background: var(--bg-card); padding: 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
-                <h3 style="margin: 0; color: var(--accent-teal);">📅 Meal Planner</h3>
+<div class="widget-card" id="weekly-menu-widget" style="background: var(--bg-card); padding: 16px 20px; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow-sm);">
+            <div onclick="toggleMealPlanner()" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; cursor: pointer;">
+                <div>
+                    <h3 style="margin: 0; color: var(--accent-teal);">📅 Meal Planner</h3>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">Today: <span id="meal-planner-today-text">Loading…</span></div>
+                </div>
+                <span id="meal-planner-chevron" style="font-size: 1.1rem; color: var(--accent-teal); transition: transform 0.2s;">▾</span>
             </div>
+            <div id="meal-planner-body" style="display:none; margin-top: 15px;">
             <div class="weekly-grid">
                 <div style="background: var(--bg-body); padding: 10px; border-radius: 8px; border: 1px solid var(--border);">
                     <div style="font-size: 11px; font-weight: bold; color: var(--accent-teal);">SUNDAY</div>
@@ -197,6 +202,7 @@
                     🛒 View Shopping List
                 </a>
                 <button onclick="openCustomMealModal()" class="pill-btn btn-slate">+ Add Custom Meal</button>
+            </div>
             </div>
         </div>
 
@@ -271,6 +277,6 @@
         <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
         <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon bottom-nav-avatar"></span><span>Profile</span></a>
     </nav>
-    <script type="module" src="scripts/bottom-nav-menu.js"></script>
+    <script type="module" src="scripts/bottom-nav-menu.js?v=2"></script>
 </body>
 </html>

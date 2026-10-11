@@ -406,6 +406,11 @@ window.toggleEditMode = function() {
         exitEditMode();
     } else {
         enterEditMode();
+        // Tapping Personalize from inside the mobile Kitchen Tools sheet
+        // used to leave the sheet open on top of the new edit controls,
+        // forcing an extra tap to dismiss it. No-ops on desktop, where
+        // there's no sheet to close.
+        if (typeof closeMobileToolsModal === 'function') closeMobileToolsModal();
     }
 };
 
@@ -462,6 +467,12 @@ function renderEditor() {
                     <div class="edit-row">
                         <input type="text" value="${escapeAttrJs(item)}" placeholder="e.g. 2 cups flour"
                                oninput="updateDraft('ingredients', ${si}, ${ii}, this.value)">
+                        <button class="edit-mini-btn edit-move-btn" title="Move up"
+                                ${si === 0 && ii === 0 ? 'disabled' : ''}
+                                onclick="moveLine('ingredients', ${si}, ${ii}, -1)">▲</button>
+                        <button class="edit-mini-btn edit-move-btn" title="Move down"
+                                ${si === editDraft.ingredientSections.length - 1 && ii === section.items.length - 1 ? 'disabled' : ''}
+                                onclick="moveLine('ingredients', ${si}, ${ii}, 1)">▼</button>
                         <button class="edit-mini-btn edit-mini-danger" title="Delete"
                                 onclick="removeLine('ingredients', ${si}, ${ii})">✕</button>
                     </div>`).join('')}
@@ -494,8 +505,16 @@ function renderEditor() {
                         <span class="edit-step-num">${ii + 1}</span>
                         <textarea rows="2" placeholder="Describe this step…"
                                   oninput="updateDraft('instructions', ${si}, ${ii}, this.value)">${escapeAttrJs(item)}</textarea>
-                        <button class="edit-mini-btn edit-mini-danger" title="Delete"
-                                onclick="removeLine('instructions', ${si}, ${ii})">✕</button>
+                        <div class="edit-move-group">
+                            <button class="edit-mini-btn edit-move-btn" title="Move up"
+                                    ${si === 0 && ii === 0 ? 'disabled' : ''}
+                                    onclick="moveLine('instructions', ${si}, ${ii}, -1)">▲</button>
+                            <button class="edit-mini-btn edit-move-btn" title="Move down"
+                                    ${si === editDraft.instructionSections.length - 1 && ii === section.items.length - 1 ? 'disabled' : ''}
+                                    onclick="moveLine('instructions', ${si}, ${ii}, 1)">▼</button>
+                            <button class="edit-mini-btn edit-mini-danger" title="Delete"
+                                    onclick="removeLine('instructions', ${si}, ${ii})">✕</button>
+                        </div>
                     </div>`).join('')}
 
                 <div class="edit-row-actions">
@@ -547,6 +566,30 @@ window.removeLine = function(kind, sectionIndex, itemIndex) {
     // Never leave a part with nothing in it at all
     if (sections[sectionIndex].items.length === 0 && sections.length > 1) sections.splice(sectionIndex, 1);
     else if (sections[sectionIndex].items.length === 0) sections[sectionIndex].items.push('');
+    renderEditor();
+};
+
+// Swaps a line with its neighbor, crossing into the adjacent part at a
+// boundary — the alternative to deleting and retyping down to the spot
+// you want. direction is -1 (up) or 1 (down).
+window.moveLine = function(kind, sectionIndex, itemIndex, direction) {
+    const sections = editDraft[draftKey(kind)];
+    const items = sections[sectionIndex].items;
+    const newIndex = itemIndex + direction;
+
+    if (newIndex >= 0 && newIndex < items.length) {
+        [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
+    } else if (direction === -1 && sectionIndex > 0) {
+        const [line] = items.splice(itemIndex, 1);
+        if (items.length === 0) items.push('');
+        sections[sectionIndex - 1].items.push(line);
+    } else if (direction === 1 && sectionIndex < sections.length - 1) {
+        const [line] = items.splice(itemIndex, 1);
+        if (items.length === 0) items.push('');
+        sections[sectionIndex + 1].items.unshift(line);
+    } else {
+        return; // already at the very top or bottom
+    }
     renderEditor();
 };
 
@@ -1947,6 +1990,27 @@ function setupMobileKitchenTools() {
                 grid-column: span 2;
             }
 
+            /* Compact chips for Scale/Altitude — short toggle labels that
+               don't need a full grid cell each (see openMobileToolsModal). */
+            .mobile-tool-chip-row {
+                grid-column: span 2;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 2px;
+            }
+            .mobile-tool-chip {
+                flex: 0 1 auto !important;
+                width: auto !important;
+                min-height: 34px !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 6px 16px !important;
+                border-radius: 18px !important;
+                font-size: 0.8rem !important;
+                font-weight: 700 !important;
+            }
+
             /* Section labels so scale (0.5x/1x/2x/3x) and altitude (3-5k ft/etc)
                buttons don't look like one confusing pile of pills */
             .mobile-tool-section-header {
@@ -2054,14 +2118,29 @@ window.openMobileToolsModal = function() {
             .map((btn, i) => ({ btn, group: classifyMobileToolButton(btn.innerText), i }))
             .sort((a, b) => (a.group - b.group) || (a.i - b.i));
 
+        // Scale (0.5x/1x/2x/3x) and Altitude (Off/3-5k ft/etc) are short
+        // toggle labels, not full actions — giving each one a whole grid
+        // cell at the same size as "Personalize This Recipe" was most of
+        // what made the sheet feel oversized. They get small chips in a
+        // wrapping row instead.
         let lastGroup = null;
+        let chipRow = null;
         grouped.forEach(({ btn, group }) => {
+            const isChipGroup = group === 0 || group === 1; // Scale Recipe, High Altitude
+
             if (group !== lastGroup) {
                 lastGroup = group;
+                chipRow = null;
                 const header = document.createElement('div');
                 header.className = 'mobile-tool-section-header';
                 header.innerText = MOBILE_TOOL_GROUPS[group].label;
                 modalBody.appendChild(header);
+
+                if (isChipGroup) {
+                    chipRow = document.createElement('div');
+                    chipRow.className = 'mobile-tool-chip-row';
+                    modalBody.appendChild(chipRow);
+                }
             }
 
             const clone = btn.cloneNode(true);
@@ -2069,6 +2148,13 @@ window.openMobileToolsModal = function() {
             // end up with duplicate DOM ids (that was breaking state updates
             // on the cloned button previously).
             clone.removeAttribute('id');
+
+            if (isChipGroup) {
+                clone.classList.add('mobile-tool-chip');
+                chipRow.appendChild(clone);
+                return;
+            }
+
             clone.classList.add('mobile-tool-pill');
 
             // Long-labelled buttons get the full width so their text stays
@@ -2121,14 +2207,22 @@ onAuthStateChanged(auth, async (user) => {
     if (!user) return;
     recipePageIsAdmin = await checkIsAdmin(user.uid);
     if (recipePageIsAdmin && lastRenderedRecipe) renderRecipeHTML(lastRenderedRecipe);
-    if (recipePageIsAdmin) loadAdminCookStats();
+    if (recipePageIsAdmin) { loadAdminCookStats(); loadAdminViewStats(); }
 });
+
+// Shared renderer for the two admin-only stat lines below (who cooked /
+// who viewed) — same pill look, different data source.
+function renderAdminStatLine(elId, icon, body) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    el.style.display = '';
+    el.innerHTML = `<span style="display:inline-block; background:var(--bg-body); border:1px solid var(--border); border-radius:10px; padding:6px 12px; color:var(--primary);">${icon} Admin · ${body}</span>`;
+}
 
 // Admin-only: who has cooked this recipe, and how many times each. Reads the
 // shared global_cooks log, so it covers the whole family, not just this device.
 async function loadAdminCookStats() {
-    const el = document.getElementById('admin-cook-stats');
-    if (!el || !recipeId) return;
+    if (!document.getElementById('admin-cook-stats') || !recipeId) return;
     try {
         const snap = await getDocs(query(collection(db, "global_cooks"), where("recipeId", "==", recipeId)));
         const byName = {};
@@ -2138,14 +2232,38 @@ async function loadAdminCookStats() {
         });
         const total = snap.size;
         const names = Object.entries(byName).sort((a, b) => b[1] - a[1]);
-        el.style.display = '';
         const body = total === 0
             ? "Nobody in the family has logged a cook of this yet."
             : `Cooked <b>${total}</b> time${total === 1 ? '' : 's'} by ` +
               names.map(([n, c]) => `${escapeAttrJs(n)} <span style="opacity:0.7;">(${c})</span>`).join(', ');
-        el.innerHTML = `<span style="display:inline-block; background:var(--bg-body); border:1px solid var(--border); border-radius:10px; padding:6px 12px; color:var(--primary);">👀 Admin · ${body}</span>`;
+        renderAdminStatLine('admin-cook-stats', '🍳', body);
     } catch (e) {
         console.error("Could not load cook stats:", e);
+    }
+}
+
+// Admin-only: who has viewed this recipe, and how many times each. Reads
+// the shared recipe_views log (one entry per person per browser session,
+// see logViewToDatabase), so repeat same-day opens aren't double counted
+// but separate visits are.
+async function loadAdminViewStats() {
+    if (!document.getElementById('admin-view-stats') || !recipeId) return;
+    try {
+        const snap = await getDocs(query(collection(db, "recipe_views"), where("recipeId", "==", recipeId)));
+        const byName = {};
+        snap.forEach(d => {
+            const name = d.data().viewer || "Unknown";
+            byName[name] = (byName[name] || 0) + 1;
+        });
+        const total = snap.size;
+        const names = Object.entries(byName).sort((a, b) => b[1] - a[1]);
+        const body = total === 0
+            ? "Nobody has viewed this yet."
+            : `Viewed <b>${total}</b> time${total === 1 ? '' : 's'} by ` +
+              names.map(([n, c]) => `${escapeAttrJs(n)} <span style="opacity:0.7;">(${c})</span>`).join(', ');
+        renderAdminStatLine('admin-view-stats', '👀', body);
+    } catch (e) {
+        console.error("Could not load view stats:", e);
     }
 }
 

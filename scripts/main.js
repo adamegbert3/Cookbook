@@ -332,7 +332,8 @@ onAuthStateChanged(auth, async (user) => {
             'admin.html', 'approve.html', 'password-resets.html', 'suggestions.html',
             'reports.html', 'access.html', 'households.html',
             'recipe-list.html', 'scan.html', 'import.html', 'upload.html',
-            'drive-sync.html', 'usage.html', 'popular.html', 'activity.html'
+            'drive-sync.html', 'usage.html', 'popular.html', 'activity.html',
+            'homepage.html', 'weekly-menu.html', 'favorites.html', 'offline-downloads.html'
         ];
         
         if (privatePages.includes(currentPage) || document.getElementById('chefNotes')) {
@@ -1235,9 +1236,15 @@ function setupSearch() {
     const input = document.getElementById('searchbar');
 
     if (!openBtn) return;
-    const openSearch = () => { overlay.classList.remove('hidden'); setTimeout(() => input.focus(), 100); };
+    // Hide the browse widgets the moment search opens, not just once
+    // typing starts — otherwise announcements/etc sit in the way of the
+    // empty search bar for that first tap.
+    const openSearch = () => { overlay.classList.remove('hidden'); setSearchModeUI(true); setTimeout(() => input.focus(), 100); };
     openBtn.onclick = openSearch;
-    if (closeBtn) closeBtn.onclick = () => overlay.classList.add('hidden');
+    if (closeBtn) closeBtn.onclick = () => {
+        overlay.classList.add('hidden');
+        if (!input.value.trim()) setSearchModeUI(false);
+    };
 
     // The bottom nav's search icon lives on every page, not just the
     // homepage — from anywhere else it links here with ?search=1 so the
@@ -1379,6 +1386,19 @@ setTimeout(() => { setupSearch(); setupCategoryFilters(); }, 500);
 // ==========================================
 // 7. WEEKLY MENU LOGIC (Responsive, Clickable & Deletable)
 // ==========================================
+// Meal Planner starts collapsed (homepage/profile embedded copies only —
+// the dedicated weekly-menu.html page always shows it in full), so the
+// download-offline button underneath it is actually visible without scrolling
+// past a whole week's grid.
+window.toggleMealPlanner = function() {
+    const body = document.getElementById('meal-planner-body');
+    const chevron = document.getElementById('meal-planner-chevron');
+    if (!body) return;
+    const open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : '';
+    if (chevron) chevron.style.transform = open ? '' : 'rotate(180deg)';
+};
+
 async function loadHomepageMenu(user) {
     try {
         const { segments } = await getPlanPath(user.uid);
@@ -1427,6 +1447,17 @@ async function loadHomepageMenu(user) {
                 }
             }
         });
+
+        // Collapsed Meal Planner preview (profile.html) — just today's plan,
+        // read back from the box already filled in above rather than a
+        // second query.
+        const todayPreview = document.getElementById('meal-planner-today-text');
+        if (todayPreview) {
+            const todayShort = new Date().toLocaleDateString('en-US', { weekday: 'short' });
+            const todayBox = document.getElementById(`menu-${todayShort}`);
+            const text = todayBox ? todayBox.innerText.replace(/×/g, '').trim() : '';
+            todayPreview.textContent = text || 'Nothing planned';
+        }
     } catch (e) {
         console.error("Error loading menu widget:", e);
     }

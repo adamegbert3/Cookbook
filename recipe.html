@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recipe View</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=16">
+    <link rel="stylesheet" href="styles/recipes.css?v=17">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -73,6 +73,7 @@
             </button>
             <p id="cook-counter" style="color:#64748b; font-size:0.9rem; margin-top:10px;">Loading stats...</p>
             <p id="admin-cook-stats" class="no-print" style="display:none; color:#64748b; font-size:0.85rem; margin-top:4px;"></p>
+            <p id="admin-view-stats" class="no-print" style="display:none; color:#64748b; font-size:0.85rem; margin-top:4px;"></p>
         </div>
 
         <div id="notes-section" style="margin-top:40px;" class="hidden">
@@ -189,7 +190,7 @@
         </div>
     </div>
 
-    <script type="module" src="scripts/recipePage.js?v=11"></script>
+    <script type="module" src="scripts/recipePage.js?v=12"></script>
     <script type="module" src="scripts/main.js"></script>
     
     <script>
@@ -294,6 +295,6 @@
         <a href="#" onclick="openNavMenuModal(event)" class="bottom-nav-item"><span class="bottom-nav-icon">📅</span><span>Menu</span></a>
         <a href="profile.html" class="bottom-nav-item"><span class="bottom-nav-icon bottom-nav-avatar"></span><span>Profile</span></a>
     </nav>
-    <script type="module" src="scripts/bottom-nav-menu.js"></script>
+    <script type="module" src="scripts/bottom-nav-menu.js?v=2"></script>
 </body>
 </html>
