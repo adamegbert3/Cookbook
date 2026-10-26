@@ -389,6 +389,14 @@ main.main-wide { max-width: 1600px; }
     outline-offset: 2px;
 }
 
+/* Same reasoning as Testing Kitchen above — lives outside .folders so it's
+   not swept into the generic category-tag click handler. */
+#air-fryer-filter-btn.active-filter {
+    transform: scale(1.05);
+    outline: 3px solid var(--primary);
+    outline-offset: 2px;
+}
+
 #meal-plan-box, #recent-recipes-box {
     background: var(--bg-card); border-radius: 12px; padding: 20px;
     margin: 20px auto; box-shadow: var(--shadow-sm); border: 1px solid var(--border);

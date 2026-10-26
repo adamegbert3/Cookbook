@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cookbook</title>
-    <link rel="stylesheet" href="styles/recipes.css?v=17">
-    <script src="scripts/main.js?v=13" type="module" defer></script>
+    <link rel="stylesheet" href="styles/recipes.css?v=18">
+    <script src="scripts/main.js?v=14" type="module" defer></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Amatic+SC:wght@700&display=swap" rel="stylesheet">
     <style>
     /* Default: Stack days vertically on mobile (readable!) */
@@ -104,6 +104,10 @@
         <div class="folders" style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
             <button class="cat-blue" style="background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; font-weight: 800;">Egbert Favorite</button>
             <button class="cat-teal" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 800;">Wheeler Favorite</button>
+        </div>
+
+        <div style="text-align:center; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border);">
+            <button id="air-fryer-filter-btn" onclick="toggleAirFryerFilter()" style="background:#fff7ed; color:#9a3412; border:1px solid #fdba74; font-weight:800; padding:8px 16px; border-radius:20px; cursor:pointer;">🔥 Air Fryer</button>
         </div>
 
         <!-- Dietary / allergy filter chips (built from DIETARY_TAGS in scripts/recipe-model.js) -->

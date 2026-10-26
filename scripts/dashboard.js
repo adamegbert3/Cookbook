@@ -172,6 +172,7 @@ function buildRecipeRowHtml(r) {
     const currentTags = r.tags || [];
     const isEgb = currentTags.includes("Egbert Favorite");
     const isWhl = currentTags.includes("Wheeler Favorite");
+    const isAirFryer = currentTags.includes("Air Fryer");
 
     return `
         <div class="recipe-manage-card rmc-row" data-recipe-id="${r.id}">
@@ -196,6 +197,9 @@ function buildRecipeRowHtml(r) {
                 </button>
                 <button onclick="quickTag('${r.id}', 'Wheeler Favorite', ${isWhl})" class="btn-action" style="background: ${isWhl ? '#16a34a' : '#f0fdf4'}; color: ${isWhl ? '#ffffff' : '#15803d'}; border: 1px solid #bbf7d0; font-weight: 800;" title="Toggle Wheeler Favorite">
                     ${isWhl ? '★ Whl' : '☆ Whl'}
+                </button>
+                <button onclick="quickTag('${r.id}', 'Air Fryer', ${isAirFryer})" class="btn-action" style="background: ${isAirFryer ? '#ea580c' : '#fff7ed'}; color: ${isAirFryer ? '#ffffff' : '#9a3412'}; border: 1px solid #fdba74; font-weight: 800;" title="Toggle Air Fryer">
+                    ${isAirFryer ? '🔥 Air Fryer' : '➕ Air Fryer'}
                 </button>
             </div>
         </div>`;
@@ -222,6 +226,7 @@ function buildRecipeManageListRowHtml(r) {
     const currentTags = r.tags || [];
     const isEgb = currentTags.includes("Egbert Favorite");
     const isWhl = currentTags.includes("Wheeler Favorite");
+    const isAirFryer = currentTags.includes("Air Fryer");
     const safeName = r.name?.replace(/'/g, "\\'");
 
     return `
@@ -235,6 +240,7 @@ function buildRecipeManageListRowHtml(r) {
                 <button onclick="deleteRecipe('${r.id}', '${safeName}')" class="btn-action" title="Delete">🗑️</button>
                 <button onclick="quickTag('${r.id}', 'Egbert Favorite', ${isEgb})" class="btn-action" title="Toggle Egbert Favorite">${isEgb ? '★' : '☆'}Egb</button>
                 <button onclick="quickTag('${r.id}', 'Wheeler Favorite', ${isWhl})" class="btn-action" title="Toggle Wheeler Favorite">${isWhl ? '★' : '☆'}Whl</button>
+                <button onclick="quickTag('${r.id}', 'Air Fryer', ${isAirFryer})" class="btn-action" title="Toggle Air Fryer">${isAirFryer ? '🔥' : '➕'}</button>
             </div>
         </div>`;
 }

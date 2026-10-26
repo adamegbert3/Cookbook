@@ -1087,6 +1087,7 @@ function resetProfileIcon() {
 let currentCategoryFilter = null;
 let currentFavFilter = null; // 🚀 NEW: Tracks favorites independently!
 let currentDietFilter = null; // Vegetarian / Gluten-Free / etc
+let currentAirFryerFilter = false; // Name contains "air fryer", OR the manual tag set in edit-recipe.html
 
 // 🍳 TESTING KITCHEN — a personal holding space for recipes an admin wants
 // to try before releasing them to the whole family (see toggleDraftKitchen
@@ -1096,6 +1097,21 @@ let currentDietFilter = null; // Vegetarian / Gluten-Free / etc
 // meant to avoid — a recipe you're actively testing shouldn't sit in the
 // same pile as things someone chose to retire.
 let currentShowDrafts = false;
+
+// Matches either way the user asked for: the recipe's name says "air
+// fryer", or it's been manually tagged in edit-recipe.html (for recipes
+// that use an air fryer without saying so in the title).
+function isAirFryerRecipe(r) {
+    const name = (r.n || r.name || "").toLowerCase();
+    const tags = r.t || r.tags || [];
+    return name.includes("air fryer") || tags.includes("Air Fryer");
+}
+
+window.toggleAirFryerFilter = function() {
+    currentAirFryerFilter = !currentAirFryerFilter;
+    document.getElementById('air-fryer-filter-btn')?.classList.toggle('active-filter', currentAirFryerFilter);
+    applyHomepageFilters();
+};
 
 window.toggleDraftKitchen = function() {
     currentShowDrafts = !currentShowDrafts;
@@ -1190,6 +1206,11 @@ window.applyHomepageFilters = function() {
     // 3b. Filter by dietary/allergy tag (stacks with everything else)
     if (currentDietFilter) {
         filtered = filtered.filter(r => (r.d || r.dietary || []).includes(currentDietFilter));
+    }
+
+    // 3c. Filter by Air Fryer (stacks with everything else)
+    if (currentAirFryerFilter) {
+        filtered = filtered.filter(isAirFryerRecipe);
     }
 
     // 4. Filter by Search Term (matches recipe name OR ingredients)

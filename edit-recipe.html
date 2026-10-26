@@ -90,6 +90,14 @@
             </label>
         </div>
 
+        <div style="background: #fff7ed; border: 1px solid #fdba74; padding: 15px; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; gap: 10px;">
+            <input type="checkbox" id="e-fav-airfryer" style="width: 20px; height: 20px; margin: 0;">
+            <div>
+                <label for="e-fav-airfryer" style="margin: 0; font-weight: bold; color: #9a3412; cursor: pointer;">🔥 Air Fryer Recipe</label>
+                <div style="font-size: 12px; color: #9a3412;">Shows up under the Air Fryer filter on the homepage, even if "air fryer" isn't in the name.</div>
+            </div>
+        </div>
+
         <div style="background: #fffbeb; border: 1px solid #fcd34d; padding: 15px; border-radius: 6px; margin-top: 15px; display: flex; align-items: center; gap: 10px;">
             <input type="checkbox" id="e-reviewed" style="width: 20px; height: 20px; margin: 0;">
             <div>
@@ -229,6 +237,7 @@
                     const tagsList = data.tags || [];
                     document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
                     document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
+                    document.getElementById('e-fav-airfryer').checked = tagsList.includes("Air Fryer");
 
                     // --- HANDLE ARRAYS / MULTI-PART SECTIONS ---
                     // Re-serializes any "## Part" structure back into the
@@ -294,6 +303,7 @@
             document.getElementById('e-category').value = tagsList[0] || v.category || "Miscellaneous";
             document.getElementById('e-fav-egbert').checked = tagsList.includes("Egbert Favorite");
             document.getElementById('e-fav-wheeler').checked = tagsList.includes("Wheeler Favorite");
+            document.getElementById('e-fav-airfryer').checked = tagsList.includes("Air Fryer");
 
             document.getElementById('e-ingredients').value = getEditableText(v, 'ingredients');
             document.getElementById('e-instructions').value = getEditableText(v, 'instructions');
@@ -325,6 +335,7 @@
             const updatedTags = [cat];
             if (document.getElementById('e-fav-egbert').checked) updatedTags.push("Egbert Favorite");
             if (document.getElementById('e-fav-wheeler').checked) updatedTags.push("Wheeler Favorite");
+            if (document.getElementById('e-fav-airfryer').checked) updatedTags.push("Air Fryer");
 
             try {
                 // Snapshot the current (pre-edit) version before overwriting it
