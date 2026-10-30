@@ -1,3 +1,4 @@
+import { SCAN_CATEGORIES, DEFAULT_SCAN_MODEL, checkScanModel, scanImages } from './recipe-scan.js';
 import { db, auth } from './firebase-config.js'; 
 import {
     collection, collectionGroup, getDocs, doc, getDoc, addDoc, setDoc, deleteDoc, updateDoc,
@@ -89,9 +90,6 @@ async function loadAdminDashboard() {
     loadPublicRecipesList();
     loadCommentsDashboard();
 
-    const ollamaInput = document.getElementById('ollama-server-url');
-    const savedOllamaUrl = localStorage.getItem('ollamaServerUrl');
-    if (ollamaInput && savedOllamaUrl) ollamaInput.value = savedOllamaUrl;
 
     const ollamaModelInput = document.getElementById('ollama-model-name');
     const savedOllamaModel = localStorage.getItem('ollamaModelName');
@@ -3040,25 +3038,22 @@ window.resolveReport = async function(reportId) {
 
 // ==========================================
 // WEBSITE-INTEGRATED AI RECIPE SCAN
-// Calls a local Ollama install directly from this page — free, and nothing
-// leaves this computer. Only works when Ollama is running on the same
-// machine you're viewing this page from. See local-tools/scan-recipe/README.md.
+// Calls Ollama through the same-origin local helper. See local-tools/scan-recipe/README.md.
 // ==========================================
-// Keep this list in sync with submit.html's #category, edit-recipe.html's
-// #e-category, the admin filter pills above, and the folder buttons in
-// homepage.html.
-const SCAN_CATEGORIES = [
-    'Appetizers & Snacks', 'Beverages', 'Breads & Rolls', 'Breakfast', 'Desserts', 'Dutch Oven',
-    'Main Dishes', 'Miscellaneous', 'Sauces, Dressings & Marinades', 'Sides & Veggies', 'Soups & Salads'
-];
-
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-    });
+async function fileToBase64(file) {
+    let bitmap;
+    try { bitmap = await createImageBitmap(file); }
+    catch { throw new Error('Cannot decode this photo. Export it as JPEG or PNG (HEIC may not be supported by your browser).'); }
+    try {
+        const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        const context = canvas.getContext('2d');
+        context.fillStyle = 'white'; context.fillRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg', 0.95).split(',')[1];
+    } finally { bitmap.close(); }
 }
 
 const MAX_PDF_PAGES = 10; // safety cap so one huge PDF can't hang the browser/model — bump if you regularly scan longer multi-recipe documents
@@ -3085,18 +3080,20 @@ async function pdfFileToImages(file) {
     return images;
 }
 
-function getOllamaBaseUrl() {
-    const input = document.getElementById('ollama-server-url');
-    const typed = input ? input.value.trim() : '';
-    const saved = typed || localStorage.getItem('ollamaServerUrl') || 'http://localhost:11434';
-    if (typed) localStorage.setItem('ollamaServerUrl', typed);
-    return saved.replace(/\/$/, ''); // strip trailing slash
-}
+function getOllamaBaseUrl() { return '/api/ollama'; }
+window.checkOllamaConnection = async function() {
+    const status = document.getElementById('scan-photo-status');
+    status.innerText = 'Checking Ollama and the selected model...';
+    try {
+        await checkScanModel(getOllamaBaseUrl(), getOllamaModel());
+        status.innerText = 'Ready to scan with ' + getOllamaModel();
+    } catch (error) { status.innerText = error.message; }
+};
 
 function getOllamaModel() {
     const input = document.getElementById('ollama-model-name');
     const typed = input ? input.value.trim() : '';
-    const saved = typed || localStorage.getItem('ollamaModelName') || 'llama3.2-vision';
+    const saved = typed || localStorage.getItem('ollamaModelName') || DEFAULT_SCAN_MODEL;
     if (typed) localStorage.setItem('ollamaModelName', typed);
     return saved;
 }
@@ -3112,66 +3109,7 @@ async function scanOneFile(file) {
     const images = isPdf ? await pdfFileToImages(file) : [await fileToBase64(file)];
     const truncatedAt = images.truncated || null; // set by pdfFileToImages if the PDF had more pages than MAX_PDF_PAGES
 
-    const prompt = `You are reading ${images.length > 1 ? `${images.length} pages/photos of a recipe document` : 'a photo of a recipe card/cookbook page'}.
-
-This may contain a SINGLE recipe (possibly spread across all the pages/photos given), or it may contain MULTIPLE SEPARATE recipes (even within one page/photo, like a cookbook spread). Carefully figure out how many distinct recipes are actually present:
-- If ingredients/instructions clearly continue from one page to the next, that's still ONE recipe — combine its content across those pages.
-- If a new title/ingredient list starts partway through, that's a NEW, separate recipe.
-
-Respond with ONLY raw JSON (no markdown fences, no commentary): a JSON ARRAY containing one object per distinct recipe found, in this shape:
-[
-  {
-    "name": "Recipe title",
-    "author": "Person's name if credited on the card, otherwise an empty string",
-    "category": "One of: ${SCAN_CATEGORIES.join(' | ')}",
-    "ingredients": ["one ingredient per array item, as written"],
-    "instructions": ["one step per array item, in order"],
-    "notes": "Any extra notes/tips on the card, or an empty string"
-  }
-]
-
-If nothing readable/recipe-like is present, respond with an empty array: []`;
-
-    const res = await fetch(`${getOllamaBaseUrl()}/api/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            model: getOllamaModel(),
-            prompt,
-            images,
-            stream: false,
-            format: 'json'
-        })
-    });
-
-    if (!res.ok) {
-        let detail = '';
-        try { detail = (await res.json()).error || ''; } catch (e) { /* body wasn't JSON */ }
-        if (/unknown model architecture/i.test(detail)) {
-            throw new Error(`Ollama can't load "${getOllamaModel()}" (unsupported on your installed Ollama version) — try a different model in "🧠 Model not loading?" below, e.g. llava`);
-        }
-        throw new Error(`Ollama returned ${res.status}${detail ? ': ' + detail : ''}`);
-    }
-
-    const data = await res.json();
-    const raw = (data.response || '').trim();
-    const cleaned = raw.replace(/^```(json)?/i, '').replace(/```$/, '').trim();
-    const parsed = JSON.parse(cleaned);
-
-    // Be defensive: models don't always follow "always return an array"
-    // instructions perfectly, so accept a bare object too.
-    const recipes = Array.isArray(parsed) ? parsed : [parsed];
-
-    const formatted = recipes
-        .filter(r => r && !r.error && (r.name || (r.ingredients && r.ingredients.length)))
-        .map(r => ({
-            name: r.name || 'Untitled',
-            author: r.author || '',
-            tags: [SCAN_CATEGORIES.includes(r.category) ? r.category : 'Miscellaneous'],
-            ingredients: r.ingredients || [],
-            instructions: r.instructions || [],
-            notes: r.notes || ''
-        }));
+    const formatted = await scanImages(getOllamaBaseUrl(), getOllamaModel(), images);
 
     return { recipes: formatted, truncatedAt };
 }
@@ -3185,18 +3123,16 @@ window.scanRecipePhoto = async function() {
     const files = Array.from(fileInput.files || []);
     if (files.length === 0) { statusEl.innerText = "Choose one or more photos/PDFs first."; return; }
 
-    // Browsers permanently block a secure (HTTPS) page from calling a plain
-    // HTTP address — including Ollama at localhost — with no way to opt in
-    // from this side. If we're on the live HTTPS site, fail fast with a
-    // clear explanation instead of a cryptic "Load failed" from the browser.
-    const ollamaUrl = getOllamaBaseUrl();
-    if (location.protocol === 'https:' && ollamaUrl.startsWith('http://')) {
-        statusEl.innerHTML = `❌ Can't reach Ollama from the secure (https://) site — browsers block that connection entirely, there's no setting to allow it.<br>Run <code>node local-tools/scan-recipe/serve-locally.mjs</code> and open the printed <code>http://localhost:8080</code> link instead, then scan from there.`;
-        return;
-    }
-
     btn.disabled = true;
     resultBox.style.display = 'none';
+    try {
+        statusEl.innerText = 'Checking Ollama and the selected vision model...';
+        await checkScanModel(getOllamaBaseUrl(), getOllamaModel());
+    } catch (error) {
+        statusEl.innerText = error.message;
+        btn.disabled = false;
+        return;
+    }
 
     const results = [];
     const failures = [];
@@ -3234,7 +3170,7 @@ window.scanRecipePhoto = async function() {
     let summary = `✅ Found ${results.length} recipe(s) across ${files.length} file(s).`;
     if (warnings.length > 0) summary += ` ⚠️ ${warnings.join(' ')}`;
     if (failures.length > 0) summary += ` Issues: ${failures.join(', ')}.`;
-    if (results.length === 0) summary = "❌ Nothing could be scanned — is Ollama running on this computer with OLLAMA_ORIGINS=* ollama serve?";
+    if (results.length === 0) summary = "Nothing could be scanned. " + failures.join("; ");
     statusEl.innerText = summary;
 };
 

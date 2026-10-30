@@ -1,6 +1,6 @@
 // Bump this whenever ASSETS_TO_CACHE changes, otherwise the old cache stays
 // in charge and newly-listed files never get pre-cached for offline use.
-const CACHE_NAME = 'cookbook-v14-offline';
+const CACHE_NAME = 'cookbook-v15-offline';
 
 // Core app shell files to pre-cache on install so the site opens offline
 const ASSETS_TO_CACHE = [
@@ -45,6 +45,7 @@ const ASSETS_TO_CACHE = [
   '/scripts/main.js',
   '/scripts/recipePage.js',
   '/scripts/dashboard.js',
+  '/scripts/recipe-scan.js',
   '/scripts/profile.js',
   '/scripts/submit.js',
   '/scripts/leaderboard.js',
