@@ -84,3 +84,18 @@ drag that file into Terminal, and press Return. It checks Node.js, starts the
 helper, and opens the local model check. Keep Ollama and Terminal open.
 Adam receives a versioned notice on the home/admin landing pages after sign-in.
 Dismissal is per account/browser; the guide always remains available in Scan Photos.
+
+## One-click Mac app (recommended)
+
+Move the extracted Cookbook folder to Documents. Once, type `bash ` in Terminal,
+drag Install-Mac-Scanner.command into Terminal, and press Return. The installer
+creates ~/Applications/Cookbook Scanner.app using macOS built-in tools. Drag it
+from Finder into the Dock. Keep the Cookbook folder in place (the app points to it).
+
+Click the Dock icon to open Ollama, start the helper in the background, and open
+Scan Photos. Quit the app to stop only the helper it started; Ollama stays open.
+The helper stays on loopback. No login item, network exposure, or paid service is added.
+Logs: ~/Library/Logs/Cookbook Scanner/helper.log. Node.js LTS 22+ and Ollama must
+already be installed. If the folder moves, quit the app and rerun the installer.
+To update, quit the app, extract the new ZIP, and run its installer.
+Start-Scanner.command remains available as a manual troubleshooting fallback.

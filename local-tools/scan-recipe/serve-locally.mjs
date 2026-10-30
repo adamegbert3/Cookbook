@@ -18,6 +18,11 @@ const MIME = {
 };
 
 createServer(async (req, res) => {
+    if (req.method === 'GET' && req.url === '/api/scanner-health') {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end(JSON.stringify({ service: 'cookbook-scanner', instance: process.env.COOKBOOK_INSTANCE || null }));
+        return;
+    }
     // Browsers must use this helper's origin for privileged local actions.
     if (req.method === 'POST' && (req.headers.origin && req.headers.origin !== 'http://' + req.headers.host || req.headers['sec-fetch-site'] === 'cross-site')) {
         res.writeHead(403); res.end('Forbidden origin'); return;

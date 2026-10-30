@@ -58,6 +58,7 @@ test('helper proxies scans, reports model failures, and blocks private files and
     t.after(() => child.kill());
     await Promise.race([once(child.stdout, 'data'), once(child, 'exit').then(() => { throw new Error('Helper failed to start'); })]);
     const base = 'http://127.0.0.1:18089';
+    assert.deepEqual(await (await fetch(base + '/api/scanner-health')).json(), { service: 'cookbook-scanner', instance: null });
     await checkScanModel(base + '/api/ollama', 'vision');
     await assert.rejects(checkScanModel(base + '/api/ollama', 'embed'), /cannot read photos/);
     await assert.rejects(checkScanModel(base + '/api/ollama', 'missing'), /not found/);

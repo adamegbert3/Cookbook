@@ -1,0 +1,21 @@
+name: Scanner and Mac launcher checks
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scanner:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test scanner and launcher behavior
+        run: node --test local-tools/scan-recipe/*.test.mjs
+      - name: Validate shell scripts and compile native Mac app
+        run: |
+          bash -n Install-Mac-Scanner.command Start-Scanner.command
+          osacompile -s -o "$RUNNER_TEMP/Cookbook Scanner.app" local-tools/scan-recipe/mac-launcher.applescript
