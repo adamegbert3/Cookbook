@@ -15,6 +15,13 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+// Load the update notice only on landing pages, after sign-in has restored.
+if (['/homepage.html', '/admin.html'].includes(location.pathname)) {
+    onAuthStateChanged(auth, user => {
+        if (user?.uid !== 'n5aAU1g1tBY04Ut0HnhqegSgZe92') return;
+        import('./scanner-update-notice.js').then(({ showScannerUpdate }) => showScannerUpdate(user)).catch(() => {});
+    });
+}
 
 // ==========================================
 // SIGN-IN SESSION

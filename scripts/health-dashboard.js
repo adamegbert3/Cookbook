@@ -22,6 +22,10 @@ export function renderHealth(rows, environment, capped) {
     document.getElementById('health-scan-rate').textContent = totalScans ? `${Math.round(summary.success / totalScans * 100)}%` : '—';
     document.getElementById('health-scan-detail').textContent = totalScans ? `${summary.success} succeeded · ${summary.failed} failed` : 'No completed scans recorded';
     document.getElementById('health-speed').textContent = summary.p75 === null ? '—' : `${(summary.p75 / 1000).toFixed(1)}s`;
+    const speedDetail = document.getElementById('health-speed-detail');
+    if (speedDetail) speedDetail.textContent = summary.loadSamples
+        ? summary.loadSamples + ' page loads' + (summary.loadSamples < 20 ? ' · early sample' : '') + ' · not recipe readiness or LCP'
+        : 'No load samples yet · not recipe readiness or LCP';
     listCounts('health-features', summary.pages, 'Feature visits will appear after members use the updated app.');
     listCounts('health-errors', summary.errors, 'No errors recorded in this sample. This does not guarantee there were no failures.');
     listCounts('health-devices', summary.devices, 'No device groups recorded yet.');

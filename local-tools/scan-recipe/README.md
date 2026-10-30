@@ -75,3 +75,12 @@ For a different Ollama host, configure OLLAMA_BASE_URL on the helper computer, n
 
 Tests cover output validation, a full mocked scan through the helper, missing/non-vision models,
 private-file blocking, malformed URLs, and cross-origin requests.
+
+## Guided Mac setup
+
+Open https://www.yum4you.com/scanner-setup.html for a resumable Next/Back guide.
+The latest project ZIP includes Start-Scanner.command. In Terminal, type `bash `,
+drag that file into Terminal, and press Return. It checks Node.js, starts the
+helper, and opens the local model check. Keep Ollama and Terminal open.
+Adam receives a versioned notice on the home/admin landing pages after sign-in.
+Dismissal is per account/browser; the guide always remains available in Scan Photos.

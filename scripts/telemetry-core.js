@@ -51,5 +51,5 @@ export function summarizeEvents(rows) {
     }
     durations.sort((a, b) => a - b);
     return { views, sessions: sessions.size, success, failed, pages, errors, devices,
-        p75: durations.length ? durations[Math.ceil(durations.length * .75) - 1] : null };
+        loadSamples: durations.length, p75: durations.length ? durations[Math.ceil(durations.length * .75) - 1] : null };
 }

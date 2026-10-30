@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Set up your Mac scanner | Cookbook</title>
+  <link rel="stylesheet" href="styles/recipes.css?v=18">
+  <link rel="stylesheet" href="styles/polish.css?v=1">
+  <link rel="stylesheet" href="styles/scanner-setup.css">
+</head>
+<body>
+  <main class="setup-shell">
+    <a href="admin/scan.html">← Back to Scan Photos</a>
+    <header><span class="eyebrow">Your recipes, one photo away</span><h1>Let’s set up your Mac scanner.</h1><p>One small step at a time. Your progress stays in this browser.</p></header>
+    <section class="health-card setup-panel" aria-label="Scanner setup">
+      <p id="setup-progress" class="eyebrow"></p><progress id="setup-meter" max="8" value="1" aria-label="Setup progress"></progress>
+      <h2 id="setup-title" tabindex="-1"></h2><div id="setup-body"></div>
+      <p id="setup-feedback" role="status" aria-live="polite"></p>
+      <nav class="setup-controls" aria-label="Setup steps"><button id="setup-back" class="health-button">Back</button><button id="setup-next" class="health-button scan-primary">Next →</button></nav>
+    </section>
+    <details class="health-card setup-help"><summary>Something isn’t working?</summary>
+      <p><strong>“command not found: ollama”:</strong> open Ollama from Applications and finish its setup. Close and reopen Terminal. If needed, use <code>/Applications/Ollama.app/Contents/Resources/ollama pull gemma3:4b</code>.</p>
+      <p><strong>“command not found: node”:</strong> install Node.js LTS, then close and reopen Terminal.</p>
+      <p><strong>“address already in use”:</strong> another helper may already be running. Try the local setup link below. To replace an old helper, press Control-C in its Terminal window, then start the new one.</p>
+      <p><strong>Photo won’t open:</strong> on the Mac, open it in Preview → File → Export → JPEG, then scan the JPEG.</p>
+      <p><strong>Scan is slow or runs out of memory:</strong> close memory-heavy apps and start with one photo. The first scan can take longer while the model loads. Split long PDFs.</p>
+      <p><strong>Local sign-in says unauthorized domain:</strong> ask the site owner to allow <code>localhost</code> in Firebase Authentication. Your live-site login and local login are separate.</p>
+      <a href="http://localhost:8080/scanner-setup.html#check">Open local connection check →</a>
+    </details>
+    <p class="health-muted">Made for M-series MacBooks, including M4. Installation and the first model download need internet. No paid AI subscription is needed for this local model.</p>
+    <noscript>Enable JavaScript to use the step-by-step setup guide.</noscript>
+  </main>
+  <script type="module" src="scripts/scanner-setup.js"></script>
+</body>
+</html>
