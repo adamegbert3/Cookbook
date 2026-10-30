@@ -1,3 +1,6 @@
+import { trackEvent } from './telemetry.js';
+import { errorCode } from './telemetry-core.js';
+import { loadHealthDashboard } from './health-dashboard.js';
 import { SCAN_CATEGORIES, DEFAULT_SCAN_MODEL, checkScanModel, scanImages } from './recipe-scan.js';
 import { db, auth } from './firebase-config.js'; 
 import {
@@ -62,21 +65,33 @@ onAuthStateChanged(auth, async (user) => {
             loadReportedIssues();
         } else {
             console.warn("⚠️ [ACCESS DENIED] User is logged in, but isn't an admin (not in ADMIN_UIDS and no role:'admin' on their profile)!");
-            // Comment out the redirect temporarily so you can read the console!
-            // window.location.href = "index.html";
+            showAdminAccessMessage('This page needs an administrator account.');
         }
     } else {
         console.error("❌ [AUTH FAIlED] No user detected. Acting as logged out.");
-        // Comment out the redirect temporarily so we can debug!
-        // window.location.href = "index.html";
+        showAdminAccessMessage('Sign in to view this admin page.');
     }
 });
 
+function showAdminAccessMessage(message) {
+    let notice = document.getElementById('admin-access-notice');
+    if (!notice) {
+        notice = document.createElement('div'); notice.id = 'admin-access-notice'; notice.className = 'health-notice';
+        document.querySelector('.admin-container')?.prepend(notice);
+    }
+    notice.replaceChildren(document.createTextNode(message + ' '));
+    const link = document.createElement('a'); link.href = SITE_ROOT + 'index.html'; link.textContent = 'Go to sign in'; notice.append(link);
+    const chart = document.getElementById('usage-chart'); if (chart) chart.textContent = message;
+    const health = document.getElementById('health-status'); if (health) health.textContent = message;
+}
+
 async function loadAdminDashboard() {
+    document.getElementById("admin-access-notice")?.remove();
     console.log("📥 [DASHBOARD] Starting database fetch...");
     loadPendingRecipes();
     loadReports();
     loadUsageStats();
+    loadHealthDashboard(db);
     loadPendingInvites();
     loadAdminUsersList();
     loadAdminHouseholds();
@@ -813,7 +828,7 @@ window.deleteCommentFromDashboard = async function(recipeId, commentId) {
 window.quickTag = async function(id, tagString, currentlyHasTag) {
     try {
         const docRef = doc(db, "recipes", id);
-        
+
         // 1. Update Firestore in the background
         if (currentlyHasTag) {
             await updateDoc(docRef, { tags: arrayRemove(tagString) });
@@ -2612,6 +2627,7 @@ window.importRecipeFromUrl = async function() {
     const url = input.value.trim();
     if (!url) { statusEl.innerText = "Paste a recipe link first."; return; }
 
+    const importStarted = performance.now();
     btn.disabled = true;
     resultBox.style.display = 'none';
     statusEl.innerText = "⏳ Fetching...";
@@ -2655,12 +2671,12 @@ window.importRecipeFromUrl = async function() {
     btn.disabled = false;
 
     if (!recipe) {
-        statusEl.innerHTML = `❌ Couldn't import that one: ${lastError ? lastError.message : 'unknown error'}.<br>
-            Most recipe sites need the local helper — run <code>node local-tools/scan-recipe/serve-locally.mjs</code>
-            and open the printed <code>http://localhost:8080</code> link, then try again from there.`;
+        trackEvent('import_failure', { code: errorCode(lastError), durationMs: performance.now() - importStarted });
+        statusEl.innerText = "Couldn't import that recipe: " + (lastError?.message || 'Unknown error') + '. Start the local helper and try from localhost:8080.';
         return;
     }
 
+    trackEvent('import_success', { durationMs: performance.now() - importStarted });
     document.getElementById('import-recipe-json').value = JSON.stringify([recipe], null, 2);
     resultBox.style.display = 'block';
     statusEl.innerText = `✅ Found "${recipe.name}" — ${recipe.ingredients.length} ingredients, ${recipe.instructions.length} steps. Review it below before sending.`;
@@ -2763,9 +2779,9 @@ function renderUsageChart(range) {
     if (range === 'day') {
         for (let i = 13; i >= 0; i--) {
             const d = new Date(today);
-            d.setDate(d.getDate() - i);
+            d.setUTCDate(d.getUTCDate() - i);
             buckets.push({
-                label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                label: d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' }),
                 value: usageDailyCounts[dateKey(d)] || 0
             });
         }
@@ -2774,33 +2790,33 @@ function renderUsageChart(range) {
             let sum = 0;
             for (let j = 0; j < 7; j++) {
                 const d = new Date(today);
-                d.setDate(d.getDate() - (i * 7 + j));
+                d.setUTCDate(d.getUTCDate() - (i * 7 + j));
                 sum += usageDailyCounts[dateKey(d)] || 0;
             }
             const weekStart = new Date(today);
-            weekStart.setDate(weekStart.getDate() - (i * 7 + 6));
-            buckets.push({ label: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), value: sum });
+            weekStart.setUTCDate(weekStart.getUTCDate() - (i * 7 + 6));
+            buckets.push({ label: weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }), value: sum });
         }
     } else { // month
         for (let i = 5; i >= 0; i--) {
-            const monthDate = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const monthDate = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - i, 1));
             const monthKey = monthDate.toISOString().slice(0, 7); // YYYY-MM
             let sum = 0;
             Object.keys(usageDailyCounts).forEach(key => {
                 if (key.startsWith(monthKey)) sum += usageDailyCounts[key];
             });
-            buckets.push({ label: monthDate.toLocaleDateString('en-US', { month: 'short' }), value: sum });
+            buckets.push({ label: monthDate.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' }), value: sum });
         }
     }
 
     const max = Math.max(...buckets.map(b => b.value), 1);
     chartEl.innerHTML = buckets.map(b => `
         <div style="display:flex; flex-direction:column; align-items:center; flex:1; gap:6px;">
-            <div style="font-size:11px; font-weight:700; color:#374151;">${b.value}</div>
-            <div style="width:100%; max-width:28px; background:#f3f4f6; border-radius:4px; height:90px; display:flex; align-items:flex-end; overflow:hidden;">
+            <div style="font-size:11px; font-weight:700; color:var(--primary);">${b.value}</div>
+            <div style="width:100%; max-width:28px; background:var(--bg-body); border-radius:4px; height:90px; display:flex; align-items:flex-end; overflow:hidden;">
                 <div style="width:100%; background:linear-gradient(180deg, #10b981, #059669); height:${(b.value / max) * 100}%;"></div>
             </div>
-            <div style="font-size:10px; color:#6b7280; text-align:center;">${b.label}</div>
+            <div style="font-size:10px; color:var(--primary); text-align:center;">${b.label}</div>
         </div>
     `).join('');
 }
@@ -2833,10 +2849,10 @@ window.openStatsModal = function() { const m = document.getElementById('stats-mo
 window.closeStatsModal = function() { document.getElementById('stats-modal').style.display='none'; };
 window.generateMegaIndex = async function() {
     if(!confirm("Update Homepage?")) return;
-    
+
     const snap = await getDocs(collection(db, "recipes"));
     const list = [];
-    
+
     snap.forEach(d => {
         const data = d.data();
         const ingredients = data.ingredients || data.recipeIngredient || [];
@@ -2855,9 +2871,9 @@ window.generateMegaIndex = async function() {
             ing: Array.isArray(ingredients) ? ingredients.join(' ').toLowerCase() : String(ingredients).toLowerCase()
         });
     });
-    
+
     console.log("🚀 SAVING THIS TO FIREBASE INDEX:", list);
-    
+
     try {
         await setDoc(doc(db, "static_assets", "cookbook_index"), { recipes: list });
         alert("Index Updated! Authors restored."); 
@@ -2877,7 +2893,7 @@ window.filterAdmin = function(category) {
 function applyAdminFilters() {
     const searchInput = document.getElementById('manager-search');
     const term = searchInput ? searchInput.value.toLowerCase().trim() : "";
-    
+
     let filtered = allRecipeData;
 
     // 1. Filter by Category First
@@ -2913,19 +2929,19 @@ window.exportRecipes = function() {
 
     // 1. Convert the recipe array into a nicely formatted JSON string
     const dataStr = JSON.stringify(allRecipeData, null, 2);
-    
+
     // 2. Create a Blob (a file-like object)
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    
+
     // 3. Create a temporary invisible link to trigger the download
     const a = document.createElement("a");
     a.href = url;
-    
+
     // Name the file with today's date so you know when you backed it up!
     const date = new Date().toISOString().split('T')[0]; // Gets YYYY-MM-DD
     a.download = `Family_Cookbook_Backup_${date}.json`;
-    
+
     // 4. Click the link and clean up
     document.body.appendChild(a);
     a.click();
@@ -2938,7 +2954,7 @@ window.exportRecipes = function() {
 window.loadReportedIssues = async function() {
     const tbody = document.getElementById('reports-table-body');
     if (!tbody) return;
-    
+
     try {
         const snap = await getDocs(collection(db, "recipe_reports"));
 
@@ -2982,7 +2998,7 @@ window.loadReportedIssues = async function() {
 
             // 2. Get Reporter Info
             const reporter = data.userName || data.userEmail || "Anonymous";
-            
+
             const recipeId = data.recipeId || "";
             const recipeName = data.recipeName || "View Recipe";
             const issue = data.issue || data.message || data.reason || "No details provided";
@@ -3087,7 +3103,8 @@ window.checkOllamaConnection = async function() {
     try {
         await checkScanModel(getOllamaBaseUrl(), getOllamaModel());
         status.innerText = 'Ready to scan with ' + getOllamaModel();
-    } catch (error) { status.innerText = error.message; }
+        trackEvent('scan_check');
+    } catch (error) { status.innerText = error.message; trackEvent('scan_check', { code: errorCode(error) }); }
 };
 
 function getOllamaModel() {
@@ -3130,6 +3147,7 @@ window.scanRecipePhoto = async function() {
         await checkScanModel(getOllamaBaseUrl(), getOllamaModel());
     } catch (error) {
         statusEl.innerText = error.message;
+        trackEvent('scan_check', { code: errorCode(error) });
         btn.disabled = false;
         return;
     }
@@ -3142,9 +3160,11 @@ window.scanRecipePhoto = async function() {
     // much more reliably than several fired off in parallel.
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
+        const scanStarted = performance.now();
         statusEl.innerText = `⏳ Scanning ${i + 1} of ${files.length}: ${file.name}...`;
         try {
             const { recipes: found, truncatedAt } = await scanOneFile(file);
+            trackEvent(found.length ? 'scan_success' : 'scan_failure', { count: found.length, code: found.length ? 'none' : 'no_recipe', durationMs: performance.now() - scanStarted });
             if (found.length === 0) {
                 failures.push(`${file.name} (no recipe found)`);
             } else {
@@ -3155,6 +3175,7 @@ window.scanRecipePhoto = async function() {
                 warnings.push(`${file.name} has ${truncatedAt} pages, only the first ${MAX_PDF_PAGES} were scanned — split it if recipes are missing.`);
             }
         } catch (error) {
+            trackEvent('scan_failure', { code: errorCode(error), durationMs: performance.now() - scanStarted });
             console.error(`Scan failed for ${file.name}:`, error);
             failures.push(`${file.name} (${error.message})`);
         }

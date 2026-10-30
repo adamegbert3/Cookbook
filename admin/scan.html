@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan Recipe Photos | Admin</title>
     <link rel="stylesheet" href="../styles/recipes.css?v=18">
     <link rel="stylesheet" href="../styles/admin.css?v=2">
@@ -28,35 +28,25 @@
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>
+    <link rel="stylesheet" href="../styles/polish.css?v=1">
 </head>
 <body>
 
 <div class="admin-container">
     <a href="../admin.html" class="admin-back-link">← Admin Home</a>
-    <h1 style="color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h1>
-    <p>Read recipe photos and PDFs with a local vision model. Start Ollama, then run
-        <code>ollama pull gemma3:4b</code> once.</p>
-    <p>From the project folder, run <code>node local-tools/scan-recipe/serve-locally.mjs</code>.
-        Open <a href="http://localhost:8080/index.html">the local sign-in page</a>, sign in, and return to Scan Photos there.
-        Keep the helper running. Photos go to Ollama on the helper computer.</p>
-    <details style="margin-bottom: 12px;">
-        <summary>Choose a vision model</summary>
-        <p>Enter an installed vision model name. If it is missing, run <code>ollama pull MODEL_NAME</code> first.
-           Embedding and text-only models cannot read photos.</p>
-        <input type="text" id="ollama-model-name" placeholder="gemma3:4b" aria-label="Ollama vision model">
-    </details>
-    <button type="button" onclick="checkOllamaConnection()">Check Ollama connection</button>
-    <p>Review the transcription against the original before uploading, especially quantities and any [unclear] text.</p>
-    <input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple style="margin-bottom: 10px;">
-    <br>
-    <button id="scan-photo-btn" onclick="scanRecipePhoto()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">🔍 Scan File(s)</button>
-    <div id="scan-photo-status" style="font-size: 12px; color: #6b7280; margin-top: 8px;"></div>
-    <div id="scan-photo-result" style="display:none; margin-top: 12px;">
-        <textarea id="scan-photo-json" rows="8" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px; background: #faf5ff;"></textarea>
-        <button onclick="sendScanToUploadStation()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; font-size: 13px;">⬇️ Send to Speed Upload Station</button>
+    <header class="health-header"><div><span class="eyebrow">From the recipe box</span><h1>Bring a recipe to life.</h1><p>Turn a photo or PDF into a recipe you can keep, cook, and share.</p></div><span class="soft-link">Local AI · private photos</span></header>
+    <div class="scan-layout">
+        <section class="health-card">
+            <h2>1. Choose your recipe</h2><p class="health-muted">Use a clear, well-lit photo. Multiple recipes and PDFs are welcome.</p>
+            <label class="scan-dropzone" for="scan-photo-input"><strong>A family favorite starts here</strong><span class="health-muted">JPEG, PNG, or PDF · up to 10 pages per PDF</span><input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple></label>
+            <div class="health-toolbar"><button id="scan-photo-btn" class="health-button scan-primary" onclick="scanRecipePhoto()">Scan recipes →</button><button class="health-button" onclick="checkOllamaConnection()">Check connection</button></div>
+            <div id="scan-photo-status" class="scan-status" role="status" aria-live="polite"></div>
+            <div id="scan-photo-result" style="display:none"><h2>2. Review your transcription</h2><p class="health-muted">Check quantities and any [unclear] text against the original. You can edit the recipes in Speed Upload before saving.</p><textarea id="scan-photo-json" class="scan-output" aria-label="Scanned recipe JSON" rows="12" readonly></textarea><button onclick="sendScanToUploadStation()" class="health-button scan-primary">Continue to Speed Upload →</button></div>
+        </section>
+        <aside class="health-card"><span class="eyebrow">First time here?</span><h2 style="margin-top:12px">A little setup. A lot of recipes.</h2><ol class="setup-steps"><li>Open <a href="https://ollama.com/download" target="_blank" rel="noopener">Ollama</a> on this computer.</li><li>Download the vision model once:<code>ollama pull gemma3:4b</code></li><li>From the Cookbook folder, start the helper:<code>node local-tools/scan-recipe/serve-locally.mjs</code></li><li><a href="http://localhost:8080/index.html">Sign in locally</a>, then return to Scan Photos.</li></ol><details><summary>Choose a different model</summary><p class="health-muted">Use the exact name of an installed vision model.</p><label for="ollama-model-name">Vision model</label><input id="ollama-model-name" placeholder="gemma3:4b" style="width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);color:var(--primary)"></details><p class="health-muted">Keep the helper running. Photos stay on the helper computer. Optional diagnostics record only outcomes, timings, and device families.</p></aside>
     </div>
 </div>
 
-<script type="module" src="../scripts/dashboard.js?v=23"></script>
+<script type="module" src="../scripts/dashboard.js?v=24"></script>
 </body>
 </html>

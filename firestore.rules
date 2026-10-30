@@ -207,6 +207,28 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Diagnostics are append-only and contain a closed, content-free vocabulary.
+    // Enable Firestore TTL on expiresAt separately; the field alone does not delete records.
+    match /diagnostic_events/{eventId} {
+      allow read, delete: if isAdmin();
+      allow create: if isLoggedIn() && !isAnonymous()
+        && request.resource.data.keys().hasOnly(['event', 'page', 'release', 'environment', 'browser', 'os', 'code', 'durationMs', 'count', 'sessionId', 'createdAt', 'expiresAt'])
+        && request.resource.data.event in ['page_view', 'page_load', 'runtime_error', 'scan_check', 'scan_success', 'scan_failure', 'import_success', 'import_failure']
+        && request.resource.data.page in ['index', 'homepage', 'recipe', 'favorites', 'weekly-menu', 'shopping-list', 'profile', 'settings', 'submit', 'review', 'admin', 'admin/scan', 'admin/import', 'admin/upload', 'admin/usage', 'other']
+        && request.resource.data.release == '2026.10-health-1'
+        && request.resource.data.environment in ['production', 'local']
+        && request.resource.data.browser in ['Edge', 'Firefox', 'Chrome', 'Safari', 'Other']
+        && request.resource.data.os in ['iOS', 'Android', 'macOS', 'Windows', 'Other']
+        && request.resource.data.code in ['none', 'network', 'timeout', 'permission', 'model_missing', 'model_incompatible', 'invalid_output', 'image_decode', 'no_recipe', 'unknown']
+        && request.resource.data.durationMs is int && request.resource.data.durationMs >= 0 && request.resource.data.durationMs <= 600000
+        && request.resource.data.count is int && request.resource.data.count >= 0 && request.resource.data.count <= 100
+        && request.resource.data.sessionId is string && request.resource.data.sessionId.matches('^[a-f0-9-]{36}$')
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt > request.time
+        && request.resource.data.expiresAt < request.time + duration.value(31, 'd');
+    }
+
     // --- ANALYTICS: site-wide daily visits (admin dashboard only) ---
     match /site_visits/{date} {
       allow create, update: if isLoggedIn();

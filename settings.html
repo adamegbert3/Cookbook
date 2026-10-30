@@ -19,7 +19,7 @@
             padding: 15px 0; border-bottom: 1px solid var(--border);
         }
         .setting-row:last-child { border-bottom: none; }
-        
+
         /* Toggle Switch */
         .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
         .switch input { opacity: 0; width: 0; height: 0; }
@@ -34,6 +34,7 @@
         input:checked + .slider { background-color: var(--accent-teal); }
         input:checked + .slider:before { transform: translateX(24px); }
     </style>
+    <link rel="stylesheet" href="styles/polish.css?v=1">
 </head>
 <body>
 
@@ -53,6 +54,7 @@
         </div>
 
         <div class="settings-container">
+            <div class="setting-row diagnostic-preference"><label for="diagnostics-toggle"><strong>Help improve the Cookbook</strong><p class="health-muted">Share feature visits, scan outcomes, load times, and broad browser/device categories with cookbook admins. No photos, recipes, names, emails, search text, or raw errors. This preference applies to this browser; Do Not Track is respected. Existing family Activity records are separate.</p></label><input type="checkbox" id="diagnostics-toggle" aria-label="Share optional diagnostics"></div>
             <div class="setting-row">
                 <label>🌙 Dark Mode</label>
                 <label class="switch">

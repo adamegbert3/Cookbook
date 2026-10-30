@@ -1,0 +1,75 @@
+/* A shared, accessible finish that keeps the Cookbook's theme and font choices. */
+:root { --accent-teal: #087f72; --shadow-sm: 0 3px 16px rgb(15 23 42 / 4%); }
+:root:not([data-theme="dark"]) { --bg-body: #f8f8f4; --border: #e4e7df; }
+[data-theme="dark"] { --accent-teal: #5eead4; }
+:focus-visible { outline: 3px solid var(--accent-teal); outline-offset: 4px; }
+button, input, select, textarea { font: inherit; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .6; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea { max-width: 100%; }
+.header-container { box-shadow: 0 4px 22px rgb(15 23 42 / 4%); }
+.recipe-card { border-radius: 20px; box-shadow: 0 4px 18px rgb(15 23 42 / 5%); }
+.recipe-card h2 { line-height: 1.25; }
+.recipe-list-row { border-radius: 12px; }
+.folders { gap: 9px; }
+.folders button { min-height: 40px; }
+.home-welcome { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 28px 0 24px; }
+.home-welcome h2 { font-family: var(--font-main); font-size: clamp(1.6rem, 4vw, 2.4rem); letter-spacing: -.04em; margin: 7px 0 10px; }
+.home-welcome p { margin: 0; max-width: 540px; opacity: .75; }
+.eyebrow { display: block; font-size: .7rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; color: var(--accent-teal); }
+.home-shortcuts { display: flex; gap: 8px; flex-wrap: wrap; }
+.soft-link, .health-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-card); color: var(--primary); text-decoration: none; font-size: .85rem; font-weight: 700; }
+.soft-link:hover, .health-button:hover { border-color: var(--accent-teal); }
+.admin-container { max-width: 1120px; padding: 28px; }
+.admin-container h1, .admin-container h2, .admin-container h3 { font-family: var(--font-main); letter-spacing: -.025em; }
+.admin-container h1 { font-size: clamp(1.8rem, 4vw, 2.5rem); }
+.admin-container h2 { font-size: 1.1rem; }
+.icon-grid { grid-template-columns: repeat(auto-fill, minmax(126px, 1fr)); gap: 12px; }
+.icon-tile { padding: 20px 10px; border-radius: 16px; }
+.icon-tile .icon-label { font-size: .8rem; }
+.health-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; margin: 15px 0 28px; }
+.health-header h1 { margin: 8px 0; }
+.health-header p, .health-muted { color: var(--primary); opacity: .68; font-size: .85rem; line-height: 1.65; }
+.health-header p { margin: 0; }
+.health-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.health-toolbar select { width: auto; min-height: 44px; border: 1px solid var(--border); border-radius: 12px; padding: 8px 12px; color: var(--primary); background: var(--bg-card); }
+.health-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 20px 0; }
+.health-card { padding: 24px; border: 1px solid var(--border); border-radius: 18px; background: var(--bg-card); box-shadow: var(--shadow-sm); min-width: 0; }
+.health-card .metric-label { font-size: .78rem; font-weight: 600; opacity: .7; }
+.health-card .metric-value { display: block; font-size: 2.2rem; font-weight: 800; letter-spacing: -.05em; margin: 10px 0 4px; }
+.health-card small { font-size: .72rem; opacity: .65; }
+.health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 20px 0; }
+.health-row { display: flex; justify-content: space-between; gap: 14px; padding: 13px 0; border-bottom: 1px solid var(--border); font-size: .85rem; }
+.health-row span { overflow-wrap: anywhere; }
+.health-row:last-child { border: 0; }
+.health-row strong { color: var(--accent-teal); }
+.health-notice { border: 1px solid var(--border); border-left: 4px solid var(--accent-teal); border-radius: 12px; padding: 18px 22px; background: var(--bg-card); font-size: .85rem; margin: 18px 0; }
+.health-notice h2 { margin-bottom: 8px; }
+.health-notice p { margin: 0; }
+.health-card a, .health-notice a { color: var(--accent-teal); }
+.scan-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); gap: 20px; align-items: start; }
+.scan-dropzone { display: block; padding: 32px 20px; margin: 22px 0; border: 2px dashed var(--border); border-radius: 16px; text-align: center; background: var(--bg-body); }
+.scan-dropzone strong { display: block; font-size: 1.05rem; margin-bottom: 8px; }
+.scan-dropzone input { display: block; width: 100%; margin-top: 20px; font-size: .8rem; }
+.scan-dropzone input::file-selector-button { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); margin-right: 12px; background: var(--bg-card); color: var(--primary); cursor: pointer; }
+.scan-primary { background: #087f72; color: white; border: 0; }
+.scan-status { padding: 14px 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: .85rem; }
+.scan-output { width: 100%; padding: 15px; border: 1px solid var(--border); border-radius: 12px; color: var(--primary); background: var(--bg-body); font: .8rem/1.6 monospace; }
+.setup-steps { padding-left: 22px; font-size: .85rem; }
+.setup-steps li { margin: 14px 0; }
+.setup-steps code { display: block; overflow-wrap: anywhere; margin-top: 6px; font-size: .78rem; }
+.diagnostic-preference { align-items: flex-start; gap: 20px; }
+.diagnostic-preference input { width: 22px; height: 22px; accent-color: #087f72; flex-shrink: 0; }
+@media (max-width: 700px) {
+    .home-welcome { align-items: flex-start; flex-direction: column; gap: 16px; padding-top: 10px; }
+    .admin-container { padding: 18px; margin-top: 12px; }
+    .health-metrics { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .health-card { padding: 18px; }
+    .health-grid, .scan-layout { grid-template-columns: 1fr; }
+    .health-toolbar { width: 100%; }
+    .health-toolbar select { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}

@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
-import { initializeFirestore, doc, getDoc, setDoc, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { initializeFirestore, doc, getDoc, setDoc, serverTimestamp, increment, addDoc, collection, Timestamp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
+import { startTelemetry } from './telemetry.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyA7ILMR7YRqydfCMi-wnQ7QAXTZIGlYP6o",
@@ -88,6 +89,10 @@ export const db = initializeFirestore(app, {
     useFetchStreams: false
 });
 
+onAuthStateChanged(auth, user => startTelemetry(event => addDoc(collection(db, 'diagnostic_events'), {
+    ...event, createdAt: serverTimestamp(), expiresAt: Timestamp.fromMillis(Date.now() + 30 * 86400000)
+}), user));
+
 // ==========================================
 // OFFLINE MODE
 // We deliberately do NOT use Firestore's enableIndexedDbPersistence() here.
@@ -152,7 +157,7 @@ onAuthStateChanged(auth, async (user) => {
 
     try {
         const todayKey = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-        const sessionFlag = `visit-logged-${todayKey}`;
+        const sessionFlag = `visit-logged-${user.uid}-${todayKey}`;
         if (sessionStorage.getItem(sessionFlag)) return;
 
         let viewerName = user.email ? user.email.split('@')[0] : "Family Member";

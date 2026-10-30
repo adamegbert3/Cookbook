@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile | Family Cookbook</title>
-    
+
     <link rel="stylesheet" href="styles/recipes.css?v=18">
     <link href="https://fonts.googleapis.com/css2?family=Amatic+SC:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
-    
+
     <script>
         const settings = JSON.parse(localStorage.getItem('userSettings'));
         if (settings) {
@@ -65,6 +65,7 @@
     @media (min-width: 480px) { .weekly-grid { grid-template-columns: repeat(2, 1fr); } }
     @media (min-width: 1024px) { .weekly-grid { grid-template-columns: repeat(7, 1fr); } }
     </style>
+    <link rel="stylesheet" href="styles/polish.css?v=1">
 </head>
 <body data-page="profile">
 
@@ -81,16 +82,16 @@
     </div>
 
     <div style="max-width: 800px; margin: 30px auto; text-align: center; padding: 0 15px;">
-        
+
         <h1 style="margin: 0 0 20px 0; font-family: 'Amatic SC', cursive; font-size: 3.5rem; color: var(--accent-teal);">My Kitchen</h1>
-        
+
         <div style="background: var(--bg-card); padding: 40px; border-radius: 20px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);">
             <img id="profile-avatar" src="" style="width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--accent-teal); margin-bottom: 15px;">
-            
+
             <h2 id="profile-name" style="margin: 0; color: var(--primary); font-size: 2rem;">Loading...</h2>
             <p id="profile-email" style="color: var(--primary); opacity: 0.7; margin-top: 5px;">...</p>
             <p id="profile-joined" style="font-size: 12px; color: var(--primary); opacity: 0.5; margin-top: 15px;">Member since...</p>
-            
+
             <a id="profile-admin-btn" href="admin.html" class="pill-btn hidden" style="background: #eab308; color: #111827; margin-top: 20px; text-decoration: none; display: none; justify-content: center; max-width: 250px; margin-left: auto; margin-right: auto;">👑 Go to Admin Dashboard</a>
         </div>
     </div>

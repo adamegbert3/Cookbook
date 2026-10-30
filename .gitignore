@@ -7,6 +7,9 @@ local-tools/**/serviceAccountKey.json
 local-tools/**/credentials.json
 local-tools/**/token.json
 .env
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
 
 # OS junk
 .DS_Store

@@ -17,7 +17,7 @@ test('browser preflight reports failure and re-enables scanning without affectin
     };
     const window = {};
     runInNewContext(scan, { window, document: { getElementById: id => elements[id] },
-        getOllamaBaseUrl: () => '/api/ollama', getOllamaModel: () => 'missing',
+        getOllamaBaseUrl: () => '/api/ollama', getOllamaModel: () => 'missing', trackEvent: () => {}, errorCode: () => 'model_missing',
         checkScanModel: async () => { throw new Error('model missing not found'); }
     });
     await window.scanRecipePhoto();

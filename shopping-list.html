@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Shopping List</title>
-    
+
     <link rel="stylesheet" href="styles/recipes.css?v=18">
     <link rel="icon" type="image/png" href="images/favicon.png">
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
@@ -24,31 +24,31 @@
 
     <style>
         body { padding: 20px; max-width: 600px; margin: 0 auto; }
-        
+
         /* The main white/dark box at the top */
         .list-header { 
             background: var(--bg-card); 
             padding: 20px; 
             border-radius: 12px; 
             box-shadow: var(--shadow-sm); 
-            border: 1px solid var(--border); 
+            border: 1px solid var(--border);
             margin-bottom: 20px; 
         }
-        
+
         .add-box { display: flex; gap: 10px; margin-top: 15px; }
-        
+
         .day-group { margin-bottom: 20px; }
-        
+
         /* The text that says "MONDAY", "TUESDAY", etc. */
         .day-title { 
             font-size: 14px; 
             font-weight: 800; 
-            color: var(--primary); 
+            color: var(--primary);
             opacity: 0.7; 
             text-transform: uppercase; 
             margin-bottom: 10px; 
         }
-        
+
         /* Individual ingredient rows */
         .item-row { 
             background: var(--bg-card); 
@@ -59,17 +59,17 @@
             align-items: center; 
             gap: 10px; 
             cursor: pointer; 
-            border: 1px solid var(--border); 
+            border: 1px solid var(--border);
             color: var(--primary);
         }
-        
+
         /* When an item is crossed off */
         .item-row.checked { 
             opacity: 0.5; 
             background: var(--bg-body); 
             text-decoration: line-through; 
         }
-        
+
         .checkbox { font-size: 18px; }
 
         /* Style the input box cleanly in both modes */
@@ -79,13 +79,14 @@
             border: 1px solid var(--border);
         }
     </style>
+    <link rel="stylesheet" href="styles/polish.css?v=1">
 </head>
 <body>
 
     <div class="list-header">
         <h1 style="margin:0; color: var(--accent-teal);">🛒 Shopping List</h1>
         <p style="margin:5px 0 0 0; color: var(--primary); opacity: 0.7; font-size:13px;">Items are saved automatically.</p>
-        
+
         <div class="add-box">
             <input type="text" id="custom-item-input" placeholder="Add milk, eggs, etc..." 
                    style="flex: 1; padding: 10px; border-radius: 8px;">
@@ -159,7 +160,7 @@
                         if (!dayDoc) return; // Skip days with no data
 
                         let items = [];
-                        
+
                         // --- 1. HANDLE CUSTOM ITEMS ---
                         if (day === "Custom") {
                             const meals = dayDoc.data().meals || [];
@@ -260,7 +261,7 @@
 
             // We treat "Custom" as a special day in the database
             const ref = doc(db, ...planSegments, "weekly_plan", "Custom");
-            
+
             // Add as a "meal" with one ingredient
             const fakeMeal = {
                 name: "Personal Items",

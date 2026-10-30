@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>Site Usage | Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Usage & Health | Cookbook</title>
     <link rel="stylesheet" href="../styles/recipes.css?v=18">
     <link rel="stylesheet" href="../styles/admin.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
@@ -21,18 +21,38 @@
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>
+    <link rel="stylesheet" href="../styles/polish.css?v=1">
 </head>
 <body>
 
 <div class="admin-container">
     <a href="../admin.html" class="admin-back-link">← Admin Home</a>
-    <h1 style="color: #065f46;">📈 Site Usage</h1>
+    <header class="health-header">
+        <div><span class="eyebrow">Cookbook insights</span><h1>Usage &amp; health</h1><p>See what gets used. Find what needs a little care.</p></div>
+        <a class="soft-link" href="activity.html">View family activity ↗</a>
+    </header>
+    <div class="health-toolbar"><label for="health-environment">Diagnostics</label><select id="health-environment"><option value="production">Live website</option><option value="local">Local / preview</option></select><button id="health-refresh" class="health-button">Refresh</button></div>
+    <p id="health-status" class="health-muted" role="status">Sign in as an admin to load diagnostics.</p>
+    <section class="health-metrics" aria-label="Diagnostics summary">
+        <article class="health-card"><span class="metric-label">Feature visits</span><strong id="health-views" class="metric-value">—</strong><small>Recorded page opens</small></article>
+        <article class="health-card"><span class="metric-label">Browser sessions</span><strong id="health-sessions" class="metric-value">—</strong><small>Tab sessions, not unique people</small></article>
+        <article class="health-card"><span class="metric-label">Scan success</span><strong id="health-scan-rate" class="metric-value">—</strong><small id="health-scan-detail">Completed file scans only</small></article>
+        <article class="health-card"><span class="metric-label">Page load · 75th percentile</span><strong id="health-speed" class="metric-value">—</strong><small>Navigation timing, not recipe readiness</small></article>
+    </section>
+    <section class="health-notice"><h2>Where to focus next</h2><p id="health-next">Recommendations will appear once diagnostics are available.</p></section>
+    <div class="health-grid">
+        <section class="health-card"><h2>Most-used pages</h2><p class="health-muted">Which workflows bring people back?</p><div id="health-features"><p class="health-muted">No data loaded.</p></div></section>
+        <section class="health-card"><h2>Issues to investigate</h2><p class="health-muted">Grouped by error, page, and device family.</p><div id="health-errors"><p class="health-muted">No data loaded.</p></div></section>
+        <section class="health-card"><h2>Browsers &amp; devices</h2><div id="health-devices"><p class="health-muted">No data loaded.</p></div></section>
+        <section class="health-card"><h2>About these numbers</h2><p class="health-muted">Past seven days, at most 500 recent events across environments. Signed-in members only; opt-outs, blocked connections, and closed tabs leave gaps. Page opens measure interest, not completed tasks. A local scan appears under Local / preview.</p><p class="health-muted">Diagnostics exclude names, emails, photos, recipes, search text, and raw error messages. Members can turn diagnostics off in Settings. Existing family Activity records are separate.</p></section>
+    </div>
+    <section class="health-card"><h2>Visit history</h2>
     <div style="display: flex; gap: 6px; margin-bottom: 10px;">
         <button class="pill-btn usage-range-btn btn-slate active-filter" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('day', this)">Daily</button>
         <button class="pill-btn usage-range-btn btn-slate" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('week', this)">Weekly</button>
         <button class="pill-btn usage-range-btn btn-slate" style="padding: 4px 12px; font-size: 11px;" onclick="setUsageRange('month', this)">Monthly</button>
     </div>
-    <p style="font-size: 12px; color: var(--primary); opacity:0.6; margin: 8px 0 15px 0;">A raw count of signed-in visits per day (same person on 2 devices counts twice) — free, no Firebase billing plan needed. For who specifically visited, see Activity.</p>
+    <p style="font-size: 12px; color: var(--primary); opacity:0.6; margin: 8px 0 15px 0;">Existing daily signed-in browser-session counts. Repeat tabs and devices can count more than once; these are not unique people. Recorded using UTC dates. For individual activity, open Family Activity.</p>
     <div style="overflow-x: auto; padding-bottom: 4px;">
         <div id="usage-chart" style="display: flex; align-items: flex-end; gap: 8px; min-height: 130px;">
             <p style="color:#9ca3af; font-size: 13px;">Loading usage stats...</p>
@@ -40,6 +60,6 @@
     </div>
 </div>
 
-<script type="module" src="../scripts/dashboard.js?v=22"></script>
+<script type="module" src="../scripts/dashboard.js?v=24"></script>
 </body>
 </html>
