@@ -366,7 +366,7 @@
 
                 const id = await household.getUserHouseholdId(currentUid);
                 currentHouseholdId = id;
-                const data = id ? await household.getHousehold(id) : null;
+                const data = id ? await household.ensureHouseholdInvite(id) : null;
 
                 loadingEl.style.display = 'none';
 

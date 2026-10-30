@@ -2,7 +2,7 @@
 export const RELEASE = '2026.10-health-1';
 export const EVENTS = ['page_view', 'page_load', 'runtime_error', 'scan_check', 'scan_success', 'scan_failure', 'import_success', 'import_failure'];
 export const CODES = ['none', 'network', 'timeout', 'permission', 'model_missing', 'model_incompatible', 'invalid_output', 'image_decode', 'no_recipe', 'unknown'];
-export const PAGES = ['index', 'homepage', 'recipe', 'favorites', 'weekly-menu', 'shopping-list', 'profile', 'settings', 'submit', 'review', 'admin', 'admin/scan', 'admin/import', 'admin/upload', 'admin/usage', 'other'];
+export const PAGES = ['index', 'homepage', 'recipe', 'favorites', 'weekly-menu', 'shopping-list', 'profile', 'settings', 'submit', 'review', 'admin', 'admin/scan', 'admin/import', 'admin/upload', 'admin/usage', 'kitchen', 'other'];
 export function pageKey(path) {
     const value = String(path).split(/[?#]/)[0].replace(/^\//, '').replace(/\.html$/, '') || 'index';
     return PAGES.includes(value) ? value : 'other';

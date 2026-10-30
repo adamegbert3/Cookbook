@@ -54,6 +54,7 @@ function buildModal() {
         <div style="background: var(--bg-card); padding: 18px; border-radius: 14px; width: 340px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.25);">
             <h3 style="margin: 0 0 12px 4px; color: var(--accent-teal); text-align:left;">Menu</h3>
             <div class="nav-menu-list">
+                ${menuRow('kitchen.html', '🥬', '#287768', 'My Kitchen', 'Inventory, dated meals & shopping')}
                 ${menuRow('weekly-menu.html', '📅', '#0d9488', 'Meal Planner', "This week's menu & shopping list")}
                 ${lastRecipe ? menuRow(`recipe.html?id=${encodeURIComponent(lastRecipe.id)}`, '🕰️', '#7c3aed', 'Continue Reading', escapeHtml(lastRecipe.name)) : ''}
                 ${menuRow('favorites.html', '❤️', '#dc2626', 'Favorites', 'Your saved recipes')}

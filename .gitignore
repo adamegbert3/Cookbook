@@ -10,6 +10,8 @@ local-tools/**/token.json
 .firebase/
 firebase-debug.log
 firebase-debug.*.log
+firestore-debug.log
+ui-debug.log
 
 # OS junk
 .DS_Store

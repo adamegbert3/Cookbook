@@ -214,7 +214,7 @@ service cloud.firestore {
       allow create: if isLoggedIn() && !isAnonymous()
         && request.resource.data.keys().hasOnly(['event', 'page', 'release', 'environment', 'browser', 'os', 'code', 'durationMs', 'count', 'sessionId', 'createdAt', 'expiresAt'])
         && request.resource.data.event in ['page_view', 'page_load', 'runtime_error', 'scan_check', 'scan_success', 'scan_failure', 'import_success', 'import_failure']
-        && request.resource.data.page in ['index', 'homepage', 'recipe', 'favorites', 'weekly-menu', 'shopping-list', 'profile', 'settings', 'submit', 'review', 'admin', 'admin/scan', 'admin/import', 'admin/upload', 'admin/usage', 'other']
+        && request.resource.data.page in ['index', 'homepage', 'recipe', 'favorites', 'weekly-menu', 'shopping-list', 'profile', 'settings', 'submit', 'review', 'admin', 'admin/scan', 'admin/import', 'admin/upload', 'admin/usage', 'kitchen', 'other']
         && request.resource.data.release == '2026.10-health-1'
         && request.resource.data.environment in ['production', 'local']
         && request.resource.data.browser in ['Edge', 'Firefox', 'Chrome', 'Safari', 'Other']
@@ -367,40 +367,60 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // --- HOUSEHOLDS (shared weekly menu + shopping list) ---
-    // A household is a couple or family who plan meals together. Members
-    // share the weekly_plan and shopping list stored underneath it.
-    //
-    // Read is open to any signed-in REAL user on purpose: joining by code
-    // requires querying households by their `code` field, which can't work
-    // if you must already be a member to read. The documents hold nothing
-    // sensitive (a name, a join code, and a list of uids), and knowing a
-    // code is what grants entry — same as the invite links above.
-    //
-    // GUEST MODE: anonymous sessions are blocked outright on all of read/
-    // create/update below. A guest has no legitimate reason to read another
-    // family's join code, weekly plan, or shopping list — this was a real
-    // gap opened up the moment Anonymous Auth got turned on, not something
-    // that was already scoped correctly.
-    match /households/{householdId} {
-      allow read: if isLoggedIn() && !isAnonymous();
-      allow create: if isLoggedIn() && !isAnonymous() && request.auth.uid in request.resource.data.members;
-      // Members can update their own household; anyone signed in (except a
-      // guest) may add THEMSELVES (that's joining by code) but not rewrite
-      // the rest.
-      allow update: if isLoggedIn() && !isAnonymous() && (
-        request.auth.uid in resource.data.members
-        || request.resource.data.members.hasOnly(resource.data.members.concat([request.auth.uid]))
-        || isAdmin()
-      );
+    // Household membership is private. Exact invitation lookup replaces enumeration.
+    function memberOf(id) {
+      return isLoggedIn() && !isAnonymous() && request.auth.uid in get(/databases/$(database)/documents/households/$(id)).data.members;
+    }
+    function holdsInvite(id, code) {
+      return isLoggedIn() && !isAnonymous()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('pendingHouseholdCode','') == code
+        && exists(/databases/$(database)/documents/household_invites/$(code))
+        && get(/databases/$(database)/documents/household_invites/$(code)).data.householdId == id;
+    }
+    function kitchenShape(d) {
+      return d.keys().hasOnly(['schemaVersion','revision','batches','meals','templates','checked','extras','events','updatedAt','updatedBy'])
+        && d.schemaVersion == 1 && d.revision is int && d.revision > 0
+        && d.batches is map && d.batches.size() <= 200
+        && d.meals is map && d.meals.size() <= 100
+        && d.templates is map && d.templates.size() <= 100
+        && d.checked is map && d.checked.size() <= 1000
+        && d.extras is map && d.extras.size() <= 100
+        && d.events is list && d.events.size() <= 100
+        && d.updatedBy == request.auth.uid && d.updatedAt == request.time;
+    }
+    match /household_invites/{code} {
+      allow get: if isLoggedIn() && !isAnonymous();
+      allow list: if isAdmin();
+      allow create: if isLoggedIn() && !isAnonymous()
+        && request.resource.data.keys().hasOnly(['householdId','createdAt'])
+        && getAfter(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.code == code
+        && request.auth.uid in getAfter(/databases/$(database)/documents/households/$(request.resource.data.householdId)).data.members;
       allow delete: if isAdmin();
-
-      // Shared meal plan + shopping state — members only, guests never.
-      match /{document=**} {
-        allow read, write: if isLoggedIn() && !isAnonymous() && (
-          request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.members
-          || isAdmin()
-        );
+    }
+    match /households/{householdId} {
+      allow get: if isLoggedIn() && !isAnonymous() && (isAdmin() || request.auth.uid in resource.data.members || holdsInvite(householdId, resource.data.code));
+      allow list: if isAdmin();
+      allow create: if isLoggedIn() && !isAnonymous()
+        && request.resource.data.keys().hasOnly(['name','code','members','createdBy','createdAt'])
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.name is string && request.resource.data.name.size() <= 120
+        && request.resource.data.code is string && request.resource.data.code.size() >= 6;
+      allow update: if isLoggedIn() && !isAnonymous() && (isAdmin() || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']) && (
+          (request.auth.uid in resource.data.members && request.resource.data.members == resource.data.members.removeAll([request.auth.uid]))
+          || (!(request.auth.uid in resource.data.members) && holdsInvite(householdId, resource.data.code)
+              && request.resource.data.members == resource.data.members.concat([request.auth.uid]))
+        )
+      ));
+      allow delete: if isAdmin();
+      match /kitchen/{documentId} {
+        allow read: if memberOf(householdId) || isAdmin();
+        allow create: if documentId == 'state' && (memberOf(householdId) || isAdmin()) && kitchenShape(request.resource.data) && request.resource.data.revision == 1;
+        allow update: if documentId == 'state' && (memberOf(householdId) || isAdmin()) && kitchenShape(request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+      }
+      match /{collectionId}/{document=**} {
+        allow read, write: if collectionId != 'kitchen' && (memberOf(householdId) || isAdmin());
       }
     }
 
@@ -431,8 +451,13 @@ service cloud.firestore {
 
       allow delete: if isAdmin();
 
-      match /{document=**} {
-        allow read, write: if request.auth != null && request.auth.uid == userId;
+      match /kitchen/{documentId} {
+        allow read: if isLoggedIn() && !isAnonymous() && request.auth.uid == userId;
+        allow create: if documentId == 'state' && isLoggedIn() && !isAnonymous() && request.auth.uid == userId && kitchenShape(request.resource.data) && request.resource.data.revision == 1;
+        allow update: if documentId == 'state' && isLoggedIn() && !isAnonymous() && request.auth.uid == userId && kitchenShape(request.resource.data) && request.resource.data.revision == resource.data.revision + 1;
+      }
+      match /{collectionId}/{document=**} {
+        allow read, write: if collectionId != 'kitchen' && request.auth != null && request.auth.uid == userId;
       }
     }
   }

@@ -1,133 +1,62 @@
-// ==========================================
-// HOUSEHOLDS — shared weekly menu + shopping list
-//
-// A household is a small group (a couple, or a whole family) that plans
-// meals together. When you're in one, your weekly menu and shopping list
-// move from your own account to the household, so whatever your spouse adds
-// shows up for you and vice versa.
-//
-// Storage:
-//   households/{id}                     { name, code, members[], createdBy }
-//   households/{id}/weekly_plan/{day}   same shape as users/{uid}/weekly_plan
-//   households/{id}/settings/shopping_state
-//   users/{uid}.householdId             which household you're in (if any)
-//
-// Not being in a household is completely normal — everything then reads and
-// writes exactly where it always did, under your own uid. That fallback is
-// what getPlanPath() below encodes, so callers never branch on it.
-// ==========================================
 import { db } from './firebase-config.js';
-import {
-    doc, getDoc, getDocs, setDoc, updateDoc, addDoc, deleteDoc,
-    collection, query, where, arrayUnion, arrayRemove, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js";
-
-// Unambiguous alphabet: no O/0, I/1, so codes are easy to read aloud.
-const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-
-export function generateHouseholdCode(length = 6) {
-    let code = '';
-    for (let i = 0; i < length; i++) {
-        code += CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)];
-    }
-    return code;
+import { doc, getDoc, getDocs, collection, runTransaction, serverTimestamp } from 'https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore.js';
+const ALPHABET='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+export function generateHouseholdCode(length=16){return Array.from(crypto.getRandomValues(new Uint8Array(length)),n=>ALPHABET[n%ALPHABET.length]).join('');}
+export async function getUserHouseholdId(uid){if(!uid)return null;const snap=await getDoc(doc(db,'users',uid));return snap.data()?.householdId||null;}
+export async function getHousehold(id){if(!id)return null;const snap=await getDoc(doc(db,'households',id));return snap.exists()?{id:snap.id,...snap.data()}:null;}
+export async function getPlanPath(uid){const id=await getUserHouseholdId(uid);if(id){const h=await getHousehold(id);if(!h?.members?.includes(uid))throw Error('Household membership is unavailable. Refresh your account settings.');}return id?{segments:['households',id],householdId:id}:{segments:['users',uid],householdId:null};}
+// Lazy invite creation preserves existing household codes without exposing household listings.
+export async function ensureHouseholdInvite(id){
+    const household=await getHousehold(id);if(!household)return;
+    const ref=doc(db,'household_invites',household.code);
+    await runTransaction(db,async tx=>{const snap=await tx.get(ref);if(!snap.exists())tx.set(ref,{householdId:id,createdAt:serverTimestamp()});});
+    return household;
 }
-
-// Returns the household id this user belongs to, or null.
-export async function getUserHouseholdId(uid) {
-    if (!uid) return null;
+export async function createHousehold(uid,name){
+    const ref=doc(collection(db,'households')),code=generateHouseholdCode();
+    await runTransaction(db,async tx=>{
+        const userRef=doc(db,'users',uid),profile=await tx.get(userRef),oldId=profile.data()?.householdId;
+        const old=oldId?await tx.get(doc(db,'households',oldId)):null;
+        const inviteRef=doc(db,'household_invites',code),invite=await tx.get(inviteRef);if(invite.exists())throw Error('Please retry creating the household.');
+        if(old?.exists())tx.update(old.ref,{members:old.data().members.filter(x=>x!==uid)});
+        tx.set(ref,{name:name||'Our Household',code,members:[uid],createdBy:uid,createdAt:serverTimestamp()});
+        tx.set(inviteRef,{householdId:ref.id,createdAt:serverTimestamp()});tx.set(userRef,{householdId:ref.id},{merge:true});
+    });return {id:ref.id,code,name};
+}
+export async function joinHouseholdByCode(uid,code){
+    const clean=String(code||'').trim().toUpperCase();if(!clean)throw Error('Enter a join code.');
+    const invite=await getDoc(doc(db,'household_invites',clean));if(!invite.exists())throw Error('Code not available. Ask a household member to open household settings once, then try again.');
+    const id=invite.data().householdId;
+    // A signed-in joiner may get this one household only while their profile carries
+    // the invite code. The transaction proves possession without making codes public.
+    const userRef=doc(db,'users',uid);
+    await runTransaction(db,async tx=>{
+        const profile=await tx.get(userRef);tx.set(userRef,{pendingHouseholdCode:clean},{merge:true});
+    });
     try {
-        const snap = await getDoc(doc(db, "users", uid));
-        return snap.exists() ? (snap.data().householdId || null) : null;
-    } catch (e) {
-        console.warn("⚠️ [HOUSEHOLD] Could not read household id:", e.message);
-        return null;
-    }
-}
-
-export async function getHousehold(householdId) {
-    if (!householdId) return null;
-    try {
-        const snap = await getDoc(doc(db, "households", householdId));
-        return snap.exists() ? { id: snap.id, ...snap.data() } : null;
-    } catch (e) {
-        console.warn("⚠️ [HOUSEHOLD] Could not load household:", e.message);
-        return null;
-    }
-}
-
-// THE key helper: where do this person's meal-plan docs live? Everything
-// that touches the weekly plan or shopping list goes through this, so
-// household vs solo is decided in exactly one place.
-// Returns { segments: [...], householdId }
-export async function getPlanPath(uid) {
-    const householdId = await getUserHouseholdId(uid);
-    return householdId
-        ? { segments: ["households", householdId], householdId }
-        : { segments: ["users", uid], householdId: null };
-}
-
-export async function createHousehold(uid, name) {
-    // Retry a few times in the vanishingly unlikely event of a code clash
-    for (let attempt = 0; attempt < 5; attempt++) {
-        const code = generateHouseholdCode();
-        const existing = await getDocs(query(collection(db, "households"), where("code", "==", code)));
-        if (!existing.empty) continue;
-
-        const ref = await addDoc(collection(db, "households"), {
-            name: name || "Our Household",
-            code,
-            members: [uid],
-            createdBy: uid,
-            createdAt: serverTimestamp()
+        await runTransaction(db,async tx=>{
+            const profile=await tx.get(userRef),houseRef=doc(db,'households',id),house=await tx.get(houseRef);
+            if(!house.exists()||house.data().code!==clean)throw Error('That invitation is no longer valid.');
+            const oldId=profile.data()?.householdId,old=oldId&&oldId!==id?await tx.get(doc(db,'households',oldId)):null;
+            if(old?.exists())tx.update(old.ref,{members:old.data().members.filter(x=>x!==uid)});
+            if(!house.data().members.includes(uid))tx.update(houseRef,{members:[...house.data().members,uid]});
+            tx.set(userRef,{householdId:id,pendingHouseholdCode:''},{merge:true});
         });
-
-        await setDoc(doc(db, "users", uid), { householdId: ref.id }, { merge: true });
-        console.log(`🏠 [HOUSEHOLD] Created "${name}" with join code ${code}`);
-        return { id: ref.id, code, name };
-    }
-    throw new Error("Could not generate a unique join code — please try again.");
+    } catch(e){throw e;}
+    return await getHousehold(id);
 }
-
-export async function joinHouseholdByCode(uid, code) {
-    const clean = String(code || '').trim().toUpperCase();
-    if (!clean) throw new Error("Enter a join code first.");
-
-    const found = await getDocs(query(collection(db, "households"), where("code", "==", clean)));
-    if (found.empty) throw new Error("No household found with that code — double-check it and try again.");
-
-    const householdDoc = found.docs[0];
-    await updateDoc(doc(db, "households", householdDoc.id), { members: arrayUnion(uid) });
-    await setDoc(doc(db, "users", uid), { householdId: householdDoc.id }, { merge: true });
-
-    console.log(`🏠 [HOUSEHOLD] Joined "${householdDoc.data().name}"`);
-    return { id: householdDoc.id, ...householdDoc.data() };
+export async function leaveHousehold(uid,id){
+    if(!id)return;await runTransaction(db,async tx=>{const h=await tx.get(doc(db,'households',id));if(h.exists())tx.update(h.ref,{members:h.data().members.filter(x=>x!==uid)});tx.set(doc(db,'users',uid),{householdId:null,pendingHouseholdCode:''},{merge:true});});
 }
-
-export async function leaveHousehold(uid, householdId) {
-    if (!householdId) return;
-    try {
-        await updateDoc(doc(db, "households", householdId), { members: arrayRemove(uid) });
-    } catch (e) {
-        console.warn("⚠️ [HOUSEHOLD] Could not remove membership:", e.message);
-    }
-    await setDoc(doc(db, "users", uid), { householdId: null }, { merge: true });
-    console.log("🏠 [HOUSEHOLD] Left the household — your menu is personal again.");
+export async function assignUserToHousehold(uid,id){
+    await runTransaction(db,async tx=>{
+        const profile=await tx.get(doc(db,'users',uid)),oldId=profile.data()?.householdId;
+        const old=oldId&&oldId!==id?await tx.get(doc(db,'households',oldId)):null;
+        const next=id?await tx.get(doc(db,'households',id)):null;
+        if(id&&!next?.exists())throw Error('Household does not exist.');
+        if(old?.exists())tx.update(old.ref,{members:old.data().members.filter(x=>x!==uid)});
+        if(next)tx.update(next.ref,{members:[...new Set([...next.data().members,uid])]});
+        tx.set(doc(db,'users',uid),{householdId:id||null,pendingHouseholdCode:''},{merge:true});
+    });
 }
-
-// Used by the admin console to put someone in a household directly.
-export async function assignUserToHousehold(uid, householdId) {
-    if (householdId) {
-        await updateDoc(doc(db, "households", householdId), { members: arrayUnion(uid) });
-        await setDoc(doc(db, "users", uid), { householdId }, { merge: true });
-    } else {
-        await setDoc(doc(db, "users", uid), { householdId: null }, { merge: true });
-    }
-}
-
-export async function listHouseholds() {
-    const snap = await getDocs(collection(db, "households"));
-    const list = [];
-    snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-    return list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-}
+export async function listHouseholds(){const snap=await getDocs(collection(db,'households'));return snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));}
