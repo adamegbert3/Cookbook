@@ -1,14 +1,18 @@
 on run
+    my startScanner()
+end run
+
+on startScanner()
     try
         my runHelper("start")
     on error messageText
         display dialog messageText with title "Cookbook Scanner" buttons {"OK"} default button "OK" with icon caution
         quit
     end try
-end run
+end startScanner
 
 on reopen
-    my run()
+    my startScanner()
 end reopen
 
 on idle
