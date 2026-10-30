@@ -1,3 +1,5 @@
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { createServer } from 'http';
 import { readFile } from 'fs/promises';
 import { join, extname, dirname, relative, isAbsolute } from 'path';
@@ -26,6 +28,22 @@ createServer(async (req, res) => {
     // Browsers must use this helper's origin for privileged local actions.
     if (req.method === 'POST' && (req.headers.origin && req.headers.origin !== 'http://' + req.headers.host || req.headers['sec-fetch-site'] === 'cross-site')) {
         res.writeHead(403); res.end('Forbidden origin'); return;
+    }
+    if (req.method === 'POST' && req.url === '/api/ollama/pull') {
+        try {
+            const body = await readJsonBody(req);
+            if (body.model !== 'gemma3:4b') { res.writeHead(400); res.end('Only the scanner model can be downloaded here.'); return; }
+            const upstream = await fetch(OLLAMA_BASE.replace(/\/$/, '') + '/api/pull', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'gemma3:4b', stream: true }), signal: AbortSignal.timeout(3600000)
+            });
+            res.writeHead(upstream.status, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
+            await pipeline(Readable.fromWeb(upstream.body), res);
+        } catch {
+            if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/x-ndjson' });
+            if (!res.destroyed) res.end(JSON.stringify({ error: 'Download interrupted. Open Ollama and retry; completed layers can be reused.' }) + '\n');
+        }
+        return;
     }
     if (req.method === 'POST' && ['/api/ollama/show', '/api/ollama/generate'].includes(req.url)) {
         try {

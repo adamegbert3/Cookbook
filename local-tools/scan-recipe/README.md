@@ -99,3 +99,18 @@ Logs: ~/Library/Logs/Cookbook Scanner/helper.log. Node.js LTS 22+ and Ollama mus
 already be installed. If the folder moves, quit the app and rerun the installer.
 To update, quit the app, extract the new ZIP, and run its installer.
 Start-Scanner.command remains available as a manual troubleshooting fallback.
+
+## No-Terminal download (current recommended setup)
+
+Use https://www.yum4you.com/scanner-setup.html and download the Apple-silicon DMG.
+Drag Cookbook Scanner to Applications. It includes Node.js and the public site;
+no project folder or Terminal is required. Install/open Ollama using its official
+Mac app download. Cookbook Scanner opens the local model setup when Gemma 3 4B
+is missing; click Download photo model (about 3.4 GB), then sign in locally.
+The DMG is ad-hoc signed for integrity but not Apple Developer ID signed or
+notarized. macOS may require the user to approve the first launch.
+
+The main-branch workflow tests the scanner, builds/verifies the DMG on macOS, and
+publishes a versioned GitHub release with SHA256SUMS.txt. The public download
+button follows the latest successful release. Older manual setup instructions
+above remain fallback documentation.

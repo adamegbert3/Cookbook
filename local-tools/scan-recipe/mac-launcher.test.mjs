@@ -15,7 +15,7 @@ async function launch({ action = 'start', live = null, saved = null, occupied = 
         readFileSync: p => p.endsWith('project.path') ? '/Documents/Cookbook with spaces' : JSON.stringify(state),
         writeFileSync: (p, data) => { state = JSON.parse(data); }, mkdirSync() {}, openSync: () => 42, closeSync() {}, existsSync: () => true,
         execFileSync: (cmd, args) => calls.opens.push([cmd, args]),
-        fetch: async () => ({ ok: !!live, json: async () => live }), AbortSignal,
+        fetch: async url => url.endsWith('/show') ? { ok: true, json: async () => ({ capabilities: ['vision'] }) } : ({ ok: !!live, json: async () => live }), AbortSignal,
         spawn: (cmd, args, options) => {
             calls.spawned.push({ cmd, args, options });
             const child = new EventEmitter(); child.pid = 123; child.unref = () => {}; child.kill = () => calls.kills.push('child');

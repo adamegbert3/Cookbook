@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 
-async function wizard({ host = 'localhost', fail = false } = {}) {
+async function wizard({ host = 'localhost', fail = false, downloadFail = false } = {}) {
     const elements = new Map();
     const element = id => {
         if (!elements.has(id)) elements.set(id, { disabled: false, textContent: '', innerHTML: '', focus() {},
@@ -17,6 +17,7 @@ async function wizard({ host = 'localhost', fail = false } = {}) {
     runInNewContext(source, { document: { getElementById: element },
         location: { hostname: host, hash: '#check' }, navigator: {}, window: { addEventListener() {} },
         localStorage: { getItem: k => stored.get(k), setItem: (k,v) => stored.set(k,v) },
+        fetch: async () => new Response(downloadFail ? '{"error":"No disk space"}\n' : '{"status":"pulling","total":100,"completed":50}\n{"status":"success"}\n'), TextDecoder, AbortSignal,
         DEFAULT_SCAN_MODEL: 'gemma3:4b', checkScanModel: async (base, model) => {
             checks++; assert.equal(base, '/api/ollama'); assert.equal(model, 'gemma3:4b');
             if (fail) throw Error('Model not found');
@@ -61,4 +62,18 @@ test('scanner update notice is scoped to Adam and respects dismissal', async () 
     context.show({ uid: 'n5aAU1g1tBY04Ut0HnhqegSgZe92' }); assert.equal(added, 1);
     buttons['[data-dismiss]'].onclick();
     context.show({ uid: 'n5aAU1g1tBY04Ut0HnhqegSgZe92' }); assert.equal(added, 1);
+});
+
+test('model download button verifies the model before allowing Next', async () => {
+    const w = await wizard();
+    await w.element('#setup-download').click({ target: w.element('#setup-download') });
+    assert.equal(w.checks(), 1); assert.equal(w.element('setup-next').disabled, false);
+    assert.match(w.element('setup-feedback').textContent, /installed and ready/);
+});
+test('model download errors keep Next blocked and permit retry', async () => {
+    const w = await wizard({ downloadFail: true });
+    await w.element('#setup-download').click({ target: w.element('#setup-download') });
+    assert.equal(w.checks(), 0); assert.equal(w.element('setup-next').disabled, true);
+    assert.equal(w.element('#setup-download').disabled, false);
+    assert.match(w.element('setup-feedback').textContent, /No disk space/);
 });

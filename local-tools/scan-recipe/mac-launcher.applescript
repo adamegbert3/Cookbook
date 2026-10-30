@@ -29,6 +29,7 @@ end quit
 on runHelper(actionName)
     set resourcesPath to (POSIX path of (path to me)) & "Contents/Resources/"
     set scriptPath to resourcesPath & "mac-launcher.mjs"
-    set commandText to "export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin; if ! command -v node >/dev/null 2>&1; then echo 'Install Node.js LTS from nodejs.org, then reopen Cookbook Scanner.' >&2; exit 1; fi; exec node " & quoted form of scriptPath & " " & quoted form of actionName
+    set bundledNode to resourcesPath & "node"
+    set commandText to "export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin; if [ -x " & quoted form of bundledNode & " ]; then exec " & quoted form of bundledNode & " " & quoted form of scriptPath & " " & quoted form of actionName & "; fi; if ! command -v node >/dev/null 2>&1; then echo 'Install Node.js LTS from nodejs.org, then reopen Cookbook Scanner.' >&2; exit 1; fi; exec node " & quoted form of scriptPath & " " & quoted form of actionName
     do shell script commandText
 end runHelper

@@ -44,6 +44,7 @@ test('helper proxies scans, reports model failures, and blocks private files and
         const body = JSON.parse(raw);
         res.setHeader('Content-Type', 'application/json');
         if (body.model === 'missing') { res.writeHead(404); res.end('{"error":"model missing not found"}'); return; }
+        if (req.url === '/api/pull') { assert.equal(body.model, 'gemma3:4b'); assert.equal(body.stream, true); res.end('{"status":"success"}\n'); return; }
         if (req.url === '/api/show') { res.end(JSON.stringify({ capabilities: body.model === 'embed' ? ['embedding'] : ['vision'] })); return; }
         assert.equal(body.format.properties.recipes.type, 'array');
         assert.equal(body.options.temperature, 0);
@@ -66,6 +67,10 @@ test('helper proxies scans, reports model failures, and blocks private files and
     for (const path of ['/.git/config', '/.env', '/local-tools/sync-to-drive/serviceAccountKey.json', '/%2e%2e%5cCookbook-other/secret']) {
         assert.equal((await fetch(base + path)).status, 403, path);
     }
+    const pull = await fetch(base + '/api/ollama/pull', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'gemma3:4b' }) });
+    assert.equal(pull.status, 200); assert.match(await pull.text(), /success/);
+    assert.equal((await fetch(base + '/api/ollama/pull', { method: 'POST', body: JSON.stringify({ model: 'unapproved-model' }) })).status, 400);
+    assert.equal((await fetch(base + '/api/ollama/pull', { method: 'POST', headers: { Origin: 'https://untrusted.example' }, body: JSON.stringify({ model: 'gemma3:4b' }) })).status, 403);
     assert.equal((await fetch(base + '/%ZZ')).status, 400);
     assert.equal((await fetch(base + '/admin/scan.html')).status, 200);
     assert.equal((await fetch(base + '/api/ollama/show', { method: 'POST', headers: { Origin: 'https://untrusted.example' } })).status, 403);

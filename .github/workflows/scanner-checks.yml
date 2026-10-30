@@ -4,7 +4,7 @@ on:
     branches: [main]
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   scanner:
     runs-on: macos-latest
@@ -19,3 +19,22 @@ jobs:
         run: |
           bash -n Install-Mac-Scanner.command Start-Scanner.command
           osacompile -s -o "$RUNNER_TEMP/Cookbook Scanner.app" local-tools/scan-recipe/mac-launcher.applescript
+      - name: Build and verify Apple-silicon download
+        run: bash local-tools/scan-recipe/build-mac-download.sh "$RUNNER_TEMP/mac-download"
+      - name: Publish verified installer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="mac-scanner-${GITHUB_SHA:0:7}"
+          cat > "$RUNNER_TEMP/release-notes.txt" <<'NOTES'
+          Download the DMG, open it, and drag Cookbook Scanner to Applications.
+          Apple silicon (M1/M2/M3/M4 and newer), macOS 14+. Includes Node.js and the helper.
+          Install Ollama from https://ollama.com/download/mac. The app provides a button to download the photo model.
+          No Terminal commands required. This community build is not Apple-notarized; macOS may require one-time approval.
+          Setup guide: https://www.yum4you.com/scanner-setup.html
+          NOTES
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --title "Cookbook Scanner for Mac (${GITHUB_SHA:0:7})" --notes-file "$RUNNER_TEMP/release-notes.txt" --draft
+          fi
+          gh release upload "$tag" "$RUNNER_TEMP/mac-download/Cookbook-Scanner-Apple-Silicon.dmg" "$RUNNER_TEMP/mac-download/SHA256SUMS.txt" --clobber
+          gh release edit "$tag" --draft=false --latest

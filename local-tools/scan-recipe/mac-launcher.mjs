@@ -6,7 +6,7 @@ import { homedir } from 'node:os';
 import { randomUUID } from 'node:crypto';
 
 const resources = dirname(fileURLToPath(import.meta.url));
-const root = readFileSync(join(resources, 'project.path'), 'utf8').trimEnd();
+const root = existsSync(join(resources, 'cookbook')) ? join(resources, 'cookbook') : readFileSync(join(resources, 'project.path'), 'utf8').trimEnd();
 const stateDir = join(homedir(), 'Library', 'Application Support', 'Cookbook Scanner');
 const logDir = join(homedir(), 'Library', 'Logs', 'Cookbook Scanner');
 const statePath = join(stateDir, 'helper.json');
@@ -40,7 +40,7 @@ try {
         const server = join(root, 'local-tools', 'scan-recipe', 'serve-locally.mjs');
         if (!existsSync(server)) throw Error('The Cookbook folder has moved. Run Install-Mac-Scanner.command from its new location to reconnect the app.');
         try { execFileSync('/usr/bin/open', ['-a', 'Ollama'], { stdio: 'ignore' }); }
-        catch { throw Error('Install Ollama in Applications from ollama.com/download/mac, then reopen Cookbook Scanner.'); }
+        catch { execFileSync('/usr/bin/open', ['https://ollama.com/download/mac']); throw Error('Install Ollama from the download page that just opened. Drag Ollama to Applications, open it once, then reopen Cookbook Scanner.'); }
         mkdirSync(stateDir, { recursive: true }); mkdirSync(logDir, { recursive: true });
         const live = await health(), state = savedState();
         if (live && (!state || live.instance !== state.instance)) {
@@ -67,6 +67,11 @@ try {
                 throw Error('The helper could not start. Port 8080 may be occupied. Stop any old helper and try again. Details: ~/Library/Logs/Cookbook Scanner/helper.log');
             }
         }
-        execFileSync('/usr/bin/open', ['http://localhost:8080/admin/scan.html']);
+        let modelReady = false;
+        try {
+            const response = await fetch(base + '/api/ollama/show', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'gemma3:4b' }), signal: AbortSignal.timeout(15000) });
+            modelReady = response.ok && (await response.json()).capabilities?.includes('vision');
+        } catch {}
+        execFileSync('/usr/bin/open', [modelReady ? 'http://localhost:8080/admin/scan.html' : 'http://localhost:8080/scanner-setup.html#check']);
     }
 } catch (error) { console.error(error.message); process.exitCode = 1; }
