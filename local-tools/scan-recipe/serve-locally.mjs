@@ -1,8 +1,25 @@
-import { Readable } from 'node:stream';
-import { pipeline } from 'node:stream/promises';
+// Serves this whole project over plain HTTP on your computer. Originally
+// just so the admin dashboard's AI scanner could talk to Ollama; now also
+// hosts two more local-only admin helpers that need real server-side
+// access (fetching arbitrary external sites, and running the Drive sync
+// script) that a browser page can never be allowed to do on its own.
+//
+// Why this exists: admin.html normally loads over HTTPS (the live site),
+// and browsers permanently block a secure (HTTPS) page from calling a
+// plain HTTP address like Ollama's localhost:11434 — there is no
+// workaround or setting for this, it's a hard browser security rule, and
+// it applies to "localhost" too, not just external addresses. Loading
+// admin.html over plain HTTP instead (this script) sidesteps the problem
+// entirely, since HTTP-to-HTTP requests aren't blocked.
+//
+// Usage:
+//   node serve-locally.mjs
+// Then open the printed URL (defaults to http://localhost:8080/admin.html)
+// — do NOT use the https://... link while scanning, importing, or syncing.
+
 import { createServer } from 'http';
 import { readFile } from 'fs/promises';
-import { join, extname, dirname, relative, isAbsolute } from 'path';
+import { join, extname, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 import { parseRecipeFromHtml } from '../../scripts/recipe-import.js';
@@ -10,8 +27,6 @@ import { parseRecipeFromHtml } from '../../scripts/recipe-import.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = join(__dirname, '..', '..'); // local-tools/scan-recipe -> repo root
 const PORT = process.env.PORT || 8080;
-const HOST = process.env.HOST || '127.0.0.1';
-const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://127.0.0.1:11434';
 
 const MIME = {
     '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
@@ -20,63 +35,16 @@ const MIME = {
 };
 
 createServer(async (req, res) => {
-    if (req.method === 'GET' && req.url === '/api/scanner-health') {
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end(JSON.stringify({ service: 'cookbook-scanner', instance: process.env.COOKBOOK_INSTANCE || null }));
-        return;
-    }
-    // Browsers must use this helper's origin for privileged local actions.
-    if (req.method === 'POST' && (req.headers.origin && req.headers.origin !== 'http://' + req.headers.host || req.headers['sec-fetch-site'] === 'cross-site')) {
-        res.writeHead(403); res.end('Forbidden origin'); return;
-    }
-    if (req.method === 'POST' && req.url === '/api/ollama/pull') {
-        try {
-            const body = await readJsonBody(req);
-            if (body.model !== 'gemma3:4b') { res.writeHead(400); res.end('Only the scanner model can be downloaded here.'); return; }
-            const upstream = await fetch(OLLAMA_BASE.replace(/\/$/, '') + '/api/pull', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'gemma3:4b', stream: true }), signal: AbortSignal.timeout(3600000)
-            });
-            res.writeHead(upstream.status, { 'Content-Type': 'application/x-ndjson', 'Cache-Control': 'no-store' });
-            await pipeline(Readable.fromWeb(upstream.body), res);
-        } catch {
-            if (!res.headersSent) res.writeHead(502, { 'Content-Type': 'application/x-ndjson' });
-            if (!res.destroyed) res.end(JSON.stringify({ error: 'Download interrupted. Open Ollama and retry; completed layers can be reused.' }) + '\n');
-        }
-        return;
-    }
-    if (req.method === 'POST' && ['/api/ollama/show', '/api/ollama/generate'].includes(req.url)) {
-        try {
-            const body = await readJsonBody(req);
-            const upstream = await fetch(OLLAMA_BASE.replace(/\/$/, '') + req.url.replace('/api/ollama/', '/api/'), {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...body, stream: false }), signal: AbortSignal.timeout(300000)
-            });
-            res.writeHead(upstream.status, { 'Content-Type': 'application/json' });
-            res.end(await upstream.text());
-        } catch (error) {
-            res.writeHead(502, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: error.name === 'TimeoutError' ? 'Ollama timed out. Try a smaller document.' : 'Cannot reach Ollama: ' + error.message + '. Start Ollama and retry.' }));
-        }
-        return;
-    }
     if (req.method === 'POST' && req.url === '/api/import-recipe') return handleImportRecipe(req, res);
     if (req.method === 'POST' && req.url === '/api/sync-to-drive') return handleTriggerSync(req, res);
 
-    let urlPath;
-    try { urlPath = decodeURIComponent(req.url.split('?')[0]); }
-    catch { res.writeHead(400); res.end('Invalid URL'); return; }
+    let urlPath = decodeURIComponent(req.url.split('?')[0]);
     if (urlPath === '/') urlPath = '/admin.html';
 
     const filePath = join(PROJECT_ROOT, urlPath);
 
     // Basic guard against escaping the project root
-    const rel = relative(PROJECT_ROOT, filePath);
-    const parts = rel.split(/[\\/]/);
-    const publicRootFiles = new Set(['sw.js', 'CNAME']);
-    const allowed = parts.length === 1 ? (extname(rel) === '.html' || publicRootFiles.has(rel))
-        : ['admin', 'scripts', 'styles', 'images', 'offline_features'].includes(parts[0]);
-    if (rel.startsWith('..') || isAbsolute(rel) || parts.some(p => p.startsWith('.')) || !allowed) {
+    if (!filePath.startsWith(PROJECT_ROOT)) {
         res.writeHead(403);
         res.end('Forbidden');
         return;
@@ -90,7 +58,7 @@ createServer(async (req, res) => {
         res.writeHead(404);
         res.end(`Not found: ${urlPath}`);
     }
-}).listen(PORT, HOST, () => {
+}).listen(PORT, () => {
     console.log(`\nServing the Cookbook locally at:\n`);
     console.log(`  http://localhost:${PORT}/index.html   <-- 1. log in here first (this is a separate login session from the live site)`);
     console.log(`  http://localhost:${PORT}/admin.html   <-- 2. then open this — the Scan Photos, Import from Link, and`);
@@ -101,12 +69,7 @@ createServer(async (req, res) => {
 function readJsonBody(req) {
     return new Promise((resolve, reject) => {
         let body = '';
-        let bytes = 0;
-        req.on('data', chunk => {
-            bytes += chunk.length;
-            if (bytes > 40 * 1024 * 1024) { reject(new Error('Request exceeds 40 MB; use fewer or smaller images.')); return; }
-            body += chunk;
-        });
+        req.on('data', chunk => { body += chunk; });
         req.on('end', () => {
             try { resolve(JSON.parse(body || '{}')); } catch (e) { reject(new Error('Invalid request body.')); }
         });

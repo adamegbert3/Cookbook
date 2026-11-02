@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <title>Scan Recipe Photos | Admin</title>
     <link rel="stylesheet" href="../styles/recipes.css?v=18">
     <link rel="stylesheet" href="../styles/admin.css?v=2">
@@ -28,25 +28,52 @@
             html.setAttribute('data-font', settings.fontStyle || 'inter');
         }
     </script>
-    <link rel="stylesheet" href="../styles/polish.css?v=1">
 </head>
 <body>
 
 <div class="admin-container">
     <a href="../admin.html" class="admin-back-link">← Admin Home</a>
-    <header class="health-header"><div><span class="eyebrow">From the recipe box</span><h1>Bring a recipe to life.</h1><p>Turn a photo or PDF into a recipe you can keep, cook, and share.</p></div><span class="soft-link">Local AI · private photos</span></header>
-    <div class="scan-layout">
-        <section class="health-card">
-            <h2>1. Choose your recipe</h2><p class="health-muted">Use a clear, well-lit photo. Multiple recipes and PDFs are welcome.</p>
-            <label class="scan-dropzone" for="scan-photo-input"><strong>A family favorite starts here</strong><span class="health-muted">JPEG, PNG, or PDF · up to 10 pages per PDF</span><input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple></label>
-            <div class="health-toolbar"><button id="scan-photo-btn" class="health-button scan-primary" onclick="scanRecipePhoto()">Scan recipes →</button><button class="health-button" onclick="checkOllamaConnection()">Check connection</button></div>
-            <div id="scan-photo-status" class="scan-status" role="status" aria-live="polite"></div>
-            <div id="scan-photo-result" style="display:none"><h2>2. Review your transcription</h2><p class="health-muted">Check quantities and any [unclear] text against the original. You can edit the recipes in Speed Upload before saving.</p><textarea id="scan-photo-json" class="scan-output" aria-label="Scanned recipe JSON" rows="12" readonly></textarea><button onclick="sendScanToUploadStation()" class="health-button scan-primary">Continue to Speed Upload →</button></div>
-        </section>
-        <aside class="health-card"><a class="health-button scan-primary" href="../scanner-setup.html" style="display:block;margin-bottom:20px;text-align:center">Mac setup guide · step by step →</a><span class="eyebrow">First time here?</span><h2 style="margin-top:12px">A little setup. A lot of recipes.</h2><ol class="setup-steps"><li><a href="https://github.com/adamegbert3/Cookbook/releases/latest/download/Cookbook-Scanner-Apple-Silicon.dmg">Download Cookbook Scanner for Mac</a> and drag it to Applications.</li><li>Install and open <a href="https://ollama.com/download/mac" target="_blank" rel="noopener">Ollama</a>.</li><li>Open Cookbook Scanner. Click Download photo model if prompted, then sign in locally.</li></ol><p class="health-muted">No Terminal commands. M-series Macs, macOS 14+. This community build is not Apple-notarized; macOS may require your approval.</p><details><summary>Choose a different model</summary><p class="health-muted">Use the exact name of an installed vision model.</p><label for="ollama-model-name">Vision model</label><input id="ollama-model-name" placeholder="gemma3:4b" style="width:100%;padding:10px;margin-top:8px;border:1px solid var(--border);border-radius:10px;background:var(--input-bg);color:var(--primary)"></details><p class="health-muted">Keep the helper running. Photos stay on the helper computer. Optional diagnostics record only outcomes, timings, and device families.</p></aside>
+    <h1 style="color: #6d28d9;">📷 Scan Recipe Photos & PDFs (AI, free & local)</h1>
+    <p style="font-size: 13px; color: var(--primary); opacity: 0.7;">
+        Reads photos or PDFs using Ollama running on <strong>this same computer</strong> — nothing is uploaded anywhere.
+        Pick as many files as you want. One-time setup: install
+        <a href="https://ollama.com/download" target="_blank">Ollama</a>, run
+        <code>ollama pull llama3.2-vision</code>, then start it with
+        <code>OLLAMA_ORIGINS=* ollama serve</code> so it accepts requests from this page.
+    </p>
+    <p style="font-size: 12px; background: #fef3c7; border: 1px solid #fcd34d; color: #92400e; padding: 10px 12px; border-radius: 6px;">
+        ⚠️ <strong>Important:</strong> this only works while you're viewing this page over plain <code>http://</code>, not the secure live site — browsers permanently block a secure page from calling Ollama, with no setting to allow it. Run <code>node local-tools/scan-recipe/serve-locally.mjs</code> in the project folder and open the <code>http://localhost:8080</code> link it prints, then come back to this same page there.
+    </p>
+    <details style="margin-bottom: 12px;">
+        <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">📱 Scanning from your phone instead of the computer running Ollama?</summary>
+        <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
+            Enter your computer's address on your home WiFi instead of "localhost" (e.g. <code>http://192.168.1.42:11434</code>).
+            On the computer, find it under Wi-Fi settings, and start Ollama with
+            <code>OLLAMA_HOST=0.0.0.0:11434 OLLAMA_ORIGINS=* ollama serve</code> so it accepts connections from other devices.
+            This still requires viewing this page over <code>http://</code> (see the warning above) — see
+            <code>local-tools/scan-recipe/README.md</code> for the full walkthrough.
+        </p>
+        <input type="text" id="ollama-server-url" placeholder="http://localhost:11434" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
+    </details>
+    <details style="margin-bottom: 12px;">
+        <summary style="cursor: pointer; font-size: 12px; color: #6d28d9; font-weight: bold;">🧠 Model not loading? Change which Ollama model is used</summary>
+        <p style="font-size: 12px; color: #6b7280; margin: 8px 0 6px 0;">
+            If scanning fails with something like <code>unknown model architecture</code>, your installed Ollama version can't run <code>llama3.2-vision</code> yet.
+            Try a different vision model instead — e.g. run <code>ollama pull llava</code> in Terminal, then type <code>llava</code> below.
+            See <code>local-tools/scan-recipe/README.md</code> for more options.
+        </p>
+        <input type="text" id="ollama-model-name" placeholder="llama3.2-vision" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-family: monospace; font-size: 12px;">
+    </details>
+    <input type="file" id="scan-photo-input" accept="image/*,.pdf" multiple style="margin-bottom: 10px;">
+    <br>
+    <button id="scan-photo-btn" onclick="scanRecipePhoto()" style="background: #7c3aed; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;">🔍 Scan File(s)</button>
+    <div id="scan-photo-status" style="font-size: 12px; color: #6b7280; margin-top: 8px;"></div>
+    <div id="scan-photo-result" style="display:none; margin-top: 12px;">
+        <textarea id="scan-photo-json" rows="8" readonly style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-family: monospace; font-size: 12px; background: #faf5ff;"></textarea>
+        <button onclick="sendScanToUploadStation()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; font-size: 13px;">⬇️ Send to Speed Upload Station</button>
     </div>
 </div>
 
-<script type="module" src="../scripts/dashboard.js?v=24"></script>
+<script type="module" src="../scripts/dashboard.js?v=22"></script>
 </body>
 </html>
