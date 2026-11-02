@@ -86,3 +86,12 @@ Existing installations on Macs will NOT revert when GitHub rolls back. Quit Cook
 Restoring the original rules also restores their original permission model, including broader household metadata access. This rollback is not a new security audit. Historical My Kitchen documents/invite indexes may remain dormant; their retention is intentional. Existing experimental apps should not be used against the restored app/rules.
 
 To resume development later, branch from current `main`, examine the archive diff, reproduce one concrete failure, and selectively propose changes. Do not merge the whole archive or redeploy its rules simply to make an old installer work. The owner's current instruction is to keep that work off the live site.
+
+## Execution record — November 1, 2026
+
+- Rollback commit `245c8029131a0cf44d51accf803cd16097520d56` was pushed to `main`.
+- Baseline Firestore rules compiled and were successfully released to project `cookbook-82676` by Firebase CLI.
+- All three releases (`mac-scanner-b23d8e9`, `mac-scanner-9ee7676`, `mac-scanner-d9ba068`) were confirmed as drafts, not latest/public downloads. Artifacts and Git tags were retained.
+- `git diff --name-only d474ae9 245c802` lists only `CLAUDE.md`, this handoff and `sw.js`. The sole app-code difference is cache name `cookbook-rollback-2026-11-01`.
+- Syntax checks passed for restored `scripts/firebase-config.js`, `scripts/dashboard.js` and `sw.js`. This verifies restoration, not resolution of Adam's original scanner problem.
+- GitHub Pages deployment for the rollback: https://github.com/adamegbert3/Cookbook/actions/runs/41394117142 . Later documentation-only commits may have subsequent Pages runs.
